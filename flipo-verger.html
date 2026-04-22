@@ -734,7 +734,7 @@ function buildPC(){
   h+=`<p style="font-weight:700;color:#3a6e11;font-size:12px;margin-bottom:6px">🍎 Pomme — surface totale : 22,76 ha</p>`;
   h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
   S.pcPom.forEach((row,ri)=>{
-    h+=`<tr><td><input class="w120" id="pnp-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcPom[${ri}].p=this.value;saveLS()"></td>`;
+    h+=`<tr><td><input class="w120" id="pnp-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPom[${ri}].p=this.value;saveLS()"></td>`;
     CI.forEach(ci=>{
       if(ci===2) h+=`<td><input class="w60" id="dp-${ri}-2" value="${row.d[2]??''}" onchange="updDose('pom',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dp-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
@@ -747,7 +747,7 @@ function buildPC(){
   h+=`<p style="font-weight:700;color:#185FA5;font-size:12px;margin:14px 0 6px">🍐 Poire — surface totale : 10,54 ha</p>`;
   h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
   S.pcPoi.forEach((row,ri)=>{
-    h+=`<tr><td><input class="w120" id="pnq-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcPoi[${ri}].p=this.value;saveLS()"></td>`;
+    h+=`<tr><td><input class="w120" id="pnq-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPoi[${ri}].p=this.value;saveLS()"></td>`;
     CI.forEach(ci=>{
       if(ci===2) h+=`<td><input class="w60" id="dq-${ri}-2" value="${row.d[2]??''}" onchange="updDose('poi',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dq-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
@@ -788,9 +788,9 @@ function updDose(type,ri,val){
   }
 }
 function addProdPC(type){
-  if(type==='pom')S.pcPom.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
-  else if(type==='poi')S.pcPoi.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
-  else S.pcNoy.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  if(type==='pom')S.pcPom.push({p:'',d:[0,0,0,0,0,0,0]});
+  else if(type==='poi')S.pcPoi.push({p:'',d:[0,0,0,0,0,0,0]});
+  else S.pcNoy.push({p:'',d:[0,0,0,0,0,0,0]});
   saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
 }
 function deleteProdPC(type,ri){
@@ -927,7 +927,7 @@ function updBS(culture,i,val){
 }
 function addBloc(culture){getBlocArr(culture).push({n:'Nouveau bloc',s:0,note:''});saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
 function addProdDist(culture){
-  getPcArr(culture).push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  getPcArr(culture).push({p:'',d:[0,0,0,0,0,0,0]});
   saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
 }
 function buildBlocsWithDoses(culture){
@@ -1234,11 +1234,19 @@ function buildCeilTable(type){
     row.d.forEach((v,ci)=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${v||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
     h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
     if(type==='pom')h+=`<td class="f" id="${type}k-${ri}">${(Math.round(tot)*300).toLocaleString('fr-FR')}</td>`;
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:12px" onclick="deleteVar('${type}',${ri})">🗑</button></td>`;
     h+=`</tr>`;
   });
   h+=`</tbody></table></div>`;
   h+=`<div class="btns"><button class="btn add" onclick="addVar('${type}')">+ Ajouter variété</button></div><br>`;
   return h;
+}
+function deleteVar(type,ri){
+  if(!confirm('Supprimer cette variété ?'))return;
+  const rows=type==='pom'?S.pomR:S.poiR;
+  rows.splice(ri,1);
+  saveLS();
+  const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
 }
 function updVN(type,ri,v){(type==='pom'?S.pomR:S.poiR)[ri].v=v;saveLS();}
 function updC(type,ri,ci,val){
