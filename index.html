@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flipo</title>
+<style>
+:root{--gr:#1D9E75;--gd:#0F6E56;--gl:#E1F5EE;--bg:#f4f5f0;--wh:#fff;--tx:#1a1a1a;--mu:#666;--brd:#e0e0e0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+
+/* Hero */
+.hero{background:linear-gradient(150deg,#0d5e48 0%,#1D9E75 55%,#2ec482 100%);padding:56px 24px 48px;text-align:center;color:#fff;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='2' fill='white' fill-opacity='0.06'/%3E%3C/svg%3E");pointer-events:none}
+.hero-logo-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:0;margin-bottom:14px}
+.hero-logo-bg{width:100px;height:100px;background:rgba(255,255,255,.18);border-radius:28px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);box-shadow:0 4px 24px rgba(0,0,0,.15);margin-bottom:18px}
+.hero-brand{font-size:54px;font-weight:900;letter-spacing:-3px;line-height:1;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.15)}
+.hero-sub{font-size:14px;opacity:.8;margin-top:10px;font-weight:400;letter-spacing:.2px}
+.hero-season{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);color:#fff;font-size:12px;font-weight:600;padding:6px 16px;border-radius:99px;margin-top:20px;letter-spacing:.3px;backdrop-filter:blur(4px)}
+
+/* Main */
+.main{max-width:1000px;margin:0 auto;padding:36px 24px 60px}
+.section-title{font-size:13px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.card{background:var(--wh);border-radius:16px;border:1px solid var(--brd);padding:24px;cursor:pointer;transition:.18s;text-decoration:none;color:var(--tx);display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden;min-height:200px}
+@media(max-width:600px){.hero-brand{font-size:36px}.hero-sub{font-size:12px}.hero-season{font-size:11px}.main{padding:24px 16px 50px}.grid{grid-template-columns:repeat(auto-fill,minmax(100%,1fr))}.card{padding:18px;min-height:180px}.card-icon{font-size:32px}.card-title{font-size:15px}.card-desc{font-size:11px}.card-status{font-size:10px;padding:2px 8px}.logout-btn,.admin-btn{padding:3px 10px;font-size:10px}.session-name{font-size:11px}}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.1);border-color:transparent}
+.card.disabled{cursor:default;opacity:.55}
+.card.disabled:hover{transform:none;box-shadow:none;border-color:var(--brd)}
+.card-icon{font-size:38px;line-height:1}
+.card-title{font-size:17px;font-weight:700}
+.card-desc{font-size:12px;color:var(--mu);line-height:1.6;flex:1}
+.card-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;align-self:flex-start}
+.status-ok{background:#e1f5ee;color:var(--gd)}
+.status-wip{background:#fff3cd;color:#856404}
+.status-soon{background:#f0f0ee;color:#888}
+.card-bar{position:absolute;bottom:0;left:0;right:0;height:4px;border-radius:0 0 16px 16px}
+
+/* Colors per theme */
+.card.verger:hover{border-color:#1D9E75}.card.verger .card-bar{background:#1D9E75}
+.card.maraichage:hover{border-color:#e07d20}.card.maraichage .card-bar{background:#e07d20}
+.card.fraise:hover{border-color:#e84a5f}.card.fraise .card-bar{background:#e84a5f}
+.card.jus:hover{border-color:#c0392b}.card.jus .card-bar{background:#c0392b}
+.card.grandecult:hover{border-color:#8B6914}.card.grandecult .card-bar{background:#8B6914}
+.card.emballage:hover{border-color:#e07020}.card.emballage .card-bar{background:#e07020}
+.card.commande:hover{border-color:#185FA5}.card.commande .card-bar{background:#185FA5}
+.card.finance:hover{border-color:#f59e0b}.card.finance .card-bar{background:#f59e0b}
+
+/* Footer */
+.footer{text-align:center;margin-top:48px;font-size:11px;color:var(--mu)}
+/* Session bar */
+.session-bar{display:flex;align-items:center;gap:10px;padding:8px 24px;background:rgba(255,255,255,.15);backdrop-filter:blur(4px);justify-content:flex-end}
+.session-name{font-size:12px;color:#fff;font-weight:600;opacity:.9}
+.logout-btn{font-size:11px;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff;cursor:pointer;font-weight:600}
+.logout-btn:hover{background:rgba(255,255,255,.3)}
+.admin-btn{font-size:11px;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.85);border:none;color:var(--gd);cursor:pointer;font-weight:700}
+.admin-btn:hover{background:#fff}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="session-bar" id="session-bar" style="display:none">
+    <span class="session-name" id="session-name"></span>
+    <button class="admin-btn" id="admin-btn" onclick="location.href='flipo-admin.html'" style="display:none">⚙️ Accès</button>
+    <button class="logout-btn" onclick="logout()">Déconnexion</button>
+  </div>
+  <div class="hero-logo-bg">
+    <svg viewBox="0 0 80 88" fill="none" xmlns="http://www.w3.org/2000/svg" width="68" height="68">
+      <!-- Tronc -->
+      <rect x="35" y="58" width="10" height="26" rx="4" fill="rgba(255,255,255,0.55)"/>
+      <!-- Terre -->
+      <ellipse cx="40" cy="83" rx="18" ry="4" fill="rgba(255,255,255,0.2)"/>
+      <!-- Feuillage bas -->
+      <ellipse cx="40" cy="50" rx="30" ry="18" fill="rgba(255,255,255,0.22)"/>
+      <!-- Feuillage milieu -->
+      <ellipse cx="40" cy="36" rx="23" ry="16" fill="rgba(255,255,255,0.28)"/>
+      <!-- Feuillage haut -->
+      <ellipse cx="40" cy="22" rx="16" ry="13" fill="rgba(255,255,255,0.34)"/>
+      <!-- Fruits -->
+      <circle cx="22" cy="52" r="5" fill="#ff6b6b"/>
+      <circle cx="57" cy="49" r="5" fill="#ff6b6b"/>
+      <circle cx="30" cy="38" r="4.5" fill="#ffd166"/>
+      <circle cx="52" cy="40" r="4" fill="#ff6b6b"/>
+      <circle cx="40" cy="28" r="4" fill="#ffd166"/>
+      <!-- Branche gauche -->
+      <path d="M40 54 Q26 46 20 38" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"/>
+      <!-- Branche droite -->
+      <path d="M40 52 Q54 44 58 36" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="hero-brand">Flipo</div>
+  <div class="hero-sub">Gestion de l'exploitation agricole</div>
+  <div class="hero-season">🗓 Saison 2026/2027</div>
+</div>
+
+<!-- MODULES -->
+<div class="main">
+  <div class="section-title" id="section-title">Modules disponibles</div>
+  <div class="grid" id="modules-grid"></div>
+  <div class="footer">Flipo © 2026/2027 — Application locale, aucune donnée envoyée en dehors de votre appareil</div>
+</div>
+
+<script>
+var SESSION_KEY='flipo-session';
+var USERS_KEY='flipo-users-v1';
+
+var ALL_MODULES=[
+  {id:'verger',cls:'verger',icon:'🌳',title:'Verger',desc:'Traitements phyto pomme / poire / noyaux, cueillette par variété, facturation, coûts phyto.',url:'flipo-verger.html'},
+  {id:'maraichage',cls:'maraichage',icon:'🥦',title:'Maraîchage',desc:'Gestion des cultures légumières, traitements avec calcul dose/bidon, suivi des récoltes par culture.',url:'flipo-maraichage.html'},
+  {id:'fraise',cls:'fraise',icon:'🍓',title:'Fraise',desc:'Récolte par chapelle et variété, rendement intérieur/extérieur, drainage irrigation, configuration saison.',url:'flipo-fraise.html'},
+  {id:'jus',cls:'jus',icon:'🧃',title:'Jus',desc:'Embouteillage par saveur et format, suivi clients, stock bouteilles/bouchons/BIBs, IBC pomme et poire.',url:'flipo-jus.html'},
+  {id:'emballage',cls:'emballage',icon:'📦',title:'Tri / Emballage',desc:'Saisie hebdomadaire du tri par variété, déduction du stock bâtiment et statistiques saison.',url:'flipo-emballage.html'},
+  {id:'finance',cls:'finance',icon:'💶',title:'Finance 🔒',desc:'Emprunts et crédit-bails par structure (SCEA, VDP, F2T, PV, SCI, THITAN), charges annuelles, échéances.',url:'flipo-finance.html'}
+];
+
+function hashCode(s){var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h|=0;}return(h>>>0).toString(16).padStart(8,'0');}
+
+function getSession(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');}catch(e){return null;}}
+
+function initDefaultUsers(){
+  var raw=localStorage.getItem(USERS_KEY);
+  if(raw){try{var d=JSON.parse(raw);if(d.users&&d.users.length>0)return;}catch(e){}}
+  var allPerms={
+    verger:{enabled:true,tabs:{
+      trait:{enabled:true,stabs:['pc','pomme','poire','noyaux']},
+      cueill:{enabled:true,stabs:['saisie','courbe','tableau','factu']},
+      stock:{enabled:true,stabs:[]},
+      phyto:{enabled:true,stabs:[]}
+    }},
+    maraichage:{enabled:true,tabs:{
+      cultures:{enabled:true,stabs:[]},
+      trait:{enabled:true,stabs:[]},
+      cueill:{enabled:true,stabs:[]}
+    }},
+    fraise:{enabled:true,tabs:{
+      resume:{enabled:true,stabs:[]},
+      saisie:{enabled:true,stabs:[]},
+      saison:{enabled:true,stabs:[]},
+      drainage:{enabled:true,stabs:[]},
+      trait:{enabled:true,stabs:[]}
+    }},
+    jus:{enabled:true,tabs:{
+      resume:{enabled:true,stabs:[]},
+      saisie:{enabled:true,stabs:[]},
+      params:{enabled:true,stabs:[]},
+      stock:{enabled:true,stabs:[]}
+    }},
+    emballage:{enabled:true,tabs:{
+      pomme:{enabled:true,stabs:['saisie','histo']},
+      poire:{enabled:true,stabs:['saisie','histo']},
+      stock:{enabled:true,stabs:['vue','bat']},
+      transfert:{enabled:true,stabs:[]},
+      stats:{enabled:true,stabs:[]}
+    }},
+    finance:{enabled:true,tabs:{
+      dashboard:{enabled:true,stabs:[]},
+      structures:{enabled:true,stabs:[]},
+      echeances:{enabled:true,stabs:[]},
+      reglages:{enabled:true,stabs:[]}
+    }}
+  };
+  var admin={id:Date.now(),nom:'Flipo',prenom:'Admin',codeHash:hashCode('09070812'),isAdmin:true,perms:allPerms};
+  localStorage.setItem(USERS_KEY,JSON.stringify({users:[admin]}));
+}
+
+function logout(){
+  sessionStorage.removeItem(SESSION_KEY);
+  location.href='flipo-login.html';
+}
+
+function renderModules(sess){
+  var grid=document.getElementById('modules-grid');
+  var perms=sess.perms||{};
+  var h='';
+  ALL_MODULES.forEach(function(mod){
+    var mp=perms[mod.id];
+    if(!sess.isAdmin&&(!mp||!mp.enabled))return; // non autorisé : invisible
+    h+='<a class="card '+mod.cls+'" href="'+mod.url+'">';
+    h+='<div class="card-icon">'+mod.icon+'</div>';
+    h+='<div class="card-title">'+mod.title+'</div>';
+    h+='<div class="card-desc">'+mod.desc+'</div>';
+    h+='<div class="card-status status-ok">✓ Disponible</div>';
+    h+='<div class="card-bar"></div>';
+    h+='</a>';
+  });
+  // Modules "à venir" (uniquement pour admin)
+  if(sess.isAdmin){
+    h+='<a class="card grandecult disabled" href="#"><div class="card-icon">🌾</div><div class="card-title">Grande culture</div><div class="card-desc">Suivi des parcelles grandes cultures, intrants, rendements et coûts par hectare.</div><div class="card-status status-soon">À venir</div><div class="card-bar"></div></a>';
+    h+='<a class="card commande disabled" href="#"><div class="card-icon">📦</div><div class="card-title">Commande</div><div class="card-desc">Gestion des commandes clients, bons de livraison, suivi des expéditions et relances.</div><div class="card-status status-soon">À venir</div><div class="card-bar"></div></a>';
+  }
+  grid.innerHTML=h;
+}
+
+// ─── Init ────────────────────────────────────────────────
+initDefaultUsers();
+var sess=getSession();
+if(!sess){location.href='flipo-login.html';}else{
+  // Barre de session
+  var bar=document.getElementById('session-bar');
+  var nameEl=document.getElementById('session-name');
+  var adminBtn=document.getElementById('admin-btn');
+  if(bar){bar.style.display='flex';}
+  if(nameEl){nameEl.textContent=sess.prenom+' '+sess.nom;}
+  if(adminBtn&&sess.isAdmin){adminBtn.style.display='inline-flex';}
+  renderModules(sess);
+}
+</script>
+
+</body>
+</html>

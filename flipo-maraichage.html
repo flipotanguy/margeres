@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flipo — Maraîchage</title>
+<style>
+:root{--gr:#e07d20;--gd:#b05800;--gl:#fef3e2;--bl:#185FA5;--am:#FFF3CD;--amb:#E6A817;--brd:#e0e0e0;--bg:#f7f7f5;--wh:#fff;--tx:#1a1a1a;--mu:#666;--mn:#d4edda;--mnd:#155724}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;background:var(--bg);color:var(--tx)}
+.app{max-width:1300px;margin:0 auto;background:var(--wh);min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,.07)}
+.hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:2px solid var(--gr);background:var(--wh)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.htxt h1{font-size:17px;font-weight:700;color:var(--gd)}.htxt p{font-size:11px;color:var(--mu)}
+.tabs{display:flex;padding:0 20px;background:var(--wh);border-bottom:1px solid var(--brd)}
+.tab{font-size:13px;padding:11px 18px;border:none;border-bottom:3px solid transparent;cursor:pointer;background:transparent;color:var(--mu);font-weight:500}
+.tab.act{color:var(--gr);border-bottom-color:var(--gr)}
+.content{padding:20px}
+.hidden{display:none!important}
+.stabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.stab{font-size:12px;padding:5px 14px;border-radius:99px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--mu);font-weight:500}
+.stab.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+.btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.btn:hover{background:var(--bg)}
+.btn.add{background:var(--gl);color:var(--gd);border-color:var(--gr)}.btn.add:hover{background:#fde8c8}
+.btn.ok{background:var(--gr);color:#fff;border-color:var(--gd)}.btn.ok:hover{background:var(--gd)}
+.btn.del{background:#fff0f0;color:#c0392b;border-color:#f5c6c6;padding:3px 8px;font-size:11px}.btn.del:hover{background:#fde8e8}
+.btn.danger{background:#fff3f3;color:#c0392b;border-color:#f5c6c6}.btn.danger:hover{background:#fde8e8}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tw{overflow-x:auto;border:1px solid var(--brd);border-radius:10px;margin-bottom:10px}
+.tw.fh{max-height:420px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{background:#f2f2f0;padding:7px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--brd);white-space:nowrap;position:sticky;top:0;z-index:2}
+th.am{background:#FEF3CD} th.gr{background:var(--gl)}
+td{padding:5px 8px;border-bottom:1px solid #f0f0ee;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+td.f{background:var(--am)!important;color:#7a5200}
+td.calc{background:#e8f4d4!important;color:#2d6a00;font-weight:600}
+td input,td select{border:none;background:transparent;width:100%;font-size:12px;color:inherit;outline:none;padding:2px 3px}
+td input:focus,td select:focus{background:rgba(255,255,255,.8);border-radius:3px;outline:1px solid var(--gr)}
+input.w48{width:48px} input.w60{width:60px} input.w80{width:80px} input.w100{width:100px} input.w120{width:120px} input.w140{width:140px}
+.sts{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.st{background:var(--bg);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;border:1px solid var(--brd)}
+.sl{font-size:11px;color:var(--mu);margin-bottom:3px}.sv{font-size:20px;font-weight:700;line-height:1}.su{font-size:11px;color:var(--mu)}
+.info{background:var(--gl);border-left:3px solid var(--gr);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--gd);margin-bottom:12px;line-height:1.5}
+.stitle{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--brd)}
+/* Culture chips */
+.cult-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cult-chip{padding:6px 16px;border-radius:99px;border:2px solid var(--brd);cursor:pointer;font-size:12px;font-weight:600;background:var(--wh);color:var(--mu);transition:.15s}
+.cult-chip:hover{border-color:var(--gr);color:var(--gd)}
+.cult-chip.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+/* Cultures grid */
+.cult-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+.cult-card{background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cult-card .cname{font-weight:600;font-size:13px}
+/* Entry form */
+.entry-form{background:var(--bg);border-radius:12px;padding:16px;border:1px solid var(--brd);margin-bottom:16px}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:11px;color:var(--mu);font-weight:500}
+.form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh);color:var(--tx);outline:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(224,125,32,.15)}
+.journal-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
+.journal-row .jicon{font-size:18px}
+.journal-row .jinfo{flex:1;font-size:12px}
+.journal-row .jinfo strong{font-size:13px}
+.journal-row .jdate{font-size:11px;color:var(--mu)}
+.empty-journal{text-align:center;color:var(--mu);font-size:12px;padding:20px;background:var(--bg);border-radius:10px}
+/* Vue globale */
+.cult-stat-bar{margin-bottom:8px;border-radius:8px;overflow:hidden;background:#efefec}
+.cult-stat-fill{height:22px;background:var(--gr);opacity:.8;border-radius:8px;transition:.3s;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600;min-width:40px}
+/* Share FAB */
+.share-fab{position:fixed;bottom:22px;right:18px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:1000}
+.share-pill{display:flex;gap:8px;background:#fff;border-radius:99px;padding:7px 12px;box-shadow:0 3px 16px rgba(0,0,0,.2);border:1px solid var(--brd)}
+.share-pill-btn{border:none;background:transparent;cursor:pointer;padding:2px 6px;border-radius:99px;transition:.15s;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--mu)}
+.share-pill-btn:hover{background:var(--gl);color:var(--gd)}
+.share-pill-sep{width:1px;background:var(--brd);align-self:stretch}
+
+@media(max-width:600px){
+.app{box-shadow:none}
+.hdr{flex-wrap:wrap;gap:8px;padding:12px}
+.hdr a{gap:6px}
+.logo{width:32px;height:32px}
+.htxt h1{font-size:15px}
+.htxt p{font-size:10px}
+.tabs{padding:0 12px}
+.tab{padding:10px 12px;font-size:12px}
+.content{padding:16px}
+.stabs{gap:4px}
+.stab{padding:5px 12px;font-size:11px}
+.btn{padding:6px 12px;font-size:11px;min-height:44px}
+.btn.ok{min-height:44px}
+.form-field input,.form-field select{padding:8px 10px;font-size:14px}
+.form-row{flex-direction:column}
+.tw{overflow-x:auto}
+table{font-size:11px}
+th,td{padding:6px 8px}
+.cult-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.share-fab{bottom:16px;right:12px}
+.sts{gap:10px}
+.st{min-width:100px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0" title="Retour à l'accueil Flipo">
+    <div class="logo" style="flex-shrink:0">
+      <svg viewBox="0 0 28 32" fill="none" width="24" height="28">
+        <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+        <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+        <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+        <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+        <circle cx="8.5" cy="10.2" r="0.7" fill="rgba(255,255,255,.45)"/>
+        <circle cx="17.5" cy="8.2" r="0.7" fill="rgba(255,255,255,.45)"/>
+      </svg>
+    </div>
+    <span style="font-size:15px;font-weight:800;color:var(--gd);letter-spacing:-.2px">Flipo</span>
+  </a>
+  <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
+  <div class="htxt"><h1>Maraîchage</h1><p id="saison-label">Saison 2026/2027</p></div>
+  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
+  <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+</div>
+<div class="tabs">
+  <button id="tab-cultures" class="tab act" onclick="setTab('cultures',this)">🌱 Cultures</button>
+  <button id="tab-trait" class="tab" onclick="setTab('trait',this)">🧪 Traitements</button>
+  <button id="tab-cueill" class="tab" onclick="setTab('cueill',this)">🥕 Cueillette</button>
+</div>
+<div class="content">
+  <div id="panel-cultures"></div>
+  <div id="panel-trait" class="hidden"></div>
+  <div id="panel-cueill" class="hidden"></div>
+</div>
+</div>
+<datalist id="mar-prod-list"></datalist>
+<!-- Share FAB -->
+<div class="share-fab">
+  <div class="share-pill">
+    <button class="share-pill-btn" onclick="shareNow('email')" title="Envoyer par e-mail">📧 Email</button>
+    <div class="share-pill-sep"></div>
+    <button class="share-pill-btn" onclick="shareNow('sms')" title="Envoyer par SMS">📱 SMS</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════
+// DONNÉES
+// ══════════════════════════════════════════════
+const TARIF_MAR = [
+  {p:"Abinel ultra",px:5},{p:"Aliette flash",px:16.1},{p:"Armicarb",px:16.5},
+  {p:"Boronia LS",px:4.8},{p:"Bouillie disperss NC",px:6.83},
+  {p:"Citrothiol rainfree",px:3.8},{p:"Dahido",px:28.383},{p:"Delan pro",px:16.79},
+  {p:"Dipel df",px:25.3},{p:"Estiuoil",px:3.3},{p:"Final K",px:6.5},
+  {p:"Karate Xflow",px:48.81},{p:"Larvblock",px:24},{p:"Megagreen",px:19.3},
+  {p:"Naturalis",px:39.9},{p:"Proclaim",px:26.2},{p:"Respect",px:12.5},
+  {p:"Revysion",px:17.59},{p:"Round up ultimate",px:11.43},{p:"Syllit max",px:26}
+];
+
+const CULTURES_INIT = ['Tomate','Poivron','Salade','Courgette','Courge','Aubergine','Chou de Bruxelles','Poireau'];
+
+// Volume bidon (L) et volume eau/ha (L) pour le calcul de dose/bidon
+const VOL_BIDON = 12;
+const VOL_EAU_HA = 800;
+
+// ══════════════════════════════════════════════
+// LOCAL STORAGE
+// ══════════════════════════════════════════════
+const LS_KEY = 'flipo-maraichage-v2';
+
+// ─── Supabase Sync ───────────────────────────────────────
+var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjY2OH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
+function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
+function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
+function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
+function syncInitPull(afterCb){
+  var local=localStorage.getItem(LS_KEY);
+  if(local){setSyncSt('ok');return;}
+  setSyncSt('syncing');
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
+    setSyncSt('ok');
+  });
+}
+function syncManualPull(){
+  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+  setSyncSt('syncing');
+  supaGet(LS_KEY,function(d){
+    if(d){
+      try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+      location.reload();
+    } else {
+      setSyncSt('ok');
+      alert('Aucune donnée cloud disponible.');
+    }
+  });
+}
+function saveLS(){
+  try{
+    var d={cultures:S.cultures,traitements:S.traitements,entries:S.entries,saison:S.saison};
+    localStorage.setItem(LS_KEY,JSON.stringify(d));
+    syncPush(d);
+  }catch(e){}
+}
+function loadLS(){
+  try{
+    const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    if(d.cultures&&d.cultures.length)S.cultures=d.cultures;
+    if(d.traitements)S.traitements=d.traitements;
+    if(d.entries)S.entries=d.entries;
+    if(d.saison)S.saison=d.saison;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const S = {
+  tab:'cultures',
+  cultures:[...CULTURES_INIT],
+  traitements:{}, // {culture: [{p, doseHa, note}]}
+  selCult:CULTURES_INIT[0],
+  entries:[],     // [{id,cult,date,variete,qte,unite,ts}]
+  cvw:'saisie',
+  saison:'2026/2027'
+};
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function R2(v){return Math.round(v*100)/100;}
+function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function $(id){return document.getElementById(id);}
+function setText(id,v){const e=$(id);if(e)e.textContent=v;}
+function saveFocus(){const e=document.activeElement;return e?{id:e.id,s:e.selectionStart,en:e.selectionEnd}:null;}
+function restFocus(f){if(!f||!f.id)return;const e=$(f.id);if(e){e.focus();try{e.setSelectionRange(f.s,f.en);}catch(_){}}}
+function getCultIcon(c){
+  const m={'Tomate':'🍅','Poivron':'🫑','Salade':'🥬','Courgette':'🥒','Courge':'🎃','Aubergine':'🍆','Chou de Bruxelles':'🥦','Poireau':'🧅'};
+  return m[c]||'🌿';
+}
+function doseBidon(doseHa){return R2((parseFloat(doseHa)||0)*VOL_BIDON/VOL_EAU_HA);}
+function getTrait(cult){return S.traitements[cult]||(S.traitements[cult]=[]),S.traitements[cult];}
+function rebuildProdList(){
+  const dl=$('mar-prod-list');if(!dl)return;
+  const sorted=[...TARIF_MAR].sort((a,b)=>a.p.localeCompare(b.p,'fr'));
+  dl.innerHTML=sorted.map(t=>`<option value="${es(t.p)}">`).join('');
+}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function setTab(name,btn){
+  ['cultures','trait','cueill'].forEach(t=>{const p=$('panel-'+t);if(p)p.classList.toggle('hidden',t!==name);});
+  document.querySelectorAll('.tabs .tab').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+  S.tab=name;
+}
+
+// ══════════════════════════════════════════════
+// ONGLET CULTURES
+// ══════════════════════════════════════════════
+function es2(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+function doPDFMar(culture){
+  const rows=getTrait(culture)||[];
+  const w=window.open('','_blank');if(!w)return;
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Traitement ${culture}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11px;padding:24px;max-width:800px;margin:0 auto}
+  .logo-bar{display:flex;align-items:center;gap:10px;border-bottom:3px solid #e07d20;padding-bottom:10px;margin-bottom:16px}
+  h1{color:#b05800;font-size:16px;margin:0}.subtitle{color:#666;font-size:11px;margin:0}
+  table{border-collapse:collapse;width:100%}th{background:#fef3e2;padding:6px 10px;border:1px solid #ccc;font-size:11px}
+  td{padding:5px 10px;border:1px solid #ddd;font-size:11px}td.calc{background:#e8f4d4;font-weight:600;text-align:right}
+  .footer{font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px;text-align:center}
+  .np{text-align:center;margin-top:14px}@media print{.np{display:none}}
+.btn.pdf{background:#185FA5;color:#fff;border-color:#185FA5}.btn.pdf:hover{background:#1450a0}
+.btn.mail{background:#7c3aed;color:#fff;border-color:#5b21b6}.btn.mail:hover{background:#5b21b6}
+</style></head><body>
+  <div class="logo-bar"><span style="font-size:28px">🥦</span><div><h1>Flipo — Programme de traitement Maraîchage</h1><p class="subtitle">${culture} · Saison ${S.saison||'2026/2027'} · ${dt}</p></div></div>
+  <p style="font-weight:700;font-size:13px;margin-bottom:8px">${getCultIcon(culture)} ${culture}</p>
+  <p style="font-size:11px;color:#666;margin-bottom:8px">Volume eau : ${VOL_EAU_HA} L/ha · Bidon : ${VOL_BIDON} L · Formule dose/bidon = dose/ha × ${VOL_BIDON} / ${VOL_EAU_HA}</p>
+  <table><thead><tr><th>Produit</th><th style="text-align:right">Dose/ha (L ou kg)</th><th style="text-align:right">Dose/bidon ${VOL_BIDON}L</th><th>Note</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    h+=`<tr><td>${r.p||'—'}</td><td style="text-align:right">${r.doseHa||0}</td><td class="calc">${r.doseHa?doseBidon(r.doseHa)+' L':'—'}</td><td>${r.note||''}</td></tr>`;
+  });
+  if(!rows.length)h+=`<tr><td colspan="4" style="color:#aaa;font-style:italic;text-align:center">Aucun produit</td></tr>`;
+  h+=`</tbody></table>
+  <div class="footer">Flipo — Usage exploitation uniquement</div>
+  <div class="np"><button onclick="window.print()" style="padding:7px 18px;background:#e07d20;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨️ Imprimer</button>
+  <button onclick="window.close()" style="padding:7px 14px;background:#f0f0f0;border:1px solid #ccc;border-radius:6px;cursor:pointer;margin-left:8px">✕</button></div>
+  <script>setTimeout(()=>window.print(),350);<\/script></body></html>`;
+  w.document.write(h);w.document.close();
+}
+
+function doEmailMar(culture){
+  const rows=getTrait(culture)||[];
+  let body='Programme de traitement Maraîchage — '+culture+'\nSaison '+(S.saison||'2026/2027')+'\nDate : '+new Date().toLocaleDateString('fr-FR')+'\n';
+  body+='Volume eau : '+VOL_EAU_HA+' L/ha · Bidon : '+VOL_BIDON+' L\n\n';
+  rows.forEach(r=>{body+=(r.p||'?')+' : '+(r.doseHa||0)+' L/ha → '+(r.doseHa?doseBidon(r.doseHa)+' L':'-')+' /bidon'+(r.note?' ('+r.note+')':'')+'\n';});
+  body+='\n—\nFlipo — Usage exploitation uniquement';
+  const sub=encodeURIComponent('Traitement Maraîchage — '+culture+' — '+new Date().toLocaleDateString('fr-FR'));
+  const bdy=encodeURIComponent(body);
+  window.open('https://mail.google.com/mail/u/0/?view=cm&fs=1&to=flipotanguy%40gmail.com&su='+sub+'&body='+bdy,'_blank');
+}
+function doSMSMar(culture){
+  const rows=getTrait(culture)||[];
+  let body='Traitement Maraîchage — '+culture+'\nSaison '+(S.saison||'2026/2027')+'\n'+new Date().toLocaleDateString('fr-FR')+'\n\n';
+  rows.forEach(r=>{body+=(r.p||'?')+' : '+(r.doseHa||0)+' L/ha → '+(r.doseHa?doseBidon(r.doseHa)+' L':'-')+'/bidon'+(r.note?' ('+r.note+')':'')+'\n';});
+  body+='\n— Flipo';
+  window.open('sms:?body='+encodeURIComponent(body),'_blank');
+}
+// ── Partage — prévisualisation imprimable ──────────────────
+function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,emailPlain){
+  const w=window.open('','_blank','width=800,height=680,scrollbars=yes');
+  if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
+  const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
+  const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+moduleTitle+'</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
+    +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
+    +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
+    +'.tbtn{padding:8px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}'
+    +'.tbtn-print{background:'+accentColor+';color:#fff}.tbtn-email{background:#185FA5;color:#fff}.tbtn-close{background:#eee;color:#333;margin-left:auto}'
+    +'.logo-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:3px solid '+accentColor+';margin-bottom:22px}'
+    +'.logo-box{width:44px;height:44px;border-radius:12px;background:'+accentColor+';display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+    +'.logo-title{font-size:20px;font-weight:700;color:'+accentColor+'}.logo-sub{font-size:11px;color:#888;margin-top:3px}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 16px}'
+    +'th{background:#f2f2f0;padding:7px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700}'
+    +'td{padding:7px 10px;border-bottom:1px solid #eee}'
+    +'.tr{background:#f9f9f0;font-weight:700}.tar{text-align:right}'
+    +'.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:18px 0 8px;padding-top:14px;border-top:1px solid #eee}'
+    +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}}</style>'
+    +'</head><body><div class="page">'
+    +'<div class="toolbar">'
+    +'<button class="tbtn tbtn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>'
+    +'<a class="tbtn tbtn-email" href="'+emailHref+'">📧 Envoyer par email</a>'
+    +'<button class="tbtn tbtn-close" onclick="window.close()">✕ Fermer</button>'
+    +'</div>'
+    +'<div class="logo-hdr">'
+    +'<div class="logo-box"><svg viewBox="0 0 28 32" fill="none" width="26" height="30"><rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/><ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/><circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/><circle cx="14" cy="18" r="2.2" fill="#f4a020"/></svg></div>'
+    +'<div><div class="logo-title">Flipo — '+moduleTitle+'</div><div class="logo-sub">Généré le '+dt+'</div></div>'
+    +'</div>'
+    +contentHTML
+    +'</div></body></html>');
+  w.document.close();
+}
+
+function shareNow(type){
+  void type;
+  const tab=S.tab||'cultures';
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let html='',plain='',title='Maraîchage',subject='Maraîchage — '+dt;
+  if(tab==='trait'){
+    const cult=S.selCult;
+    const rows=getTrait(cult)||[];
+    title='Maraîchage — Traitements';subject='Traitement Maraîchage — '+cult+' — '+dt;
+    html='<div class="section-title">Programme de traitement — '+es(cult)+' — Saison '+(S.saison||'2026/2027')+'</div>';
+    html+='<p style="font-size:12px;color:#666;margin-bottom:10px">Volume eau : '+VOL_EAU_HA+' L/ha · Bidon : '+VOL_BIDON+' L</p>';
+    html+='<table><thead><tr><th>Produit</th><th class="tar">Dose L/ha</th><th class="tar">Dose /bidon</th><th>Note</th></tr></thead><tbody>';
+    plain='Traitement Maraîchage — '+cult+'\nSaison '+(S.saison||'2026/2027')+'\n'+dt+'\n\n';
+    rows.forEach(r=>{html+='<tr><td>'+es(r.p||'?')+'</td><td class="tar">'+(r.doseHa||0)+'</td><td class="tar">'+(r.doseHa?doseBidon(r.doseHa)+' L':'—')+'</td><td style="font-size:11px;color:#666">'+es(r.note||'')+'</td></tr>';plain+=(r.p||'?')+' : '+(r.doseHa||0)+' L/ha → '+(r.doseHa?doseBidon(r.doseHa)+' L':'—')+'/bidon\n';});
+    if(!rows.length)html+='<tr><td colspan="4" style="color:#aaa;font-style:italic">Aucun produit</td></tr>';
+    html+='</tbody></table>';
+  } else if(tab==='cueill'){
+    title='Maraîchage — Cueillette';subject='Cueillette Maraîchage — '+dt;
+    html='<div class="section-title">Récolte par culture — Saison '+(S.saison||'2026/2027')+'</div>';
+    html+='<table><thead><tr><th>Culture</th><th class="tar">Quantité (kg)</th></tr></thead><tbody>';
+    plain='Cueillette Maraîchage\nSaison '+(S.saison||'2026/2027')+'\n'+dt+'\n\n';
+    let total=0;
+    [...S.cultures].sort((a,b)=>a.localeCompare(b,'fr')).forEach(c=>{
+      const ents=(S.entries||[]).filter(e=>e.cult===c);
+      if(!ents.length)return;
+      const tot=ents.reduce((s,e)=>s+(e.qte||0),0);
+      total+=tot;
+      html+='<tr><td>'+getCultIcon(c)+' '+es(c)+'</td><td class="tar">'+tot+' kg</td></tr>';
+      plain+=getCultIcon(c)+' '+c+' : '+tot+' kg\n';
+    });
+    html+='<tr class="tr"><td>Total</td><td class="tar">'+total+' kg</td></tr>';
+    html+='</tbody></table>';
+  } else {
+    title='Maraîchage — Cultures';subject='Cultures Maraîchage — '+dt;
+    html='<div class="section-title">Liste des cultures</div>';
+    html+='<table><thead><tr><th>Culture</th></tr></thead><tbody>';
+    plain='Cultures Maraîchage\n'+dt+'\n\n';
+    [...S.cultures].sort((a,b)=>a.localeCompare(b,'fr')).forEach(c=>{html+='<tr><td>'+getCultIcon(c)+' '+es(c)+'</td></tr>';plain+=c+'\n';});
+    html+='</tbody></table>';
+  }
+  openSharePreview(title,'#3a6e11',html,subject,plain+'\n— Flipo');
+}
+
+function initCultures(){const el=$('panel-cultures');if(el)el.innerHTML=buildCultures();}
+function buildCultures(){
+  let h=`<div class="info">Gérez ici la liste de vos cultures. Elles apparaîtront dans les onglets Traitements et Cueillette. Tri automatique alphabétique.</div>`;
+  h+=`<div class="cult-grid">`;
+  [...S.cultures].sort((a,b)=>a.localeCompare(b,'fr')).forEach(c=>{
+    h+=`<div class="cult-card">
+      <span style="font-size:20px;margin-right:6px">${getCultIcon(c)}</span>
+      <span class="cname">${es(c)}</span>
+      <button class="btn del" onclick="deleteCulture('${es(c)}')" title="Supprimer">✕</button>
+    </div>`;
+  });
+  h+=`</div>`;
+  h+=`<div class="entry-form" style="max-width:440px">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter une culture</p>
+    <div class="form-row">
+      <div class="form-field" style="flex:1">
+        <label>Nom de la culture</label>
+        <input type="text" id="new-cult-name" placeholder="Ex: Haricot vert" style="width:100%">
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button class="btn ok" onclick="addCulture()">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+  return h;
+}
+function addCulture(){
+  const inp=$('new-cult-name');if(!inp)return;
+  const name=inp.value.trim();
+  if(!name){alert('Saisissez un nom de culture.');return;}
+  if(S.cultures.includes(name)){alert('Cette culture existe déjà.');return;}
+  S.cultures.push(name);
+  S.cultures.sort((a,b)=>a.localeCompare(b,'fr'));
+  saveLS();
+  initCultures();
+  inp.value='';
+}
+function deleteCulture(name){
+  if(!confirm(`Supprimer la culture "${name}" ?\n\nSes données de traitement et de récolte seront conservées mais inaccessibles.`))return;
+  S.cultures=S.cultures.filter(c=>c!==name);
+  if(S.selCult===name)S.selCult=S.cultures[0]||'';
+  saveLS();initCultures();
+}
+
+// ══════════════════════════════════════════════
+// ONGLET TRAITEMENTS
+// ══════════════════════════════════════════════
+function initTrait(){const el=$('panel-trait');if(el)el.innerHTML=buildTrait();}
+function printAllTraits(){
+  const w=window.open('','_blank');if(!w)return;
+  const dt=new Date().toLocaleDateString('fr-FR');
+  const cultsWithTrait=S.cultures.filter(c=>S.traitements[c]&&S.traitements[c].length>0);
+  if(!cultsWithTrait.length){alert('Aucun traitement saisi.');w.close();return;}
+  let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Traitements Maraîchage</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11px;padding:24px;max-width:900px;margin:0 auto}
+  .logo-bar{display:flex;align-items:center;gap:10px;border-bottom:3px solid #e07d20;padding-bottom:10px;margin-bottom:16px}
+  h1{color:#b05800;font-size:16px;margin:0}.subtitle{color:#666;font-size:11px}
+  .cult-block{margin-bottom:20px;break-inside:avoid}
+  .cult-head{font-weight:700;font-size:13px;margin-bottom:6px;padding:6px 10px;background:#fef3e2;border-left:4px solid #e07d20;border-radius:4px}
+  table{border-collapse:collapse;width:100%}th{background:#f5f5f0;padding:5px 10px;border:1px solid #ccc;font-size:11px}
+  td{padding:4px 10px;border:1px solid #ddd;font-size:11px}td.calc{background:#e8f4d4;font-weight:600;text-align:right}
+  .footer{font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px;text-align:center}
+  .np{text-align:center;margin-top:14px}@media print{.np{display:none}}</style></head><body>
+  <div class="logo-bar"><span style="font-size:28px">🥦</span><div><h1>Flipo — Traitements Maraîchage — Toutes cultures</h1><p class="subtitle">Saison ${S.saison||'2026/2027'} · ${dt}</p></div></div>`;
+  cultsWithTrait.forEach(culture=>{
+    const rows=S.traitements[culture]||[];
+    h+=`<div class="cult-block"><div class="cult-head">${getCultIcon(culture)} ${culture}</div>
+    <table><thead><tr><th>Produit</th><th style="text-align:right">Dose/ha</th><th style="text-align:right">Dose/bidon ${VOL_BIDON}L</th><th>Note</th></tr></thead><tbody>`;
+    rows.forEach(r=>{h+=`<tr><td>${r.p||'—'}</td><td style="text-align:right">${r.doseHa||0}</td><td class="calc">${r.doseHa?doseBidon(r.doseHa)+' L':'—'}</td><td>${r.note||''}</td></tr>`;});
+    h+=`</tbody></table></div>`;
+  });
+  h+=`<div class="footer">Flipo — Usage exploitation uniquement</div>
+  <div class="np"><button onclick="window.print()" style="padding:7px 18px;background:#e07d20;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨️ Imprimer tout</button>
+  <button onclick="window.close()" style="padding:7px 14px;background:#f0f0f0;border:1px solid #ccc;border-radius:6px;cursor:pointer;margin-left:8px">✕</button></div>
+  <script>setTimeout(()=>window.print(),350);<\/script></body></html>`;
+  w.document.write(h);w.document.close();
+}
+
+function buildTrait(){
+  let h=`<div class="info">Saisissez la <strong>dose/ha</strong> → la dose par bidon (${VOL_BIDON}L) se calcule automatiquement : dose = X × ${VOL_BIDON} / ${VOL_EAU_HA} (volume eau/ha).</div>`;
+  // Sélecteur de culture
+  h+=`<div class="cult-chips">`;
+  S.cultures.forEach(c=>{h+=`<div class="cult-chip${S.selCult===c?' act':''}" onclick="selTrait('${es(c)}')">${getCultIcon(c)} ${es(c)}</div>`;});
+  h+=`</div>`;
+  if(!S.selCult){h+=`<div class="empty-journal">Aucune culture — ajoutez-en dans l'onglet 🌱 Cultures.</div>`;return h;}
+  const rows=getTrait(S.selCult);
+  h+=`<p style="font-weight:700;font-size:13px;margin-bottom:10px">${getCultIcon(S.selCult)} ${es(S.selCult)}</p>`;
+  h+=`<div class="tw"><table><thead><tr>
+    <th>Produit</th>
+    <th>Dose/ha (L ou kg)</th>
+    <th class="am">Dose/bidon ${VOL_BIDON}L → (X×${VOL_BIDON}/${VOL_EAU_HA})</th>
+    <th>Note</th>
+    <th></th>
+  </tr></thead><tbody id="trait-body">`;
+  if(rows.length===0){
+    h+=`<tr><td colspan="5" style="color:var(--mu);font-style:italic;text-align:center;padding:14px">Aucun produit — cliquez "+ Ajouter un produit"</td></tr>`;
+  } else {
+    rows.forEach((row,ri)=>{
+      h+=`<tr>
+        <td><input class="w140" id="tp-${ri}" value="${es(row.p)}" list="mar-prod-list" onchange="updTrait(${ri},'p',this.value)" placeholder="Produit..."></td>
+        <td><input class="w80" id="tdose-${ri}" value="${row.doseHa||''}" type="number" min="0" step="0.01" onchange="updTrait(${ri},'doseHa',this.value)" placeholder="0"></td>
+        <td class="calc" id="tbidon-${ri}">${row.doseHa?doseBidon(row.doseHa)+' L':'-'}</td>
+        <td><input class="w140" id="tnote-${ri}" value="${es(row.note||'')}" onchange="updTrait(${ri},'note',this.value)" placeholder="note..."></td>
+        <td><button class="btn del" onclick="delTrait(${ri})">🗑</button></td>
+      </tr>`;
+    });
+  }
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addTrait()">+ Ajouter un produit</button></div>`;
+  h+=`<div class="btns" style="margin-top:6px">
+    <button class="btn pdf" onclick="doPDFMar('${es(S.selCult)}')">⬇ PDF ${es(S.selCult)}</button>
+    <button class="btn mail" onclick="doEmailMar('${es(S.selCult)}')">✉ E-mail</button>
+  </div>`;
+  h+=`<div class="stitle">Actions globales</div>`;
+  h+=`<div class="btns">
+    <button class="btn pdf" onclick="printAllTraits()">🖨️ Imprimer tous les traitements</button>
+  </div>`;
+  return h;
+}
+function selTrait(cult){S.selCult=cult;const f=saveFocus();initTrait();restFocus(f);}
+function updTrait(ri,field,val){
+  const rows=getTrait(S.selCult);
+  if(!rows[ri])return;
+  if(field==='doseHa'){
+    rows[ri].doseHa=parseFloat(val)||0;
+    const e=$(`tbidon-${ri}`);if(e)e.textContent=rows[ri].doseHa?doseBidon(rows[ri].doseHa)+' L':'-';
+  } else {
+    rows[ri][field]=val;
+  }
+  saveLS();
+}
+function addTrait(){
+  const rows=getTrait(S.selCult);
+  rows.push({p:'',doseHa:0,note:''});
+  const f=saveFocus();initTrait();restFocus(f);
+  // Focus on new product name input
+  setTimeout(()=>{const e=$(`tp-${rows.length-1}`);if(e)e.focus();},50);
+}
+function delTrait(ri){
+  const rows=getTrait(S.selCult);
+  rows.splice(ri,1);saveLS();
+  const f=saveFocus();initTrait();restFocus(f);
+}
+
+// ══════════════════════════════════════════════
+// ONGLET CUEILLETTE
+// ══════════════════════════════════════════════
+function initCueill(){const el=$('panel-cueill');if(el)el.innerHTML=buildCueill();}
+function buildCueill(){
+  // Stats rapides par culture
+  const totByCult={};
+  S.entries.forEach(e=>{
+    if(!totByCult[e.cult])totByCult[e.cult]={qte:0,unit:e.unite||''};
+    totByCult[e.cult].qte+=parseFloat(e.qte)||0;
+    if(e.unite)totByCult[e.cult].unit=e.unite;
+  });
+  const cultsTot=Object.keys(totByCult);
+  let h=``;
+  if(cultsTot.length>0){
+    h+=`<div class="sts" style="flex-wrap:wrap">`;
+    cultsTot.forEach(c=>{
+      const tot=totByCult[c];
+      h+=`<div class="st" style="min-width:130px"><div class="sl">${getCultIcon(c)} ${c}</div><div class="sv">${tot.qte.toLocaleString('fr-FR',{maximumFractionDigits:1})}</div><div class="su">${tot.unit}</div></div>`;
+    });
+    h+=`</div>`;
+  }
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div class="stabs" style="margin-bottom:0">
+      <button class="stab${S.cvw==='saisie'?' act':''}" onclick="setCVw('saisie')">📝 Saisie</button>
+      <button class="stab${S.cvw==='vue'?' act':''}" onclick="setCVw('vue')">📊 Vue globale</button>
+    </div>
+    <button class="btn danger" onclick="cloturerAnnee()" style="font-size:11px">🗓 Clôturer ${es(S.saison)}</button>
+  </div>`;
+  h+=`<div id="cvw-mar">${buildCVw()}</div>`;
+  return h;
+}
+function setCVw(v){S.cvw=v;const f=saveFocus();const el=$('cvw-mar');if(el)el.innerHTML=buildCVw();restFocus(f);}
+function buildCVw(){return S.cvw==='saisie'?buildSaisie():buildVueGlobale();}
+
+// ─── SAISIE ──────────────────────────────────
+function buildSaisie(){
+  const today=new Date();
+  const todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0');
+  let h=`<div class="entry-form">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Enregistrer une récolte</p>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Culture</label>
+        <select id="ent-cult" style="min-width:140px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          ${S.cultures.map(c=>`<option value="${es(c)}">${getCultIcon(c)} ${es(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Date (JJ/MM)</label>
+        <input type="text" id="ent-date" value="${todayStr}" placeholder="15/09" style="width:90px">
+      </div>
+      <div class="form-field" style="flex:1">
+        <label>Variété (optionnel)</label>
+        <input type="text" id="ent-var" placeholder="Ex: Tomate cerise" style="min-width:140px">
+      </div>
+      <div class="form-field">
+        <label>Quantité</label>
+        <input type="number" id="ent-qte" min="0" step="0.5" placeholder="0" style="width:80px">
+      </div>
+      <div class="form-field">
+        <label>Unité</label>
+        <input type="text" id="ent-unit" placeholder="kg / caisse" style="width:90px" list="unit-list">
+        <datalist id="unit-list">
+          <option value="kg"><option value="caisses"><option value="barquettes"><option value="bottes"><option value="palox"><option value="pièces">
+        </datalist>
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button class="btn ok" onclick="addEntry()">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+  // Journal
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <span style="font-weight:600;font-size:13px">Journal des saisies (${S.entries.length})</span>
+    ${S.entries.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
+  </div>`;
+  if(!S.entries.length){
+    h+=`<div class="empty-journal">Aucune saisie pour le moment.</div>`;
+  } else {
+    // Group by culture for display
+    const byCult={};
+    S.entries.forEach(e=>{if(!byCult[e.cult])byCult[e.cult]=[];byCult[e.cult].push(e);});
+    h+=`<div style="max-height:450px;overflow-y:auto">`;
+    S.entries.forEach(e=>{
+      const tsStr=e.ts?new Date(e.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      h+=`<div class="journal-row">
+        <span class="jicon">${getCultIcon(e.cult)}</span>
+        <div class="jinfo">
+          <strong>${es(e.date)} — ${es(e.cult)}${e.variete?' · '+es(e.variete):''}</strong>
+          <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.qte} ${es(e.unite||'')}</span>
+          ${tsStr?`<div class="jdate">Saisi le ${tsStr}</div>`:''}
+        </div>
+        <button class="btn del" onclick="deleteEntry(${e.id})">🗑</button>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  return h;
+}
+
+function addEntry(){
+  const cultEl=$('ent-cult'),dateEl=$('ent-date'),varEl=$('ent-var'),qteEl=$('ent-qte'),unitEl=$('ent-unit');
+  if(!cultEl || !dateEl || !qteEl) return;
+  const cult=cultEl.value||'';
+  const date=(dateEl.value||'').trim();
+  const variete=(varEl?varEl.value:'').trim();
+  const qte=parseFloat(qteEl.value)||0;
+  const unite=(unitEl?unitEl.value:'').trim();
+  if(!cult||!date||qte<=0){alert('Renseignez la culture, la date et la quantité (> 0).');return;}
+  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
+  const entry={id:Date.now(),cult,date,variete,qte,unite,ts:new Date().toISOString()};
+  S.entries.unshift(entry);
+  // Sort alphabetically by culture then date
+  saveLS();
+  const f=saveFocus();
+  const cvwEl=$('cvw-mar');if(cvwEl)cvwEl.innerHTML=buildCVw();
+  restFocus(f);
+  // Also refresh stats in parent
+  const panelEl=$('panel-cueill');if(panelEl)panelEl.innerHTML=buildCueill();
+}
+
+function deleteEntry(id){
+  S.entries=S.entries.filter(e=>e.id!==id);
+  saveLS();
+  const el=$('panel-cueill');if(el)el.innerHTML=buildCueill();
+}
+function clearEntries(){S.entries=[];saveLS();const el=$('panel-cueill');if(el)el.innerHTML=buildCueill();}
+
+// ─── VUE GLOBALE ─────────────────────────────
+function buildVueGlobale(){
+  let h=`<p style="font-weight:700;font-size:13px;margin-bottom:14px">📊 Récapitulatif par culture</p>`;
+  // Calcul totaux
+  const totByCult={};
+  S.entries.forEach(e=>{
+    if(!totByCult[e.cult])totByCult[e.cult]={entries:[],units:{}};
+    totByCult[e.cult].entries.push(e);
+    const u=e.unite||'?';
+    if(!totByCult[e.cult].units[u])totByCult[e.cult].units[u]=0;
+    totByCult[e.cult].units[u]+=parseFloat(e.qte)||0;
+  });
+  if(Object.keys(totByCult).length===0){
+    return `<div class="empty-journal">Aucune récolte enregistrée.<br>Utilisez l'onglet 📝 Saisie pour commencer.</div>`;
+  }
+  const maxQte=Math.max(...Object.values(totByCult).map(t=>Object.values(t.units).reduce((s,v)=>s+v,0)));
+  h+=`<div class="tw"><table><thead><tr><th>Culture</th><th>Nb saisies</th><th>Dernière récolte</th><th class="am">Total récolté</th></tr></thead><tbody>`;
+  [...S.cultures,...Object.keys(totByCult).filter(c=>!S.cultures.includes(c))].forEach(cult=>{
+    const d=totByCult[cult];if(!d)return;
+    const sortedByDate=[...d.entries].sort((a,b)=>b.ts.localeCompare(a.ts));
+    const last=sortedByDate[0];
+    const totStr=Object.entries(d.units).map(([u,v])=>`${v.toLocaleString('fr-FR',{maximumFractionDigits:1})} ${u}`).join(' | ');
+    h+=`<tr>
+      <td style="font-weight:600">${getCultIcon(cult)} ${es(cult)}</td>
+      <td>${d.entries.length}</td>
+      <td>${last?last.date:'-'}</td>
+      <td class="f">${totStr}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  // Barres visuelles par culture
+  h+=`<div class="stitle">Répartition visuelle</div>`;
+  S.cultures.forEach(cult=>{
+    const d=totByCult[cult];if(!d)return;
+    const tot=Object.values(d.units).reduce((s,v)=>s+v,0);
+    const pct=maxQte>0?Math.max(tot/maxQte*100,3):3;
+    const unit=Object.keys(d.units)[0]||'';
+    h+=`<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mu);margin-bottom:3px">
+        <span>${getCultIcon(cult)} ${es(cult)}</span>
+        <span>${tot.toLocaleString('fr-FR',{maximumFractionDigits:1})} ${es(unit)}</span>
+      </div>
+      <div class="cult-stat-bar"><div class="cult-stat-fill" style="width:${pct}%">${pct>15?tot.toLocaleString('fr-FR',{maximumFractionDigits:0}):''}</div></div>
+    </div>`;
+  });
+  return h;
+}
+
+// ─── CLÔTURE ────────────────────────────────
+function cloturerAnnee(){
+  const saison=S.saison;
+  const ok=confirm(`🗓 Clôturer la saison maraîchage ${saison} ?\n\nCette action va :\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données récolte\n\n⚠️ Action irréversible. Continuer ?`);
+  if(!ok)return;
+  const ok2=confirm(`Dernière confirmation : clôturer définitivement la saison ${saison} ?`);
+  if(!ok2)return;
+  let csv=`\uFEFFSaison ${saison} — Récapitulatif Cueillette Maraîchage\n\n`;
+  csv+=`Culture,Variété,Date,Quantité,Unité\n`;
+  [...S.entries].sort((a,b)=>a.cult.localeCompare(b.cult)||a.date.localeCompare(b.date)).forEach(e=>{
+    csv+=`"${e.cult}","${e.variete||''}",${e.date},${e.qte},"${e.unite||''}"\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`Flipo_Maraichage_${saison.replace('/','_')}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const parts=saison.split('/');
+  const newSaison=`${parseInt(parts[0])+1}/${parseInt(parts[1])+1}`;
+  S.entries=[];S.saison=newSaison;
+  saveLS();
+  alert(`✅ Saison ${saison} clôturée !\nNouvelle saison : ${newSaison}\n\nCSV téléchargé — sauvegardez-le sur votre Drive.`);
+  const labelEl=$('saison-label');if(labelEl)labelEl.textContent=`Saison ${newSaison}`;
+  initCueill();
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+loadLS();
+if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
+rebuildProdList();
+initCultures();
+initTrait();
+initCueill();
+syncInitPull(function(){location.reload();});
+
+// ─── Auth ────────────────────────────────────────────────
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['maraichage'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['cultures','trait','cueill'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    var tp=tabs[tid];
+    if(!tp||!tp.enabled){
+      var b=document.getElementById('tab-'+tid);
+      if(b)b.style.display='none';
+      var p=document.getElementById('panel-'+tid);
+      if(p)p.classList.add('hidden');
+    }else{
+      if(!first)first=tid;
+      if(tp.stabs&&tp.stabs.length>0)FLIPO_STABS[tid]=tp.stabs;
+    }
+  });
+  if(first){setTab(first,document.getElementById('tab-'+first));}
+})();
+</script>
+</body>
+</html>

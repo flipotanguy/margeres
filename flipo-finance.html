@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finance — Flipo</title>
+  <style>
+    :root{--bg:#0f172a;--card:#1e293b;--brd:#334155;--tx:#f1f5f9;--mu:#94a3b8;--acc:#f59e0b;--green:#10b981;--red:#ef4444;--orange:#f97316}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;background:var(--bg);color:var(--tx);min-height:100vh}
+    /* ── LOCK ── */
+    #lock{position:fixed;inset:0;background:var(--bg);z-index:1000;display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px}
+    .l-logo{text-align:center}
+    .l-title{font-size:21px;font-weight:700;color:var(--acc);margin-top:10px}
+    .l-sub{font-size:12px;color:var(--mu);margin-top:4px}
+    .pin-dots{display:flex;gap:14px;justify-content:center;height:20px}
+    .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--mu);transition:all .15s}
+    .pin-dot.filled{background:var(--acc);border-color:var(--acc);transform:scale(1.1)}
+    .pin-pad{display:grid;grid-template-columns:repeat(3,70px);gap:10px}
+    .pin-key{width:70px;height:54px;border-radius:12px;border:1px solid var(--brd);background:#1e293b;color:var(--tx);font-size:19px;font-weight:600;cursor:pointer;transition:background .1s}
+    .pin-key:hover{background:#334155}
+    .pin-key:active{background:#475569}
+    .pin-key.del{font-size:14px;color:var(--mu)}
+    .pin-err{color:var(--red);font-size:12px;height:16px;text-align:center;animation:shake .3s}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+    /* ── APP ── */
+    #app{display:none;max-width:1100px;margin:0 auto}
+    .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--brd);background:var(--card)}
+    .hdr-title{font-size:15px;font-weight:700;color:var(--acc)}
+    .hdr-sub{font-size:11px;color:var(--mu)}
+    .hdr-lock{margin-left:auto;background:none;border:1px solid var(--brd);color:var(--mu);padding:5px 12px;border-radius:7px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px}
+    .hdr-lock:hover{background:var(--brd);color:var(--tx)}
+    .tabs{display:flex;padding:0 20px;background:var(--card);border-bottom:1px solid var(--brd)}
+    .tab{font-size:13px;padding:11px 16px;border:none;border-bottom:3px solid transparent;cursor:pointer;background:transparent;color:var(--mu);font-weight:500;transition:color .15s}
+    .tab:hover{color:var(--tx)}
+    .tab.act{color:var(--acc);border-bottom-color:var(--acc)}
+    .content{padding:20px}
+    .hidden{display:none}
+    /* ── KPI ── */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:16px}
+    .kpi-lbl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .kpi-val{font-size:20px;font-weight:700;line-height:1}
+    .kpi-sub{font-size:11px;color:var(--mu);margin-top:5px}
+    .kv-acc{color:var(--acc)}.kv-green{color:var(--green)}.kv-red{color:var(--red)}.kv-blue{color:#60a5fa}.kv-pu{color:#a78bfa}.kv-mu{color:var(--mu)}
+    /* ── CHARTS ── */
+    .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+    @media(max-width:640px){.chart-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.stbl{font-size:11px}.stbl thead th{padding:5px 8px;font-size:10px}.stbl td{padding:6px 8px}.ltbl{font-size:11px}.ltbl th{padding:5px 6px;font-size:9px}.ltbl td{padding:5px 6px}.content{padding:12px}}
+    .chart-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:18px}
+    .chart-ttl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);margin-bottom:14px}
+    .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+    .leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mu)}
+    .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    /* ── SUMMARY TABLE ── */
+    .stbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+    .stbl thead th{padding:7px 10px;text-align:left;border-bottom:1px solid var(--brd);color:var(--mu);font-size:11px;text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+    .stbl td{padding:8px 10px;border-bottom:1px solid rgba(51,65,85,.4)}
+    .stbl tr:last-child td{border-bottom:none}
+    .stbl .tar{text-align:right}
+    .stbl .tot{font-weight:700;background:rgba(245,158,11,.06)}
+    /* ── STRUCTURES ── */
+    .struct-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;margin-bottom:12px;overflow:hidden}
+    .struct-hdr{display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer;user-select:none}
+    .sdot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+    .sname{font-weight:700;font-size:14px;flex:1}
+    .stot{font-weight:700;font-size:13px;color:var(--acc)}
+    .scount{font-size:11px;color:var(--mu);margin-right:8px}
+    .schev{font-size:11px;color:var(--mu);transition:transform .2s}
+    .struct-card.open .schev{transform:rotate(180deg)}
+    .sbody{display:none;padding:0 18px 16px}
+    .struct-card.open .sbody{display:block}
+    .section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--brd)}
+    /* ── LOAN TABLE ── */
+    .ltbl{width:100%;border-collapse:collapse;font-size:12px}
+    .ltbl th{padding:6px 8px;text-align:left;border-bottom:1px solid var(--brd);color:var(--mu);font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+    .ltbl td{padding:7px 8px;border-bottom:1px solid rgba(51,65,85,.35)}
+    .ltbl tr:last-child td{border-bottom:none}
+    .ltbl .tar{text-align:right}
+    .ltbl .fw{font-weight:600}
+    .badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+    .b-done{background:#1e3a1e;color:#86efac}
+    .b-soon{background:#7f1d1d;color:#fca5a5}
+    .b-warn{background:#78350f;color:#fcd34d}
+    .b-ok{background:#14532d;color:#86efac}
+    /* ── ECHÉANCES ── */
+    .ech-group{margin-bottom:24px}
+    .ech-year{font-size:13px;font-weight:700;color:var(--acc);padding-bottom:8px;border-bottom:1px solid var(--brd);margin-bottom:10px}
+    .ech-item{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(51,65,85,.3)}
+    .ech-item:last-child{border-bottom:none}
+    .ech-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .ech-date{font-size:12px;color:var(--mu);min-width:72px}
+    .ech-info{flex:1}
+    .ech-name{font-size:13px;font-weight:600}
+    .ech-struct{font-size:11px;color:var(--mu)}
+    .ech-right{text-align:right}
+    .ech-amt{font-size:13px;font-weight:700;color:var(--tx)}
+    .ech-monthly{font-size:11px;color:var(--mu)}
+    /* ── SETTINGS ── */
+    .set-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:20px;max-width:380px;margin-bottom:16px}
+    .set-title{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--tx)}
+    .set-row{display:flex;gap:10px;align-items:flex-end}
+    .set-field{display:flex;flex-direction:column;gap:4px;flex:1}
+    .set-field label{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.3px}
+    .set-field input{background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:14px;letter-spacing:2px;width:100%}
+    .set-field input:focus{outline:none;border-color:var(--acc)}
+    .set-btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+    .set-btn.ok{background:var(--acc);color:#000}
+    .set-btn.ok:hover{background:#d97706}
+    .info-note{background:#1e293b;border-left:3px solid var(--orange);border-radius:6px;padding:12px;font-size:12px;color:var(--mu);line-height:1.6;margin-top:6px}
+    .info-note strong{color:var(--orange)}
+    .set-msg{font-size:12px;height:16px;margin-top:8px}
+    .set-msg.ok{color:var(--green)}.set-msg.err{color:var(--red)}
+  </style>
+</head>
+<body>
+
+<!-- ══ LOCK SCREEN ══════════════════════════════════════════ -->
+<div id="lock">
+  <div class="l-logo">
+    <svg viewBox="0 0 28 32" fill="none" width="42" height="48">
+      <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+      <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+      <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+      <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+    </svg>
+    <div class="l-title">Flipo — Finance 🔒</div>
+    <div class="l-sub">Saisir le code PIN pour continuer</div>
+  </div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key del" onclick="pinKey('clr')">⌫ Eff</button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinKey('del')">⌫</button>
+  </div>
+  <div class="pin-err" id="pin-err"></div>
+</div>
+
+<!-- ══ APP ══════════════════════════════════════════════════ -->
+<div id="app">
+  <div class="hdr">
+    <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0">
+      <div style="width:36px;height:36px;border-radius:10px;background:#0f6e56;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 28 32" fill="none" width="20" height="24">
+          <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+          <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+          <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+          <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+        </svg>
+      </div>
+      <span style="font-size:13px;font-weight:800;color:#f59e0b">Flipo</span>
+    </a>
+    <div style="width:1px;height:24px;background:var(--brd);margin:0 4px"></div>
+    <div><div class="hdr-title">Finance</div><div class="hdr-sub">Structures &amp; Emprunts</div></div>
+    <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
+    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#0f172a;color:#f1f5f9;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+    <button class="hdr-lock" onclick="lockApp()">🔒 Verrouiller</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab act" id="tab-dash" onclick="setTab('dash',this)">📊 Tableau de bord</button>
+    <button class="tab" id="tab-struct" onclick="setTab('struct',this)">🏢 Structures</button>
+    <button class="tab" id="tab-ech" onclick="setTab('ech',this)">📅 Échéances</button>
+    <button class="tab" id="tab-set" onclick="setTab('set',this)">⚙️ Réglages</button>
+  </div>
+
+  <div class="content">
+    <div id="panel-dash"></div>
+    <div id="panel-struct" class="hidden"></div>
+    <div id="panel-ech" class="hidden"></div>
+    <div id="panel-set" class="hidden"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// SUPABASE SYNC
+// ══════════════════════════════════════════════════════════
+var LS_KEY='flipo-finance-v1';
+var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjY2OH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
+function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
+function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
+function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function syncManualPull(){
+  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+  setSyncSt('syncing');
+  supaGet(LS_KEY,function(d){
+    if(d){
+      try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+      location.reload();
+    } else {
+      setSyncSt('ok');
+      alert('Aucune donnée cloud disponible.');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// DONNÉES
+// ══════════════════════════════════════════════════════════
+const STRUCT_COLORS={scea:'#3b82f6',vdp:'#10b981',f2t:'#f59e0b',pv:'#8b5cf6',sci:'#ec4899',thitan:'#06b6d4'};
+
+const STRUCTURES=[
+  {id:'scea',nom:'SCEA',totalAnnuel:262437.13,
+   emprunts:[
+    {n:1,montant:10200,annuite:10200,mensualite:null,fin:'2026-03-20'},
+    {n:2,montant:98948.57,annuite:10913.48,mensualite:null,fin:'2036-04-15'},
+    {n:3,montant:51000,annuite:null,mensualite:686.59,fin:'2032-10-20'},
+    {n:4,montant:250000,annuite:32997.98,mensualite:null,fin:'2034-01-15'},
+    {n:5,montant:420000,annuite:37380.13,mensualite:null,fin:'2039-08-15'},
+    {n:6,montant:600000,annuite:62896.97,mensualite:null,fin:'2036-08-15'},
+    {n:7,montant:900000,annuite:9394.07,mensualite:null,fin:'2038-05-15'},
+    {n:8,montant:138000,annuite:17972.70,mensualite:null,fin:'2032-05-15'},
+    {n:9,montant:15100,annuite:3382.35,mensualite:null,fin:'2027-10-15'},
+    {n:10,montant:250000,annuite:61374.26,mensualite:null,fin:'2030-05-15'},
+    {n:11,montant:35000,annuite:7686.11,mensualite:null,fin:'2028-05-15'}
+   ],creditBails:[]},
+  {id:'vdp',nom:'VDP',totalAnnuel:99997.20,
+   emprunts:[
+    {n:1,montant:48000,annuite:null,mensualite:1420.21,fin:'2026-03-14'},
+    {n:2,montant:105388.23,annuite:null,mensualite:1090.41,fin:'2033-05-15'},
+    {n:3,montant:15552.03,annuite:null,mensualite:462.28,fin:'2026-11-10'},
+    {n:4,montant:35000,annuite:null,mensualite:638.28,fin:'2030-06-15'},
+    {n:5,montant:92000,annuite:null,mensualite:1253.30,fin:'2031-12-15'}
+   ],
+   creditBails:[{nom:'Hervé',mensualite:1515.60},{nom:'Thomas',mensualite:1953.02}]},
+  {id:'f2t',nom:'F2T',totalAnnuel:169192.25,
+   emprunts:[
+    {n:1,montant:49000,annuite:null,mensualite:893.59,fin:'2030-06-15'},
+    {n:2,montant:107000,annuite:null,mensualite:1437.58,fin:'2031-07-15'},
+    {n:3,montant:41000,annuite:null,mensualite:506.14,fin:'2028-01-15'},
+    {n:4,montant:95000,annuite:9773.21,mensualite:null,fin:'2034-12-15'},
+    {n:5,montant:36400,annuite:null,mensualite:446.82,fin:'2028-10-15'}
+   ],
+   creditBails:[{nom:'Tesla',mensualite:784.81},{nom:'Volvo',mensualite:1062},{nom:'Presse à jus',mensualite:6651.01},{nom:'Calibreuse',mensualite:1224},{nom:'Imprimante',mensualite:278.97}]},
+  {id:'pv',nom:'PV',totalAnnuel:50073.36,
+   emprunts:[
+    {n:1,montant:55000,annuite:null,mensualite:694.28,fin:'2026-03-14'},
+    {n:2,montant:50000,annuite:null,mensualite:856.69,fin:'2026-06-30'},
+    {n:3,montant:50000,annuite:null,mensualite:876.39,fin:'2027-08-18'},
+    {n:4,montant:96896.25,annuite:null,mensualite:1745.42,fin:'2028-02-10'}
+   ],creditBails:[]},
+  {id:'sci',nom:'SCI',totalAnnuel:108834.72,
+   emprunts:[
+    {n:1,montant:1044331.16,annuite:null,mensualite:6522.69,fin:'2035-12-15'},
+    {n:2,montant:160000,annuite:null,mensualite:1408.42,fin:'2041-02-15'},
+    {n:3,montant:62387,annuite:null,mensualite:642.07,fin:'2033-05-10'},
+    {n:4,montant:67204.03,annuite:null,mensualite:496.38,fin:'2039-10-15'}
+   ],creditBails:[]},
+  {id:'thitan',nom:'THITAN',totalAnnuel:30979.92,
+   emprunts:[
+    {n:1,montant:300000,annuite:null,mensualite:2581.66,fin:'2037-07-15'}
+   ],creditBails:[]}
+];
+
+const TOTAL_ANNUEL=721514.58;
+const TOTAL_EMPRUNTS=5278407.27;
+
+// ══════════════════════════════════════════════════════════
+// PIN
+// ══════════════════════════════════════════════════════════
+const PIN_KEY='flipo_fin_pin';
+const DEFAULT_HASH=hashPin('09070812');
+let pinBuffer='';
+
+function hashPin(s){let h=5381;for(let i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h|=0;}return(h>>>0).toString(16).padStart(8,'0');}
+function getStoredHash(){return localStorage.getItem(PIN_KEY)||DEFAULT_HASH;}
+
+function pinKey(k){
+  if(k==='del'){pinBuffer=pinBuffer.slice(0,-1);}
+  else if(k==='clr'){pinBuffer='';}
+  else if(pinBuffer.length<4){pinBuffer+=k;}
+  updDots();
+  if(pinBuffer.length===4)setTimeout(checkPin,80);
+}
+function updDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('d'+i);
+    if(d)d.classList.toggle('filled',i<pinBuffer.length);
+  }
+}
+function checkPin(){
+  if(hashPin(pinBuffer)===getStoredHash()){
+    sessionStorage.setItem('fin_unlocked','1');
+    document.getElementById('lock').style.display='none';
+    document.getElementById('app').style.display='block';
+    initApp();
+  }else{
+    const err=document.getElementById('pin-err');
+    err.textContent='Code incorrect';
+    pinBuffer='';updDots();
+    setTimeout(()=>{err.textContent='';},2000);
+  }
+}
+function lockApp(){
+  sessionStorage.removeItem('flipo-session');
+  sessionStorage.removeItem('fin_unlocked');
+  document.getElementById('app').style.display='none';
+  location.href='flipo-login.html'; return;
+  pinBuffer='';updDots();
+  document.getElementById('pin-err').textContent='';
+}
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+const TODAY=new Date();
+function $(id){return document.getElementById(id);}
+function fr(n,d=0){return n.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function eur(n){return fr(n,0)+' €';}
+function monthsLeft(finStr){
+  const d=new Date(finStr);
+  return Math.round((d-TODAY)/(1000*60*60*24*30.44));
+}
+function chargeM(e){return e.mensualite?e.mensualite:(e.annuite/12);}
+function statusBadge(ml){
+  if(ml<=0)return'<span class="badge b-done">Terminé</span>';
+  if(ml<=12)return'<span class="badge b-soon">< 1 an</span>';
+  if(ml<=24)return'<span class="badge b-warn">< 2 ans</span>';
+  return'<span class="badge b-ok">En cours</span>';
+}
+
+// ══════════════════════════════════════════════════════════
+// ONGLETS
+// ══════════════════════════════════════════════════════════
+let tabBuilt={};
+function setTab(name,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+  document.querySelectorAll('[id^="panel-"]').forEach(p=>p.classList.add('hidden'));
+  $('panel-'+name).classList.remove('hidden');
+  if(!tabBuilt[name]){buildTab(name);tabBuilt[name]=true;}
+}
+function buildTab(name){
+  if(name==='dash')buildDash();
+  else if(name==='struct')buildStruct();
+  else if(name==='ech')buildEch();
+  else if(name==='set')buildSet();
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+function buildDash(){
+  const nbEmp=STRUCTURES.reduce((s,st)=>s+st.emprunts.filter(e=>monthsLeft(e.fin)>0).length,0);
+  const mensM=TOTAL_ANNUEL/12;
+  // Prochaine et dernière échéance
+  const allFins=STRUCTURES.flatMap(st=>st.emprunts.map(e=>({fin:e.fin,ml:monthsLeft(e.fin),struct:st.nom})));
+  const active=allFins.filter(x=>x.ml>0).sort((a,b)=>a.ml-b.ml);
+  const prochaine=active[0];
+  const derniere=active[active.length-1];
+  const dProch=prochaine?new Date(prochaine.fin).toLocaleDateString('fr-FR',{month:'short',year:'numeric'}):'-';
+  const dDern=derniere?new Date(derniere.fin).getFullYear():'-';
+
+  let h=`<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Total emprunté</div><div class="kpi-val kv-acc">${fr(TOTAL_EMPRUNTS/1e6,2)} M€</div><div class="kpi-sub">Capital initial total</div></div>
+    <div class="kpi"><div class="kpi-lbl">Charge annuelle</div><div class="kpi-val kv-red">${fr(TOTAL_ANNUEL/1e3,0)} k€/an</div><div class="kpi-sub">Toutes structures</div></div>
+    <div class="kpi"><div class="kpi-lbl">Mensualité globale</div><div class="kpi-val kv-blue">${fr(mensM,0)} €/mois</div><div class="kpi-sub">Moyenne lissée</div></div>
+    <div class="kpi"><div class="kpi-lbl">Emprunts actifs</div><div class="kpi-val kv-green">${nbEmp}</div><div class="kpi-sub">Sur ${STRUCTURES.reduce((s,st)=>s+st.emprunts.length,0)} au total</div></div>
+    <div class="kpi"><div class="kpi-lbl">Prochaine échéance</div><div class="kpi-val kv-pu" style="font-size:15px">${dProch}</div><div class="kpi-sub">${prochaine?prochaine.struct+' — '+prochaine.ml+' mois':''}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Dernière échéance</div><div class="kpi-val kv-mu">${dDern}</div><div class="kpi-sub">${derniere?derniere.struct:''}</div></div>
+  </div>`;
+
+  h+=`<div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-ttl">Répartition charge annuelle par structure</div>
+      <canvas id="c-donut" width="260" height="220"></canvas>
+      <div class="legend" id="leg-donut"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-ttl">Capital emprunté par structure</div>
+      <canvas id="c-bar" width="380" height="220"></canvas>
+    </div>
+  </div>`;
+
+  // Résumé tableau
+  h+=`<div style="background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:18px">
+    <div class="chart-ttl">Récapitulatif par structure</div>
+    <table class="stbl"><thead><tr>
+      <th>Structure</th><th class="tar">Capital initial</th><th class="tar">Charge annuelle</th><th class="tar">Mensualité</th><th class="tar">Part</th>
+    </tr></thead><tbody>`;
+  STRUCTURES.forEach(st=>{
+    const col=STRUCT_COLORS[st.id];
+    const cap=st.emprunts.reduce((s,e)=>s+e.montant,0);
+    const pct=(st.totalAnnuel/TOTAL_ANNUEL*100).toFixed(1);
+    h+=`<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block"></span><strong>${st.nom}</strong></span></td>
+      <td class="tar">${eur(cap)}</td>
+      <td class="tar">${eur(st.totalAnnuel)}</td>
+      <td class="tar">${fr(st.totalAnnuel/12,0)} €</td>
+      <td class="tar" style="color:${col}">${pct} %</td>
+    </tr>`;
+  });
+  h+=`<tr class="tot">
+    <td><strong>TOTAL</strong></td>
+    <td class="tar">${eur(TOTAL_EMPRUNTS)}</td>
+    <td class="tar">${eur(TOTAL_ANNUEL)}</td>
+    <td class="tar">${fr(TOTAL_ANNUEL/12,0)} €</td>
+    <td class="tar">100 %</td>
+  </tr></tbody></table></div>`;
+
+  $('panel-dash').innerHTML=h;
+  setTimeout(()=>{drawDonut();drawBar();},60);
+}
+
+function drawDonut(){
+  const cv=$('c-donut');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,cx=W/2-20,cy=H/2,r=80,ri=48;
+  ctx.clearRect(0,0,W,H);
+  let start=(-Math.PI/2);
+  const leg=document.getElementById('leg-donut');
+  if(leg)leg.innerHTML='';
+  STRUCTURES.forEach(st=>{
+    const angle=(st.totalAnnuel/TOTAL_ANNUEL)*2*Math.PI;
+    const col=STRUCT_COLORS[st.id];
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,start,start+angle);
+    ctx.closePath();ctx.fillStyle=col;ctx.fill();
+    // Inner hole
+    ctx.beginPath();ctx.arc(cx,cy,ri,0,2*Math.PI);
+    ctx.fillStyle='#1e293b';ctx.fill();
+    // Label
+    const mid=start+angle/2;
+    if(angle>0.15){
+      const lx=cx+Math.cos(mid)*(r+18);
+      const ly=cy+Math.sin(mid)*(r+18);
+      ctx.fillStyle='#f1f5f9';ctx.font='10px Arial';ctx.textAlign='center';
+      ctx.fillText(st.nom,lx,ly);
+    }
+    start+=angle;
+    if(leg){
+      const item=document.createElement('div');item.className='leg-item';
+      item.innerHTML=`<span class="leg-dot" style="background:${col}"></span>${st.nom} ${(st.totalAnnuel/TOTAL_ANNUEL*100).toFixed(0)}%`;
+      leg.appendChild(item);
+    }
+  });
+  // Center text
+  ctx.fillStyle='#f59e0b';ctx.font='bold 14px Arial';ctx.textAlign='center';
+  ctx.fillText(fr(TOTAL_ANNUEL/1e3,0)+'k',cx,cy-4);
+  ctx.fillStyle='#94a3b8';ctx.font='10px Arial';
+  ctx.fillText('€/an',cx,cy+12);
+}
+
+function drawBar(){
+  const cv=$('c-bar');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,pad=60,bh=22,gap=12;
+  ctx.clearRect(0,0,W,H);
+  const maxCap=Math.max(...STRUCTURES.map(st=>st.emprunts.reduce((s,e)=>s+e.montant,0)));
+  const chartW=W-pad-20;
+  ctx.fillStyle='#334155';ctx.font='10px Arial';
+  STRUCTURES.forEach((st,i)=>{
+    const cap=st.emprunts.reduce((s,e)=>s+e.montant,0);
+    const y=pad/2+(bh+gap)*i;
+    const bw=(cap/maxCap)*chartW;
+    const col=STRUCT_COLORS[st.id];
+    // Bar
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(pad,y,bw,bh,4):ctx.rect(pad,y,bw,bh);
+    ctx.fillStyle=col+'bb';ctx.fill();
+    // Label left
+    ctx.fillStyle='#94a3b8';ctx.textAlign='right';
+    ctx.fillText(st.nom,pad-6,y+bh/2+4);
+    // Value right
+    ctx.fillStyle='#f1f5f9';ctx.textAlign='left';
+    ctx.fillText(fr(cap/1e3,0)+'k€',pad+bw+6,y+bh/2+4);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// STRUCTURES
+// ══════════════════════════════════════════════════════════
+function buildStruct(){
+  let h='';
+  STRUCTURES.forEach(st=>{
+    const col=STRUCT_COLORS[st.id];
+    const cap=st.emprunts.reduce((s,e)=>s+e.montant,0);
+    const nbActive=st.emprunts.filter(e=>monthsLeft(e.fin)>0).length;
+    h+=`<div class="struct-card" id="sc-${st.id}">
+      <div class="struct-hdr" onclick="toggleStruct('${st.id}')">
+        <span class="sdot" style="background:${col}"></span>
+        <span class="sname">${st.nom}</span>
+        <span class="scount">${nbActive} emprunt${nbActive>1?'s':''} actif${nbActive>1?'s':''} · Capital ${fr(cap/1e3,0)} k€</span>
+        <span class="stot">${fr(st.totalAnnuel,0)} €/an</span>
+        <span class="schev">▼</span>
+      </div>
+      <div class="sbody">`;
+    // Loans table
+    h+=`<table class="ltbl"><thead><tr>
+      <th>#</th><th>Capital initial</th><th class="tar">Charge/mois</th><th class="tar">Charge/an</th><th class="tar">Échéance</th><th class="tar">Mois restants</th><th class="tar">Statut</th>
+    </tr></thead><tbody>`;
+    let totM=0,totA=0;
+    st.emprunts.forEach(e=>{
+      const ml=monthsLeft(e.fin);
+      const cm=chargeM(e);totM+=cm;totA+=cm*12;
+      const finDate=new Date(e.fin).toLocaleDateString('fr-FR',{month:'2-digit',year:'numeric'});
+      h+=`<tr>
+        <td style="color:${col};font-weight:700">${e.n}</td>
+        <td class="fw">${eur(e.montant)}</td>
+        <td class="tar">${fr(cm,0)} €</td>
+        <td class="tar">${fr(cm*12,0)} €</td>
+        <td class="tar" style="font-size:11px;color:var(--mu)">${finDate}</td>
+        <td class="tar">${ml>0?ml:'—'}</td>
+        <td class="tar">${statusBadge(ml)}</td>
+      </tr>`;
+    });
+    h+=`<tr style="background:rgba(245,158,11,.06)">
+      <td colspan="2" style="font-weight:700;color:var(--mu);font-size:11px">TOTAL EMPRUNTS</td>
+      <td class="tar fw">${fr(totM,0)} €</td>
+      <td class="tar fw" style="color:var(--acc)">${fr(totA,0)} €</td>
+      <td colspan="3"></td>
+    </tr></tbody></table>`;
+    // Credit-bails
+    if(st.creditBails.length){
+      h+=`<div class="section-label">Crédits-baux / Leasing</div>`;
+      h+=`<table class="ltbl"><thead><tr><th>Désignation</th><th class="tar">Mensualité</th><th class="tar">Annuel estimé</th></tr></thead><tbody>`;
+      let cbTot=0;
+      st.creditBails.forEach(cb=>{
+        cbTot+=cb.mensualite;
+        h+=`<tr><td>${cb.nom}</td><td class="tar">${fr(cb.mensualite,0)} €</td><td class="tar">${fr(cb.mensualite*12,0)} €</td></tr>`;
+      });
+      h+=`<tr style="background:rgba(245,158,11,.06)"><td style="font-weight:700;font-size:11px;color:var(--mu)">TOTAL CRÉDIT-BAIL</td><td class="tar fw">${fr(cbTot,0)} €</td><td class="tar fw" style="color:var(--acc)">${fr(cbTot*12,0)} €</td></tr>`;
+      h+=`</tbody></table>`;
+    }
+    h+=`</div></div>`;
+  });
+  $('panel-struct').innerHTML=h;
+}
+function toggleStruct(id){
+  const c=document.getElementById('sc-'+id);
+  if(c)c.classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════════════════
+// ÉCHÉANCES
+// ══════════════════════════════════════════════════════════
+function buildEch(){
+  // Gather all loans with status
+  const all=[];
+  STRUCTURES.forEach(st=>{
+    st.emprunts.forEach(e=>{
+      const ml=monthsLeft(e.fin);
+      all.push({struct:st.nom,col:STRUCT_COLORS[st.id],n:e.n,montant:e.montant,chargeM:chargeM(e),fin:e.fin,ml,year:new Date(e.fin).getFullYear()});
+    });
+  });
+  all.sort((a,b)=>new Date(a.fin)-new Date(b.fin));
+  // Group by year
+  const byYear={};
+  all.forEach(x=>{
+    if(!byYear[x.year])byYear[x.year]=[];
+    byYear[x.year].push(x);
+  });
+  let h='';
+  // Prochaines (<12 mois) at top
+  const prochaines=all.filter(x=>x.ml>0&&x.ml<=12);
+  if(prochaines.length){
+    h+=`<div style="background:#7f1d1d22;border:1px solid #7f1d1d;border-radius:10px;padding:14px 16px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:#fca5a5;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">⚠️ Échéances dans moins de 12 mois</div>`;
+    prochaines.forEach(x=>{
+      const fd=new Date(x.fin).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+      h+=`<div class="ech-item">
+        <span class="ech-dot" style="background:${x.col}"></span>
+        <span class="ech-date">${fd}</span>
+        <div class="ech-info"><div class="ech-name">${x.struct} — Emprunt ${x.n}</div><div class="ech-struct">${x.ml} mois restants</div></div>
+        <div class="ech-right"><div class="ech-amt">${eur(x.montant)}</div><div class="ech-monthly">${fr(x.chargeM,0)} €/mois</div></div>
+      </div>`;
+    });
+    h+='</div>';
+  }
+  Object.keys(byYear).sort().forEach(yr=>{
+    const items=byYear[yr];
+    const totalCap=items.reduce((s,x)=>s+x.montant,0);
+    h+=`<div class="ech-group">
+      <div class="ech-year">${yr} — ${items.length} emprunt${items.length>1?'s':''} · Capital libéré : ${eur(totalCap)}</div>`;
+    items.forEach(x=>{
+      const fd=new Date(x.fin).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+      const isPast=x.ml<=0;
+      h+=`<div class="ech-item" style="${isPast?'opacity:.5':''}">
+        <span class="ech-dot" style="background:${x.col}"></span>
+        <span class="ech-date" style="font-size:11px">${fd}</span>
+        <div class="ech-info">
+          <div class="ech-name">${x.struct} — Emprunt ${x.n}</div>
+          <div class="ech-struct">${isPast?'Terminé':x.ml+' mois restants'} · ${fr(x.chargeM,0)} €/mois</div>
+        </div>
+        <div class="ech-right">
+          <div class="ech-amt">${eur(x.montant)}</div>
+          <div>${statusBadge(x.ml)}</div>
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  });
+  $('panel-ech').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════════════════
+// RÉGLAGES
+// ══════════════════════════════════════════════════════════
+function buildSet(){
+  let h=`<div class="set-card">
+    <div class="set-title">🔑 Modifier le code PIN</div>
+    <div class="set-row">
+      <div class="set-field"><label>PIN actuel</label><input type="password" id="pin-cur" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+      <div class="set-field"><label>Nouveau PIN (4 chiffres)</label><input type="password" id="pin-new" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+      <div class="set-field"><label>Confirmer</label><input type="password" id="pin-conf" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+    </div>
+    <div class="btns" style="margin-top:12px"><button class="set-btn ok" onclick="changePIN()">Enregistrer</button></div>
+    <div class="set-msg" id="pin-msg"></div>
+  </div>
+  <div class="info-note">
+    <strong>ℹ️ Note de confidentialité</strong><br>
+    Ce module utilise un code PIN stocké dans le navigateur (localStorage). Il protège contre l'accès visuel non autorisé, mais ne constitue <strong>pas</strong> un chiffrement. Les données sont présentes dans le fichier HTML.<br><br>
+    <strong>Recommandations :</strong> conserver ce fichier dans un dossier chiffré (ex. : coffre FileVault/BitLocker) et ne pas le partager par email ou stockage cloud non sécurisé.
+  </div>`;
+  $('panel-set').innerHTML=h;
+}
+
+function changePIN(){
+  const cur=($('pin-cur')||{}).value||'';
+  const nw=($('pin-new')||{}).value||'';
+  const cf=($('pin-conf')||{}).value||'';
+  const msg=$('pin-msg');
+  if(hashPin(cur)!==getStoredHash()){msg.className='set-msg err';msg.textContent='PIN actuel incorrect';return;}
+  if(nw.length!==4||!/^\d{4}$/.test(nw)){msg.className='set-msg err';msg.textContent='Le nouveau PIN doit être 4 chiffres';return;}
+  if(nw!==cf){msg.className='set-msg err';msg.textContent='Les deux PIN ne correspondent pas';return;}
+  localStorage.setItem(PIN_KEY,hashPin(nw));
+  msg.className='set-msg ok';msg.textContent='Code PIN mis à jour avec succès ✓';
+  $('pin-cur').value='';$('pin-new').value='';$('pin-conf').value='';
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+function initApp(){
+  tabBuilt={};
+  buildDash();
+  tabBuilt.dash=true;
+}
+
+// ─── Auth app-level ───────────────────────────────────────
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['finance'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  // Autorisation OK — afficher directement l'app
+  document.getElementById('lock').style.display='none';
+  document.getElementById('app').style.display='block';
+  initApp();
+  setSyncSt('ok');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flipo — Connexion</title>
+<style>
+:root{--gr:#1D9E75;--gd:#0F6E56;--bg:#f4f5f0;--wh:#fff;--tx:#1a1a1a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(150deg,#0d5e48 0%,#1D9E75 55%,#2ec482 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:var(--wh);border-radius:24px;padding:36px 28px 28px;max-width:310px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+.logo-box{width:64px;height:64px;border-radius:18px;background:var(--gr);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.brand{font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--tx);margin-bottom:4px}
+.sub{font-size:12px;color:#888;margin-bottom:28px}
+.dots{display:flex;gap:10px;justify-content:center;margin-bottom:28px}
+.dot{width:14px;height:14px;border-radius:50%;background:#e0e0e0;transition:.15s}
+.dot.filled{background:var(--gr)}
+.dot.error{background:#e84a3f}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.num-btn{padding:18px 10px;min-height:50px;display:flex;align-items:center;justify-content:center;border:none;border-radius:14px;background:#f4f5f0;font-size:20px;font-weight:700;cursor:pointer;color:var(--tx);transition:.12s;user-select:none;-webkit-tap-highlight-color:transparent}
+@media(max-width:600px){.card{padding:20px 16px}.logo-box{width:56px;height:56px;margin:0 auto 10px}.brand{font-size:24px}.sub{font-size:11px;margin-bottom:20px}.dots{margin-bottom:20px}.numpad{gap:8px}.num-btn{padding:14px 8px;min-height:48px;font-size:18px}}
+.num-btn:hover{background:#e8ede8;color:var(--gd)}
+.num-btn:active{transform:scale(.94);background:#ddeedd}
+.num-btn.zero{grid-column:2}
+.num-btn.del{grid-column:3;font-size:18px;background:#fdf2f2;color:#c0392b}
+.num-btn.del:hover{background:#fde8e8}
+.err-msg{margin-top:16px;font-size:12px;color:#c0392b;font-weight:600;min-height:18px;opacity:0;transition:opacity .2s}
+.err-msg.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-box">
+    <svg viewBox="0 0 28 32" fill="none" width="36" height="42">
+      <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+      <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+      <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+      <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+    </svg>
+  </div>
+  <div class="brand">Flipo</div>
+  <div class="sub">Entrez votre code d'accès</div>
+  <div class="dots" id="dots">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="numpad">
+    <button class="num-btn" onclick="pressKey('1')">1</button>
+    <button class="num-btn" onclick="pressKey('2')">2</button>
+    <button class="num-btn" onclick="pressKey('3')">3</button>
+    <button class="num-btn" onclick="pressKey('4')">4</button>
+    <button class="num-btn" onclick="pressKey('5')">5</button>
+    <button class="num-btn" onclick="pressKey('6')">6</button>
+    <button class="num-btn" onclick="pressKey('7')">7</button>
+    <button class="num-btn" onclick="pressKey('8')">8</button>
+    <button class="num-btn" onclick="pressKey('9')">9</button>
+    <button class="num-btn zero" onclick="pressKey('0')">0</button>
+    <button class="num-btn del" onclick="pressDelete()">⌫</button>
+  </div>
+  <div class="err-msg" id="err-msg">Code incorrect</div>
+</div>
+
+<script>
+var code='';
+var USERS_KEY='flipo-users-v1';
+var SESSION_KEY='flipo-session';
+
+function hashCode(s){
+  var h=5381;
+  for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h|=0;}
+  return(h>>>0).toString(16).padStart(8,'0');
+}
+
+// Initialiser l'admin par défaut si aucun utilisateur
+function initDefaultUsers(){
+  var raw=localStorage.getItem(USERS_KEY);
+  if(raw){try{var d=JSON.parse(raw);if(d.users&&d.users.length>0)return;}catch(e){}}
+  var allPerms={
+    verger:{enabled:true,tabs:{
+      trait:{enabled:true,stabs:['pc','pomme','poire','noyaux']},
+      cueill:{enabled:true,stabs:['saisie','courbe','tableau','factu']},
+      stock:{enabled:true,stabs:[]},
+      phyto:{enabled:true,stabs:[]}
+    }},
+    maraichage:{enabled:true,tabs:{
+      cultures:{enabled:true,stabs:[]},
+      trait:{enabled:true,stabs:[]},
+      cueill:{enabled:true,stabs:[]}
+    }},
+    fraise:{enabled:true,tabs:{
+      resume:{enabled:true,stabs:[]},
+      saisie:{enabled:true,stabs:[]},
+      saison:{enabled:true,stabs:[]},
+      drainage:{enabled:true,stabs:[]},
+      trait:{enabled:true,stabs:[]}
+    }},
+    jus:{enabled:true,tabs:{
+      resume:{enabled:true,stabs:[]},
+      saisie:{enabled:true,stabs:[]},
+      params:{enabled:true,stabs:[]},
+      stock:{enabled:true,stabs:[]}
+    }},
+    emballage:{enabled:true,tabs:{
+      pomme:{enabled:true,stabs:['saisie','histo']},
+      poire:{enabled:true,stabs:['saisie','histo']},
+      stock:{enabled:true,stabs:['vue','bat']},
+      transfert:{enabled:true,stabs:[]},
+      stats:{enabled:true,stabs:[]}
+    }},
+    finance:{enabled:true,tabs:{
+      dashboard:{enabled:true,stabs:[]},
+      structures:{enabled:true,stabs:[]},
+      echeances:{enabled:true,stabs:[]},
+      reglages:{enabled:true,stabs:[]}
+    }}
+  };
+  var admin={
+    id:Date.now(),
+    nom:'Flipo',
+    prenom:'Admin',
+    codeHash:hashCode('09070812'),
+    isAdmin:true,
+    perms:allPerms
+  };
+  localStorage.setItem(USERS_KEY,JSON.stringify({users:[admin]}));
+}
+
+function getUsers(){
+  try{var d=JSON.parse(localStorage.getItem(USERS_KEY)||'{}');return d.users||[];}catch(e){return [];}
+}
+
+function pressKey(k){
+  if(code.length>=8)return;
+  code+=k;
+  updateDots(false);
+  if(code.length===8)setTimeout(tryLogin,120);
+}
+
+function pressDelete(){
+  if(code.length===0)return;
+  code=code.slice(0,-1);
+  updateDots(false);
+  setError(false);
+}
+
+function updateDots(isError){
+  var dots=document.getElementById('dots').querySelectorAll('.dot');
+  for(var i=0;i<8;i++){
+    dots[i].className='dot'+(i<code.length?(isError?' error':' filled'):'');
+  }
+}
+
+function setError(show){
+  var el=document.getElementById('err-msg');
+  if(show){el.classList.add('show');}else{el.classList.remove('show');}
+}
+
+function tryLogin(){
+  var users=getUsers();
+  var h=hashCode(code);
+  var found=null;
+  for(var i=0;i<users.length;i++){if(users[i].codeHash===h){found=users[i];break;}}
+  if(!found){
+    updateDots(true);
+    setError(true);
+    setTimeout(function(){
+      code='';
+      updateDots(false);
+      setError(false);
+    },1400);
+    return;
+  }
+  // Session créée
+  var sess={
+    userId:found.id,
+    nom:found.nom,
+    prenom:found.prenom,
+    isAdmin:!!found.isAdmin,
+    perms:found.perms||{}
+  };
+  sessionStorage.setItem(SESSION_KEY,JSON.stringify(sess));
+  location.href='index.html';
+}
+
+// Clavier physique
+document.addEventListener('keydown',function(e){
+  if(e.key>='0'&&e.key<='9'){pressKey(e.key);}
+  else if(e.key==='Backspace'){pressDelete();}
+});
+
+initDefaultUsers();
+</script>
+</body>
+</html>

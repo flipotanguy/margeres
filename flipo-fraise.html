@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flipo — Fraise</title>
+  <style>
+    :root {
+      --gr: #e84a5f;
+      --gd: #c0203a;
+      --gl: #fff0f2;
+      --bg: #f7f5f5;
+      --wh: #fff;
+      --tx: #1a1a1a;
+      --mu: #666;
+      --brd: #e0e0e0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--tx);
+      line-height: 1.5;
+    }
+
+    .hdr {
+      background: var(--wh);
+      border-bottom: 1px solid var(--brd);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .hdr a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 24px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .logo svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .hdr a span {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--gd);
+    }
+
+    .hdr-sep {
+      width: 1px;
+      height: 32px;
+      background: var(--brd);
+    }
+
+    .htxt {
+      flex: 1;
+    }
+
+    .htxt h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--tx);
+      margin: 0;
+    }
+
+    .htxt p {
+      font-size: 12px;
+      color: var(--mu);
+      margin: 4px 0 0 0;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      background: var(--wh);
+      border-bottom: 1px solid var(--brd);
+      overflow-x: auto;
+      padding: 0 20px;
+    }
+
+    .tab-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mu);
+      transition: 0.15s;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tab-btn:hover {
+      color: var(--gd);
+    }
+
+    .tab-btn.active {
+      color: var(--gd);
+      border-bottom-color: var(--gd);
+    }
+
+    .content {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .section {
+      background: var(--wh);
+      border: 1px solid var(--brd);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--tx);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--bg);
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--tx);
+      border-bottom: 1px solid var(--brd);
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--brd);
+    }
+
+    tr.ext-row {
+      background: #f9f9f9;
+    }
+
+    td.calc {
+      background: #f0f9f0;
+      font-weight: 600;
+      color: #2d7a4a;
+    }
+
+    tr.ext-row td.calc {
+      background: #f5f5f5;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--tx);
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--brd);
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--gr);
+      box-shadow: 0 0 0 3px rgba(232, 74, 95, 0.1);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 14px;
+      background: var(--gr);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: var(--gd);
+    }
+
+    .btn.secondary {
+      background: var(--mu);
+    }
+
+    .btn.secondary:hover {
+      background: #555;
+    }
+
+    .btn.delete {
+      background: #d9534f;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .btn.delete:hover {
+      background: #c9302c;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-row.full {
+      grid-template-columns: 1fr;
+    }
+
+    .entry-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: var(--bg);
+      border: 1px solid var(--brd);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .entry-text {
+      flex: 1;
+    }
+
+    .entry-actions {
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+
+    .inline-edit {
+      display: inline-block;
+      padding: 4px 6px;
+      border: 1px solid var(--brd);
+      border-radius: 3px;
+      font-size: 12px;
+      width: 90px;
+    }
+
+    .inline-edit-chk {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .total-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .total-box-item {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      border: 1px solid var(--brd);
+    }
+
+    .total-box-item .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--mu);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .total-box-item .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gd);
+    }
+
+    .share-fab {
+      position: fixed;
+      bottom: 22px;
+      right: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      z-index: 1000;
+    }
+
+    .share-pill {
+      display: flex;
+      gap: 8px;
+      background: var(--wh);
+      border-radius: 99px;
+      padding: 7px 12px;
+      box-shadow: 0 3px 16px rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--brd);
+    }
+
+    .share-pill-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 99px;
+      transition: 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--mu);
+    }
+
+    .share-pill-btn:hover {
+      background: var(--gl);
+      color: var(--gd);
+    }
+
+    .share-pill-sep {
+      width: 1px;
+      background: var(--brd);
+      align-self: stretch;
+    }
+
+    .no-print {
+      print-media: none;
+    }
+
+    @media (max-width: 600px) {
+      .hdr {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px;
+      }
+      .htxt h1 {
+        font-size: 18px;
+      }
+      .htxt p {
+        display: none;
+      }
+      #sync-st {
+        margin-left: auto;
+      }
+      .tabs {
+        overflow-x: auto;
+        padding: 0 12px;
+      }
+      .content {
+        padding: 12px;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      input[type="text"],
+      input[type="number"],
+      input[type="date"],
+      select {
+        font-size: 16px;
+        padding: 10px 12px;
+      }
+      .btn {
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+      .btn.delete {
+        min-height: auto;
+      }
+      .total-box {
+        grid-template-columns: 1fr;
+      }
+      table {
+        font-size: 12px;
+      }
+      th, td {
+        padding: 8px 6px;
+      }
+      .share-fab {
+        bottom: 16px;
+        right: 12px;
+      }
+    }
+
+    @media print {
+      body, .hdr, .tabs, .share-fab {
+        display: none;
+      }
+      .content {
+        max-width: 100%;
+        padding: 0;
+      }
+      .section {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin-bottom: 0;
+      }
+      table {
+        font-size: 11px;
+      }
+      th, td {
+        padding: 6px 8px;
+      }
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--wh);
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 400px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--tx);
+    }
+
+    .modal-text {
+      font-size: 13px;
+      color: var(--mu);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-actions .btn {
+      flex: 1;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <a href="index.html">
+      <div class="logo">
+        <svg viewBox="0 0 28 32" fill="none">
+          <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+          <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+          <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/>
+          <circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+          <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+        </svg>
+      </div>
+      <span>Flipo</span>
+    </a>
+    <div class="hdr-sep"></div>
+    <div class="htxt">
+      <h1>Fraise</h1>
+      <p id="saison-hdr">Saison 2026/2027</p>
+    </div>
+    <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
+    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="resume" onclick="switchTab('resume')">📊 Résumé</button>
+    <button class="tab-btn" data-tab="saisie" onclick="switchTab('saisie')">📝 Saisie</button>
+    <button class="tab-btn" data-tab="saison" onclick="switchTab('saison')">🌿 Saison</button>
+    <button class="tab-btn" data-tab="drainage" onclick="switchTab('drainage')">💧 Drainage</button>
+    <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">🧪 Traitements</button>
+  </div>
+
+  <div class="content">
+    <!-- RESUME -->
+    <div class="tab-pane active" id="resume-pane">
+      <div class="section" id="resume-sec-a"></div>
+      <div class="section" id="resume-sec-b"></div>
+      <div class="section" id="resume-sec-c"></div>
+    </div>
+
+    <!-- SAISIE -->
+    <div class="tab-pane" id="saisie-pane">
+      <div class="section">
+        <div class="section-title">Enregistrement</div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="saisie-date">
+        </div>
+        <div class="form-group">
+          <label>Chapelle</label>
+          <select id="saisie-chapelle"></select>
+        </div>
+        <div class="form-group">
+          <label>Barquettes (500g)</label>
+          <input type="number" id="entry-barquettes" min="0" step="1" placeholder="Nombre de barquettes">
+        </div>
+        <button class="btn" onclick="addEntry()" style="width:100%">Ajouter</button>
+      </div>
+      <div class="section">
+        <div class="section-title">Journal de cueillettes</div>
+        <div id="saisie-journal"></div>
+      </div>
+    </div>
+
+    <!-- SAISON -->
+    <div class="tab-pane" id="saison-pane">
+      <div class="section">
+        <div class="section-title" id="saison-intro"></div>
+        <div style="overflow-x:auto">
+          <table id="saison-table"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRAINAGE -->
+    <div class="tab-pane" id="drainage-pane">
+      <div class="section">
+        <div class="section-title">Paramètres d'irrigation</div>
+        <div style="overflow-x:auto">
+          <table id="drainage-table"></table>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Calcul théorique</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Chapelle</label>
+            <select id="rendement-chapelle" onchange="buildRendement()"></select>
+          </div>
+          <div class="form-group">
+            <label>Fraises par plant</label>
+            <input type="number" id="rendement-fpp" min="0" step="0.1" oninput="updRendement('fraisesParPlant', this.value)">
+          </div>
+        </div>
+        <div style="background:var(--gl);border-radius:8px;padding:12px 14px;margin:10px 0">
+          <p style="font-size:11px;font-weight:700;color:var(--gd);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Méthode 1 — par barquette</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fraises par barquette</label>
+              <input type="number" id="rendement-fpb" min="0" step="0.1" oninput="updRendement('fraisesParBarquette', this.value)">
+            </div>
+            <div class="form-group">
+              <label>Poids barquette (g)</label>
+              <input type="number" id="rendement-pb" min="0" step="10" oninput="updRendement('poidsBarquette', this.value)">
+            </div>
+          </div>
+        </div>
+        <div style="background:#fff8dc;border-radius:8px;padding:12px 14px;margin:10px 0;border:1px solid #f0d060">
+          <p style="font-size:11px;font-weight:700;color:#7a5200;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Méthode 2 — poids d'une fraise</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Poids d'une fraise (g)</label>
+              <input type="number" id="rendement-pf" min="0" step="0.5" oninput="updRendement('poidsFraise', this.value)">
+            </div>
+          </div>
+        </div>
+        <div class="total-box" id="rendement-calc"></div>
+        <button class="btn secondary" onclick="printDrainage()" style="margin-top:10px">🖨 Imprimer</button>
+      </div>
+    </div>
+
+    <!-- TRAITEMENTS -->
+    <div class="tab-pane" id="trait-pane">
+      <div class="section">
+        <div class="section-title">Programme de traitement fraise</div>
+        <div id="trait-cfg"></div>
+        <div style="overflow-x:auto;margin-top:10px">
+          <table id="trait-table" style="min-width:600px"></table>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn" onclick="addTreatment()">➕ Ajouter produit</button>
+          <button class="btn secondary" onclick="printTrait()">🖨 Imprimer</button>
+          <button class="btn secondary" onclick="emailTrait()">📧 E-mail</button>
+          <button class="btn secondary" onclick="smsTrait()">📱 SMS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="share-fab">
+    <div class="share-pill">
+      <button class="share-pill-btn" onclick="shareNow('email')">Email</button>
+      <div class="share-pill-sep"></div>
+      <button class="share-pill-btn" onclick="shareNow('sms')">SMS</button>
+    </div>
+  </div>
+
+  <div class="modal" id="confirm-modal">
+    <div class="modal-content">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-text" id="modal-text"></div>
+      <div class="modal-actions">
+        <button class="btn secondary" onclick="closeModal()">Annuler</button>
+        <button class="btn" id="modal-confirm-btn">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LS_KEY = 'flipo-fraise-v1';
+
+    // ─── Supabase Sync ───────────────────────────────────────
+    var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+    var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjY2OH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+    function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
+    function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
+    function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
+    function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+    function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
+    function syncInitPull(afterCb){
+      var local=localStorage.getItem(LS_KEY);
+      if(local){setSyncSt('ok');return;}
+      setSyncSt('syncing');
+      supaGet(LS_KEY,function(d){
+        if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
+        setSyncSt('ok');
+      });
+    }
+    function syncManualPull(){
+      if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+      setSyncSt('syncing');
+      supaGet(LS_KEY,function(d){
+        if(d){
+          try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+          location.reload();
+        } else {
+          setSyncSt('ok');
+          alert('Aucune donnée cloud disponible.');
+        }
+      });
+    }
+
+    const CHAPELLES_INIT = [
+      {n:1, v:'Magnum', ext:false, plants:3355},
+      {n:2, v:'Magnum', ext:false, plants:3355},
+      {n:3, v:'Joly', ext:false, plants:3355},
+      {n:4, v:'Duchesse', ext:false, plants:3355},
+      {n:5, v:'Joly', ext:false, plants:3355},
+      {n:6, v:'Dream', ext:false, plants:3355},
+      {n:7, v:'Joly', ext:false, plants:3355},
+      {n:8, v:'Marvella', ext:false, plants:3355},
+      {n:9, v:'Joly', ext:false, plants:3355},
+      {n:10, v:'Marvella', ext:false, plants:3355},
+      {n:11, v:'Dream', ext:true, plants:0},
+      {n:12, v:'Duchesse', ext:true, plants:0}
+    ];
+
+    const DRAINAGE_INIT = [
+      {ch:1, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:2, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:3, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:4, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:5, goutteur:2.5, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:6, goutteur:2.5, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:7, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:8, goutteur:2.5, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:9, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5},
+      {ch:10, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5}
+    ];
+
+    const S = {
+      tab: 'resume',
+      saison: '2026/2027',
+      chapelles: CHAPELLES_INIT.map(c => ({...c})),
+      drainage: DRAINAGE_INIT.map(d => ({...d})),
+      entries: [],
+      rendement: {
+        fraisesParPlant: 22,
+        fraisesParBarquette: 29,
+        poidsBarquette: 500,
+        poidsFraise: 8
+      },
+      traitements: [],
+      surfaceChapelle: 0.04,
+      nbChapellesTrait: 10
+    };
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function es(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function R2(v) {
+      return Math.round(v * 100) / 100;
+    }
+
+    function saveLS() {
+      localStorage.setItem(LS_KEY, JSON.stringify(S));
+      syncPush(S);
+    }
+
+    function loadLS() {
+      const d = localStorage.getItem(LS_KEY);
+      if (d) {
+        const parsed = JSON.parse(d);
+        S.tab = parsed.tab || 'resume';
+        S.saison = parsed.saison || '2026/2027';
+        S.chapelles = parsed.chapelles || CHAPELLES_INIT.map(c => ({...c}));
+        S.drainage = parsed.drainage || DRAINAGE_INIT.map(d => ({...d}));
+        S.entries = (parsed.entries || []).map(e => {
+          if (e.barquettes === undefined && e.kg !== undefined) {
+            e.barquettes = Math.round(e.kg * 2);
+          }
+          return e;
+        });
+        S.rendement = parsed.rendement || {fraisesParPlant: 22, fraisesParBarquette: 29, poidsBarquette: 500, poidsFraise: 8};
+        if(S.rendement.poidsFraise === undefined) S.rendement.poidsFraise = 8;
+        S.traitements = parsed.traitements || [];
+        S.surfaceChapelle = parsed.surfaceChapelle || 0.04;
+        S.nbChapellesTrait = parsed.nbChapellesTrait || 10;
+      }
+    }
+
+    function saveFocus(id) {
+      sessionStorage.setItem('focus', id);
+    }
+
+    function restFocus() {
+      const id = sessionStorage.getItem('focus');
+      if (id) {
+        const el = $(id);
+        if (el) el.focus();
+        sessionStorage.removeItem('focus');
+      }
+    }
+
+    function switchTab(t) {
+      S.tab = t;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('[data-tab="' + t + '"]').forEach(btn => btn.classList.add('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+      $(t + '-pane').classList.add('active');
+      saveLS();
+
+      if (t === 'resume') buildResume();
+      else if (t === 'saisie') buildSaisie();
+      else if (t === 'saison') buildSaison();
+      else if (t === 'drainage') buildDrainage();
+      else if (t === 'trait') buildTrait();
+    }
+
+    function buildResume() {
+      const secA = $('resume-sec-a');
+      let html = '<div class="section-title">Résumé par chapelle</div>';
+      html += '<div style="overflow-x:auto"><table><thead><tr><th>Chapelle</th><th>Variété</th><th>Ext</th><th>Total kg</th><th>Rendement g/plant</th></tr></thead><tbody>';
+
+      S.chapelles.forEach(ch => {
+        const entries = S.entries.filter(e => e.chapelle === ch.n);
+        const totalBarquettes = entries.reduce((a, e) => a + ((e.barquettes || 0)), 0);
+        const kg = R2(totalBarquettes * 0.5);
+        const rendG = ch.plants > 0 ? R2((totalBarquettes * 500) / ch.plants) : 0;
+        const cls = ch.ext ? ' class="ext-row"' : '';
+        html += '<tr' + cls + '><td>Chapelle ' + ch.n + '</td><td>' + es(ch.v) + '</td><td>' + (ch.ext ? 'Oui' : 'Non') + '</td><td>' + R2(kg) + '</td><td>' + rendG + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      secA.innerHTML = html;
+
+      const intEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && !ch.ext));
+      const extEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && ch.ext));
+      const barqInt = intEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const barqExt = extEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const kgInt = R2(barqInt * 0.5);
+      const kgExt = R2(barqExt * 0.5);
+      const kgTotal = kgInt + kgExt;
+      const plantsInt = S.chapelles.filter(ch => !ch.ext).reduce((a, ch) => a + ch.plants, 0);
+      const rendInt = plantsInt > 0 ? R2((barqInt * 500) / plantsInt) : 0;
+
+      html = '<div class="section-title">Totaux</div>';
+      html += '<div class="total-box"><div class="total-box-item"><div class="label">Total intérieur (Ch 1-10)</div><div class="value">' + R2(kgInt) + ' kg</div></div>';
+      html += '<div class="total-box-item"><div class="label">Total extérieur (Ch 11-12)</div><div class="value">' + R2(kgExt) + ' kg</div></div>';
+      html += '<div class="total-box-item"><div class="label">Total général</div><div class="value">' + R2(kgTotal) + ' kg</div></div>';
+      html += '<div class="total-box-item"><div class="label">Rendement moy. intérieur</div><div class="value">' + rendInt + ' g/pl</div></div></div>';
+      const secB = $('resume-sec-b');
+      secB.innerHTML = html;
+
+      const secC = $('resume-sec-c');
+      const nbCueillettes = S.entries.length;
+      const kgMoy = nbCueillettes > 0 ? R2(kgTotal / nbCueillettes) : 0;
+
+      html = '<div class="section-title">Rendement global saison ' + S.saison + '</div>';
+      html += '<div class="total-box"><div class="total-box-item"><div class="label">Total saison</div><div class="value">' + R2(kgTotal) + ' kg</div></div>';
+      html += '<div class="total-box-item"><div class="label">Cueillettes</div><div class="value">' + nbCueillettes + '</div></div>';
+      html += '<div class="total-box-item"><div class="label">Moyenne par cueillette</div><div class="value">' + kgMoy + ' kg</div></div></div>';
+      html += '<button class="btn" onclick="clotureModal()" style="width:100%;margin-top:12px">Clôturer la saison</button>';
+      secC.innerHTML = html;
+    }
+
+    function clotureModal() {
+      $('modal-title').textContent = 'Clôturer la saison';
+      $('modal-text').textContent = 'Exporter et réinitialiser les cueillettes de la saison ' + S.saison + '?';
+      $('modal-confirm-btn').onclick = () => clotureSaison();
+      $('confirm-modal').classList.add('active');
+    }
+
+    function clotureSaison() {
+      closeModal();
+      const csv = genCSV();
+      const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'flipo-fraise-' + S.saison.replace('/', '-') + '.csv');
+      link.click();
+
+      const saisonParts = S.saison.split('/');
+      const nextYear = parseInt(saisonParts[0]) + 1;
+      S.saison = nextYear + '/' + (nextYear + 1);
+      S.entries = [];
+      $('saison-hdr').textContent = 'Saison ' + S.saison;
+      saveLS();
+      buildResume();
+    }
+
+    function genCSV() {
+      let csv = 'Date,Chapelle,Variete,kg\n';
+      S.entries.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(e => {
+        const ch = S.chapelles.find(c => c.n === e.chapelle);
+        const kg = e.barquettes !== undefined ? (e.barquettes * 0.5) : (e.kg || 0);
+        csv += e.date + ',' + e.chapelle + ',' + (ch ? ch.v : '') + ',' + kg + '\n';
+      });
+      return csv;
+    }
+
+    function buildSaisie() {
+      const today = new Date().toISOString().split('T')[0];
+      const dateEl = $('saisie-date');
+      if(dateEl) dateEl.value = today;
+
+      let opt = '';
+      S.chapelles.forEach(ch => {
+        const ext = ch.ext ? ' (ext.)' : '';
+        opt += '<option value="' + ch.n + '">Chapelle ' + ch.n + ' — ' + es(ch.v) + ext + '</option>';
+      });
+      const chapEl = $('saisie-chapelle');
+      if(chapEl) chapEl.innerHTML = opt;
+
+      buildJournal();
+    }
+
+    function buildJournal() {
+      const sorted = S.entries.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+      let html = '';
+      if (sorted.length === 0) {
+        html = '<p style="color:var(--mu);font-size:13px">Aucune cueillette enregistrée</p>';
+      } else {
+        sorted.forEach(e => {
+          const ch = S.chapelles.find(c => c.n === e.chapelle);
+          const v = ch ? ch.v : '?';
+          const barq = e.barquettes || 0;
+          const kg = R2(barq * 0.5);
+          html += '<div class="entry-item"><div class="entry-text">Chapelle ' + e.chapelle + ' (' + es(v) + ') — ' + barq + ' barquettes (' + kg + ' kg) — ' + e.date + '</div><div class="entry-actions"><button class="btn delete" onclick="deleteEntry(' + e.id + ')">X</button></div></div>';
+        });
+      }
+      $('saisie-journal').innerHTML = html;
+    }
+
+    function addEntry() {
+      const dateEl = $('saisie-date');
+      const chapEl = $('saisie-chapelle');
+      const barqEl = $('entry-barquettes');
+      if (!dateEl || !chapEl || !barqEl) return;
+      const date = dateEl.value;
+      const chap = parseInt(chapEl.value);
+      const barquettes = parseInt(barqEl.value || 0);
+
+      if (!date || barquettes <= 0) {
+        alert('Veuillez remplir tous les champs correctement');
+        return;
+      }
+
+      const id = Date.now();
+      S.entries.push({id, date, chapelle: chap, barquettes});
+      S.entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+      saveLS();
+      buildJournal();
+      $('entry-barquettes').value = '';
+    }
+
+    function deleteEntry(id) {
+      S.entries = S.entries.filter(e => e.id !== id);
+      saveLS();
+      buildJournal();
+    }
+
+    function buildSaison() {
+      $('saison-intro').textContent = 'Configurez ici les variétés et le nombre de plants par chapelle pour la saison ' + S.saison;
+
+      let html = '<thead><tr><th>Chapelle</th><th>Variété</th><th>Plants</th><th>Extérieur</th></tr></thead><tbody>';
+      S.chapelles.forEach(ch => {
+        html += '<tr><td>Chapelle ' + ch.n + '</td>';
+        html += '<td><input type="text" class="inline-edit" value="' + es(ch.v) + '" oninput="updChapelle(' + ch.n + ', \'v\', this.value)"></td>';
+        html += '<td><input type="number" class="inline-edit" value="' + ch.plants + '" oninput="updChapelle(' + ch.n + ', \'plants\', parseInt(this.value))"></td>';
+        html += '<td><input type="checkbox" class="inline-edit-chk"' + (ch.ext ? ' checked' : '') + ' onchange="updChapelle(' + ch.n + ', \'ext\', this.checked)"></td></tr>';
+      });
+      html += '</tbody>';
+      $('saison-table').innerHTML = html;
+    }
+
+    function updChapelle(n, field, value) {
+      const ch = S.chapelles.find(c => c.n === n);
+      if (ch) {
+        ch[field] = value;
+        saveLS();
+      }
+    }
+
+    function buildDrainage() {
+      let html = '<thead><tr><th>Chapelle</th><th>Goutteur</th><th>L/h bouchon</th><th>Nb arrosages</th><th>Temps (min)</th><th>Drainage/jour</th><th>Drainage/arrosage</th></tr></thead><tbody>';
+
+      S.drainage.forEach(d => {
+        const tempsH = d.temps / 60;
+        const litre = R2(d.goutteur * d.litBouchon * d.nbArrosage * tempsH);
+        const drainJour = R2(litre * 0.15);
+        const drainAr = R2(drainJour / d.nbArrosage);
+
+        html += '<tr><td>Chapelle ' + d.ch + '</td>';
+        html += '<td><input type="number" class="inline-edit" value="' + d.goutteur + '" step="0.1" oninput="updDrainage(' + d.ch + ', \'goutteur\', parseFloat(this.value))"></td>';
+        html += '<td>' + d.litBouchon + '</td>';
+        html += '<td><input type="number" class="inline-edit" value="' + d.nbArrosage + '" oninput="updDrainage(' + d.ch + ', \'nbArrosage\', parseInt(this.value))"></td>';
+        html += '<td><input type="number" class="inline-edit" value="' + d.temps + '" step="0.1" oninput="updDrainage(' + d.ch + ', \'temps\', parseFloat(this.value))"></td>';
+        html += '<td class="calc">' + drainJour + '</td>';
+        html += '<td class="calc">' + drainAr + '</td></tr>';
+      });
+
+      html += '</tbody>';
+      $('drainage-table').innerHTML = html;
+
+      buildRendement();
+    }
+
+    function updDrainage(ch, field, value) {
+      const d = S.drainage.find(x => x.ch === ch);
+      if (d) {
+        d[field] = value;
+        saveLS();
+        buildDrainage();
+      }
+    }
+
+    function buildRendement(){
+      const fpp = S.rendement.fraisesParPlant || 0;
+      const fpb = S.rendement.fraisesParBarquette || 1;
+      const pb  = S.rendement.poidsBarquette || 500;
+      const pf  = S.rendement.poidsFraise || 0;
+
+      const fppEl = $('rendement-fpp'); if(fppEl) fppEl.value = fpp;
+      const fpbEl = $('rendement-fpb'); if(fpbEl) fpbEl.value = fpb;
+      const pbEl  = $('rendement-pb');  if(pbEl)  pbEl.value  = pb;
+      const pfEl  = $('rendement-pf');  if(pfEl)  pfEl.value  = pf;
+
+      const selCh = $('rendement-chapelle');
+      let chNum = 1;
+      if(selCh){
+        const prevVal = selCh.value;
+        selCh.innerHTML = '';
+        S.chapelles.forEach(ch => {
+          const opt = document.createElement('option');
+          opt.value = ch.n;
+          opt.textContent = 'Chapelle ' + ch.n + ' — ' + ch.v + (ch.ext ? ' (ext.)' : '');
+          selCh.appendChild(opt);
+        });
+        if(prevVal) selCh.value = prevVal;
+        chNum = parseInt(selCh.value) || 1;
+      }
+      const ch = S.chapelles.find(c => c.n === chNum);
+
+      // Méthode 1 : barquette
+      const poidsPP1 = fpb > 0 ? R2((fpp / fpb) * pb) : 0;
+      const rendKg1  = ch && ch.plants > 0 ? R2((poidsPP1 * ch.plants) / 1000) : 0;
+
+      // Méthode 2 : poids d'une fraise
+      const poidsPP2 = R2(fpp * pf);
+      const rendKg2  = ch && ch.plants > 0 ? R2((poidsPP2 * ch.plants) / 1000) : 0;
+
+      const chLabel = ch ? 'Ch ' + ch.n + ' (' + ch.plants + ' plants)' : '—';
+
+      let html = '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+      // Méthode 1
+      html += '<div style="flex:1;min-width:200px;background:var(--gl);border-radius:8px;padding:12px 14px">';
+      html += '<div style="font-size:11px;font-weight:700;color:var(--gd);margin-bottom:8px">MÉTHODE 1 — barquette</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:6px">';
+      html += '<div><span style="font-size:11px;color:var(--mu)">Poids par plant</span><br><strong style="font-size:18px">' + poidsPP1 + ' g</strong></div>';
+      html += '<div><span style="font-size:11px;color:var(--mu)">Rendement ' + chLabel + '</span><br><strong style="font-size:18px">' + rendKg1 + ' kg</strong></div>';
+      html += '</div></div>';
+      // Méthode 2
+      html += '<div style="flex:1;min-width:200px;background:#fff8dc;border-radius:8px;padding:12px 14px;border:1px solid #f0d060">';
+      html += '<div style="font-size:11px;font-weight:700;color:#7a5200;margin-bottom:8px">MÉTHODE 2 — poids fraise</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:6px">';
+      html += '<div><span style="font-size:11px;color:var(--mu)">Poids par plant</span><br><strong style="font-size:18px">' + poidsPP2 + ' g</strong></div>';
+      html += '<div><span style="font-size:11px;color:var(--mu)">Rendement ' + chLabel + '</span><br><strong style="font-size:18px">' + rendKg2 + ' kg</strong></div>';
+      html += '</div></div>';
+      html += '</div>';
+
+      $('rendement-calc').innerHTML = html;
+    }
+
+    function updRendement(field, value) {
+      S.rendement[field] = parseFloat(value);
+      saveLS();
+      buildRendement();
+    }
+
+    function buildTrait(){
+      // Paramètres de calcul
+      const surf = S.surfaceChapelle || 0.04;
+      const nbCh = S.nbChapellesTrait || 10;
+
+      // Barre de config en haut de la table
+      let cfg = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;align-items:center;background:var(--gl);padding:10px 14px;border-radius:8px;font-size:12px">';
+      cfg += '<span style="font-weight:600;color:var(--gd)">Paramètres de calcul</span>';
+      cfg += '<label style="display:flex;align-items:center;gap:6px">Surface/chapelle (ha) <input type="number" step="0.001" min="0.001" value="' + surf + '" style="width:72px;padding:4px 6px;border:1px solid var(--brd);border-radius:5px;font-size:12px" onchange="S.surfaceChapelle=parseFloat(this.value)||0.04;saveLS();buildTrait()"></label>';
+      cfg += '<label style="display:flex;align-items:center;gap:6px">Nombre de chapelles <input type="number" min="1" max="12" value="' + nbCh + '" style="width:56px;padding:4px 6px;border:1px solid var(--brd);border-radius:5px;font-size:12px" onchange="S.nbChapellesTrait=parseInt(this.value)||10;saveLS();buildTrait()"></label>';
+      cfg += '</div>';
+
+      let html = '<thead><tr><th>Produit</th><th style="text-align:right">Dose/ha (L)</th><th style="text-align:right;background:#e8f4d4">Dose/chapelle (L)</th><th style="text-align:right;background:#fff8dc">Total ' + nbCh + ' ch (L)</th><th>Note</th><th></th></tr></thead><tbody>';
+      if(!S.traitements.length){
+        html += '<tr><td colspan="6" style="text-align:center;color:var(--mu);font-style:italic;padding:16px">Aucun produit — cliquez sur ➕ Ajouter produit</td></tr>';
+      } else {
+        S.traitements.forEach((t,i) => {
+          const doseHa = parseFloat(t.doseHa) || 0;
+          const doseCh = R2(doseHa * surf);
+          const total = R2(doseHa * surf * nbCh);
+          html += '<tr>';
+          html += '<td><input class="inline-edit" value="' + es(t.produit) + '" oninput="updTrait(' + i + ',\'produit\',this.value)"></td>';
+          html += '<td style="text-align:right"><input class="inline-edit" type="number" step="0.01" min="0" value="' + doseHa + '" style="text-align:right;width:80px" oninput="updTrait(' + i + ',\'doseHa\',parseFloat(this.value));buildTrait()"></td>';
+          html += '<td style="text-align:right;background:#e8f4d4;color:#2d6a00;font-weight:600">' + doseCh + '</td>';
+          html += '<td style="text-align:right;background:#fff8dc;color:#7a5200;font-weight:600">' + total + '</td>';
+          html += '<td><input class="inline-edit" value="' + es(t.note||'') + '" oninput="updTrait(' + i + ',\'note\',this.value)"></td>';
+          html += '<td><button class="btn btn-del" onclick="delTrait(' + i + ')">✕</button></td>';
+          html += '</tr>';
+        });
+      }
+      html += '</tbody>';
+
+      const cfgEl = $('trait-cfg');
+      if(cfgEl) cfgEl.innerHTML = cfg;
+      $('trait-table').innerHTML = html;
+    }
+
+    function addTreatment(){
+      S.traitements.push({id:'t-'+Date.now(), produit:'Nouveau produit', doseHa:0, note:''});
+      saveLS();
+      buildTrait();
+    }
+
+    function updTrait(i, field, val){
+      if(S.traitements[i]) S.traitements[i][field] = val;
+      saveLS();
+    }
+
+    function delTrait(i){
+      S.traitements.splice(i,1);
+      saveLS();
+      buildTrait();
+    }
+
+    function traitText(){
+      const surf = S.surfaceChapelle || 0.04;
+      const nbCh = S.nbChapellesTrait || 10;
+      const dt = new Date().toLocaleDateString('fr-FR');
+      let txt = 'Traitements Fraise — Saison ' + S.saison + '\n' + dt;
+      txt += '\nSurface/chapelle : ' + surf + ' ha · ' + nbCh + ' chapelle(s)\n\n';
+      if(!S.traitements.length){ txt += 'Aucun produit\n'; }
+      else { S.traitements.forEach(t => {
+        const doseHa = parseFloat(t.doseHa)||0;
+        txt += t.produit + ' : ' + doseHa + ' L/ha → ' + R2(doseHa*surf) + ' L/ch → Total : ' + R2(doseHa*surf*nbCh) + ' L' + (t.note ? ' ('+t.note+')' : '') + '\n';
+      }); }
+      txt += '\n— Flipo';
+      return txt;
+    }
+
+    function printTrait(){
+      const surf = S.surfaceChapelle || 0.04;
+      const nbCh = S.nbChapellesTrait || 10;
+      const w = window.open('','_blank');
+      if(!w) return;
+      const dt = new Date().toLocaleDateString('fr-FR');
+      let h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Traitements Fraise</title>';
+      h += '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{color:#c0203a;margin-bottom:4px}p{font-size:11px;color:#666;margin-bottom:10px}table{border-collapse:collapse;width:100%}th{background:#fff0f2;padding:7px 10px;border:1px solid #ccc;font-size:11px;text-align:left}td{padding:5px 10px;border:1px solid #ddd;font-size:11px}td.calc{background:#e8f4d4;font-weight:600;text-align:right}td.tot{background:#fff8dc;font-weight:600;text-align:right}.footer{font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px}@media print{.np{display:none}}</style></head><body>';
+      h += '<h2>🍓 Flipo — Traitements Fraise — Saison ' + S.saison + ' — ' + dt + '</h2>';
+      h += '<p>Surface/chapelle : ' + surf + ' ha &nbsp;|&nbsp; Total : ' + nbCh + ' chapelle(s)</p>';
+      h += '<table><thead><tr><th>Produit</th><th style="text-align:right">Dose/ha (L)</th><th style="text-align:right">Dose/chapelle (L)</th><th style="text-align:right">Total ' + nbCh + ' ch (L)</th><th>Note</th></tr></thead><tbody>';
+      if(!S.traitements.length){ h += '<tr><td colspan="5" style="color:#aaa;font-style:italic;text-align:center">Aucun produit</td></tr>'; }
+      else { S.traitements.forEach(t => {
+        const doseHa = parseFloat(t.doseHa)||0;
+        h += '<tr><td>' + t.produit + '</td><td style="text-align:right">' + doseHa + '</td><td class="calc">' + R2(doseHa*surf) + '</td><td class="tot">' + R2(doseHa*surf*nbCh) + '</td><td>' + (t.note||'') + '</td></tr>';
+      }); }
+      h += '</tbody></table><div class="footer">Flipo — Usage exploitation uniquement</div>';
+      h += '<div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:7px 18px;background:#e84a5f;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimer</button></div>';
+      h += '<script>setTimeout(function(){window.print();},300);<\/script></body></html>';
+      w.document.write(h); w.document.close();
+    }
+
+    function emailTrait(){
+      const txt = traitText();
+      const sub = encodeURIComponent('Traitements Fraise — ' + S.saison);
+      const bdy = encodeURIComponent(txt);
+      window.open('https://mail.google.com/mail/u/0/?view=cm&fs=1&to=flipotanguy%40gmail.com&su=' + sub + '&body=' + bdy, '_blank');
+    }
+
+    function smsTrait(){
+      window.open('sms:?body=' + encodeURIComponent(traitText()), '_blank');
+    }
+
+    function printDrainage() {
+      window.print();
+    }
+
+    function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,emailPlain){
+      const w=window.open('','_blank','width=800,height=680,scrollbars=yes');
+      if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
+      const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
+      const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+moduleTitle+'</title>'
+        +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
+        +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
+        +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
+        +'.tbtn{padding:8px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}'
+        +'.tbtn-print{background:'+accentColor+';color:#fff}.tbtn-email{background:#185FA5;color:#fff}.tbtn-close{background:#eee;color:#333;margin-left:auto}'
+        +'.logo-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:3px solid '+accentColor+';margin-bottom:22px}'
+        +'.logo-box{width:44px;height:44px;border-radius:12px;background:'+accentColor+';display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+        +'.logo-title{font-size:20px;font-weight:700;color:'+accentColor+'}.logo-sub{font-size:11px;color:#888;margin-top:3px}'
+        +'table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 16px}'
+        +'th{background:#f2f2f0;padding:7px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700}'
+        +'td{padding:7px 10px;border-bottom:1px solid #eee}'
+        +'.tr{background:#f9f9f0;font-weight:700}.tar{text-align:right}'
+        +'.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:18px 0 8px;padding-top:14px;border-top:1px solid #eee}'
+        +'.stat-box{display:inline-block;text-align:center;padding:14px 20px;background:#f5f5f5;border-radius:8px;margin:0 8px 12px 0}'
+        +'.stat-val{font-size:22px;font-weight:700;color:'+accentColor+'}.stat-lbl{font-size:11px;color:#666;margin-top:3px}'
+        +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}}</style>'
+        +'</head><body><div class="page">'
+        +'<div class="toolbar">'
+        +'<button class="tbtn tbtn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>'
+        +'<a class="tbtn tbtn-email" href="'+emailHref+'">📧 Envoyer par email</a>'
+        +'<button class="tbtn tbtn-close" onclick="window.close()">✕ Fermer</button>'
+        +'</div>'
+        +'<div class="logo-hdr">'
+        +'<div class="logo-box"><svg viewBox="0 0 28 32" fill="none" width="26" height="30"><rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/><ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/><circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/><circle cx="14" cy="18" r="2.2" fill="#f4a020"/></svg></div>'
+        +'<div><div class="logo-title">Flipo — '+moduleTitle+'</div><div class="logo-sub">Généré le '+dt+'</div></div>'
+        +'</div>'
+        +contentHTML
+        +'</div></body></html>');
+      w.document.close();
+    }
+
+    function shareNow(type) {
+      void type;
+      const intEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && !ch.ext));
+      const extEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && ch.ext));
+      const barqInt = intEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const barqExt = extEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const kgInt = R2(barqInt * 0.5), kgExt = R2(barqExt * 0.5), kgTotal = R2(kgInt + kgExt);
+      const dt = new Date().toLocaleDateString('fr-FR');
+      let html = '', plain = '';
+      if (S.tab === 'drainage') {
+        html = '<div class="section-title">Paramètres Drainage — Saison ' + S.saison + '</div>';
+        html += '<table><thead><tr><th>Chapelle</th><th class="tar">L/boudin</th></tr></thead><tbody>';
+        plain = 'Drainage Fraise — Saison ' + S.saison + '\n' + dt + '\n\n';
+        S.drainage.forEach(d => {
+          const litre = R2(d.goutteur * d.litBouchon * d.nbArrosage * (d.temps / 60));
+          html += '<tr><td>Ch ' + d.ch + '</td><td class="tar">' + litre + ' L</td></tr>';
+          plain += 'Ch ' + d.ch + ': ' + litre + ' L/boudin\n';
+        });
+        html += '</tbody></table>';
+        openSharePreview('Fraise — Drainage', '#e84a7a', html, 'Drainage Fraise ' + S.saison, plain + '\n— Flipo');
+      } else {
+        html = '<div style="margin-bottom:16px">';
+        html += '<div class="stat-box"><div class="stat-val">' + kgInt + ' kg</div><div class="stat-lbl">🏠 Intérieur</div></div>';
+        html += '<div class="stat-box"><div class="stat-val">' + kgExt + ' kg</div><div class="stat-lbl">🌤️ Extérieur</div></div>';
+        html += '<div class="stat-box"><div class="stat-val">' + kgTotal + ' kg</div><div class="stat-lbl">Total</div></div>';
+        html += '</div>';
+        html += '<div class="section-title">Détail par chapelle</div>';
+        const byChapelle = {};
+        S.entries.forEach(e => { byChapelle[e.chapelle] = (byChapelle[e.chapelle] || 0) + (e.barquettes || 0); });
+        html += '<table><thead><tr><th>Chapelle</th><th class="tar">Barquettes</th><th class="tar">Kg</th></tr></thead><tbody>';
+        plain = 'Flipo Fraise ' + S.saison + '\n' + dt + '\nIntérieur: ' + kgInt + ' kg — Extérieur: ' + kgExt + ' kg — Total: ' + kgTotal + ' kg\n\n';
+        Object.keys(byChapelle).sort().forEach(ch => {
+          const b = byChapelle[ch]; const kg = R2(b * 0.5);
+          html += '<tr><td>' + es(ch) + '</td><td class="tar">' + b + '</td><td class="tar">' + kg + ' kg</td></tr>';
+          plain += ch + ': ' + b + ' barquettes (' + kg + ' kg)\n';
+        });
+        html += '<tr class="tr"><td>Total</td><td class="tar">' + (barqInt + barqExt) + '</td><td class="tar">' + kgTotal + ' kg</td></tr>';
+        html += '</tbody></table>';
+        openSharePreview('Fraise — ' + S.saison, '#e84a7a', html, 'Fraise Flipo ' + S.saison + ' — ' + dt, plain + '\n— Flipo');
+      }
+    }
+
+    function genShareText() {
+      const intEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && !ch.ext));
+      const extEntries = S.entries.filter(e => S.chapelles.find(ch => ch.n === e.chapelle && ch.ext));
+      const barqInt = intEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const barqExt = extEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
+      const kgInt = R2(barqInt * 0.5);
+      const kgExt = R2(barqExt * 0.5);
+      const kgTotal = kgInt + kgExt;
+
+      if (S.tab === 'resume') {
+        return 'Flipo Fraise ' + S.saison + '\nTotal interieur: ' + R2(kgInt) + ' kg\nTotal exterieur: ' + R2(kgExt) + ' kg\nTotal: ' + R2(kgTotal) + ' kg\n' + S.entries.length + ' cueillettes';
+      } else if (S.tab === 'drainage') {
+        let t = 'Parametres Drainage — ' + S.saison + '\n\n';
+        S.drainage.forEach(d => {
+          const tempsH = d.temps / 60;
+          const litre = R2(d.goutteur * d.litBouchon * d.nbArrosage * tempsH);
+          t += 'Ch ' + d.ch + ': ' + litre + ' L/boudin\n';
+        });
+        return t;
+      }
+      return '';
+    }
+
+    function closeModal() {
+      $('confirm-modal').classList.remove('active');
+    }
+
+    function initUI() {
+      loadLS();
+      $('saison-hdr').textContent = 'Saison ' + S.saison;
+      switchTab(S.tab);
+      restFocus();
+    }
+
+    document.addEventListener('DOMContentLoaded', initUI);
+    syncInitPull(function(){location.reload();});
+
+// ─── Auth ────────────────────────────────────────────────
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['fraise'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['resume','saisie','saison','drainage','trait'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    if(!tabs[tid]||!tabs[tid].enabled){
+      var b=document.querySelector('[data-tab="'+tid+'"]');
+      if(b)b.style.display='none';
+      var p=document.getElementById(tid+'-pane');
+      if(p)p.style.display='none';
+    }else if(!first)first=tid;
+  });
+  if(first&&typeof switchTab==='function'){switchTab(first);}
+})();
+</script>
+</body>
+</html>

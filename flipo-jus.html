@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flipo — Jus</title>
+<style>
+:root{--gr:#c0392b;--gd:#8e1c20;--gl:#fdf2f2;--bg:#f7f5f5;--wh:#fff;--tx:#1a1a1a;--mu:#666;--brd:#e0e0e0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
+.hdr{display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--wh);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100}
+.hdr a{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--gd);font-weight:700;font-size:18px;transition:.15s}
+.hdr a:hover{opacity:.8}
+.hdr svg{width:24px;height:28px}
+.hdr-sep{width:1px;height:24px;background:var(--brd);margin:0 4px}
+.htxt{display:flex;flex-direction:column}
+.htxt h1{font-size:20px;font-weight:700;color:var(--tx)}
+.htxt p{font-size:12px;color:var(--mu)}
+
+.tabs{display:flex;gap:0;padding:0 12px;background:var(--wh);border-bottom:1px solid var(--brd);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.tab-btn{padding:12px 16px;border:none;background:transparent;cursor:pointer;font-size:14px;font-weight:600;color:var(--mu);transition:.15s;border-bottom:3px solid transparent;white-space:nowrap}
+.tab-btn.active{color:var(--gd);border-bottom-color:var(--gr)}
+.tab-btn:hover{color:var(--gd)}
+
+.container{padding:16px;max-width:1200px;margin:0 auto}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+.section-title{font-size:16px;font-weight:700;color:var(--tx);margin-top:20px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--brd)}
+.section-title:first-child{margin-top:0}
+
+.filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-group label{font-size:12px;font-weight:600;color:var(--mu)}
+.filter-group select{padding:8px 12px;border:1px solid var(--brd);border-radius:6px;font-size:14px;background:var(--wh);color:var(--tx);cursor:pointer}
+
+.table-wrap{overflow-x:auto;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;background:var(--wh);border:1px solid var(--brd);border-radius:6px;overflow:hidden}
+th{background:var(--gl);padding:10px;text-align:left;font-size:13px;font-weight:700;color:var(--gd);border-bottom:1px solid var(--brd)}
+td{padding:10px;border-bottom:1px solid var(--brd);font-size:13px}
+tr:last-child td{border-bottom:none}
+.total-row{background:var(--gl);font-weight:700;color:var(--gd)}
+.total-col{background:var(--gl);font-weight:700;color:var(--gd)}
+.empty-cell{color:var(--mu);text-align:center}
+
+.form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+.form-group label{font-size:12px;font-weight:600;color:var(--mu)}
+.form-group input,.form-group select{padding:8px 12px;border:1px solid var(--brd);border-radius:6px;font-size:14px;background:var(--wh);color:var(--tx)}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-add{background:var(--gr);color:var(--wh)}
+.btn-add:hover{background:var(--gd)}
+.btn-del{background:transparent;color:var(--gr);border:1px solid var(--brd);padding:4px 8px;font-size:12px}
+.btn-del:hover{background:var(--gl)}
+.btn-clk{background:var(--gr);color:var(--wh)}
+.btn-clk:hover{background:var(--gd)}
+
+.journal{display:flex;flex-direction:column;gap:8px}
+.journal-entry{display:flex;align-items:center;gap:10px;padding:10px;background:var(--wh);border:1px solid var(--brd);border-radius:6px;font-size:13px;justify-content:space-between}
+.journal-entry-main{display:flex;align-items:center;gap:10px;flex:1}
+.journal-entry-txt{display:flex;flex-direction:column;gap:2px;flex:1}
+.journal-entry-txt strong{color:var(--gd)}
+.journal-entry-del{margin-left:auto}
+
+.params-section{margin-bottom:24px}
+.params-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.params-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--wh);border:1px solid var(--brd);border-radius:6px;font-size:13px}
+.params-add{display:flex;gap:8px;align-items:flex-end}
+.params-add input{padding:8px 12px;border:1px solid var(--brd);border-radius:6px;font-size:13px;flex:1;min-width:120px}
+.params-warn{font-size:11px;color:var(--gr);margin-top:6px}
+
+.stock-section{margin-bottom:20px;padding:12px;background:var(--wh);border:1px solid var(--brd);border-radius:6px}
+.stock-section-title{font-size:13px;font-weight:700;color:var(--gd);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--brd)}
+.stock-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd);font-size:13px}
+.stock-row:last-child{border-bottom:none}
+.stock-label{flex:1}
+.stock-input-group{display:flex;align-items:center;gap:8px;margin-left:auto}
+.stock-input-group input{width:80px;padding:6px 10px;border:1px solid var(--brd);border-radius:4px;font-size:12px;text-align:right}
+.stock-vals{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--mu)}
+.stock-vals span{min-width:60px;text-align:right}
+.stock-positive{color:#27ae60}
+.stock-negative{color:var(--gr)}
+.stock-date{font-size:11px;color:var(--mu);margin-top:4px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.stat-card{padding:12px;background:var(--wh);border:1px solid var(--brd);border-radius:6px}
+.stat-label{font-size:11px;color:var(--mu);margin-bottom:4px}
+.stat-value{font-size:16px;font-weight:700;color:var(--gd)}
+
+.share-fab{position:fixed;bottom:22px;right:18px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:1000}
+.share-pill{display:flex;gap:8px;background:var(--wh);border-radius:99px;padding:7px 12px;box-shadow:0 3px 16px rgba(0,0,0,.2);border:1px solid var(--brd)}
+.share-pill-btn{border:none;background:transparent;cursor:pointer;padding:2px 6px;border-radius:99px;transition:.15s;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--mu)}
+.share-pill-btn:hover{background:var(--gl);color:var(--gd)}
+.share-pill-sep{width:1px;background:var(--brd);align-self:stretch}
+
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--wh);border-radius:8px;padding:24px;max-width:400px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.modal-title{font-size:16px;font-weight:700;color:var(--tx);margin-bottom:12px}
+.modal-txt{font-size:13px;color:var(--mu);margin-bottom:16px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{padding:8px 16px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.modal-btn-cancel{background:var(--brd);color:var(--tx)}
+.modal-btn-cancel:hover{background:#d0d0d0}
+.modal-btn-ok{background:var(--gr);color:var(--wh)}
+.modal-btn-ok:hover{background:var(--gd)}
+
+@media(max-width:600px){
+.hdr{flex-wrap:wrap;gap:8px;padding:12px}
+.hdr a{font-size:14px}
+.hdr svg{width:20px;height:24px}
+.htxt h1{font-size:16px}
+.tabs{overflow-x:auto;padding:0 8px}
+.tab-btn{padding:10px 12px;font-size:12px}
+.container{padding:12px}
+.form-row{flex-direction:column}
+.form-group{min-width:100%}
+.form-group input,.form-group select{font-size:16px;padding:10px 12px}
+.btn{min-height:44px;padding:10px 12px;font-size:12px}
+.table-wrap{overflow-x:auto}
+table{font-size:12px}
+th,td{padding:8px 6px}
+.share-fab{bottom:16px;right:12px}
+.modal{max-width:90%;margin:0 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <a href="index.html">
+    <svg viewBox="0 0 28 32" fill="none">
+      <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+      <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+      <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/>
+      <circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+      <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+    </svg>
+    <span>Flipo</span>
+  </a>
+  <div class="hdr-sep"></div>
+  <div class="htxt">
+    <h1>Jus</h1>
+    <p id="saison-label">Saison 2026/2027</p>
+  </div>
+  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
+  <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+</div>
+
+<div class="tabs">
+  <button data-tab="resume" class="tab-btn active" onclick="switchTab('resume')">📊 Résumé</button>
+  <button data-tab="saisie" class="tab-btn" onclick="switchTab('saisie')">📝 Saisie</button>
+  <button data-tab="params" class="tab-btn" onclick="switchTab('params')">⚙ Paramètres</button>
+  <button data-tab="stock" class="tab-btn" onclick="switchTab('stock')">📦 Stock</button>
+</div>
+
+<div class="container">
+  <div id="resume" class="tab-content active">
+    <div class="filters">
+      <div class="filter-group">
+        <label>Client</label>
+        <select id="filter-client" onchange="updateFilters()">
+          <option>Tous</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Saveur</label>
+        <select id="filter-saveur" onchange="updateFilters()">
+          <option>Toutes</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Format</label>
+        <select id="filter-format" onchange="updateFilters()">
+          <option>Tous</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="pivot-table"></table>
+    </div>
+    <div class="stats" id="stats"></div>
+    <button class="btn btn-clk" onclick="closeSeasonModal()" style="margin-top:20px;opacity:.6">🗓 Clôturer la saison</button>
+  </div>
+
+  <div id="saisie" class="tab-content">
+    <div class="section-title">Nouvelle entrée</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="entry-date">
+      </div>
+      <div class="form-group">
+        <label>Format</label>
+        <select id="entry-format"></select>
+      </div>
+      <div class="form-group">
+        <label>Saveur</label>
+        <select id="entry-saveur"></select>
+      </div>
+      <div class="form-group">
+        <label>Client</label>
+        <select id="entry-client"></select>
+      </div>
+      <div class="form-group">
+        <label>Couleur bouchon</label>
+        <select id="entry-couleur"></select>
+      </div>
+      <div class="form-group">
+        <label>Quantité</label>
+        <input type="number" id="entry-qte" min="1" value="1">
+      </div>
+      <button class="btn btn-add" onclick="addEntry()">Ajouter</button>
+    </div>
+
+    <div class="section-title">Journal</div>
+    <div class="journal" id="journal"></div>
+  </div>
+
+  <div id="params" class="tab-content">
+    <div class="params-section">
+      <div class="section-title">Clients</div>
+      <div class="params-list" id="clients-list"></div>
+      <div class="params-add">
+        <input type="text" id="add-client" placeholder="Nouveau client">
+        <button class="btn btn-add" onclick="addParam('client')">+</button>
+      </div>
+    </div>
+
+    <div class="params-section">
+      <div class="section-title">Formats</div>
+      <div class="params-list" id="formats-list"></div>
+      <div class="params-add">
+        <input type="text" id="add-format" placeholder="Nouveau format">
+        <button class="btn btn-add" onclick="addParam('format')">+</button>
+      </div>
+    </div>
+
+    <div class="params-section">
+      <div class="section-title">Saveurs</div>
+      <div class="params-list" id="saveurs-list"></div>
+      <div class="params-add">
+        <input type="text" id="add-saveur" placeholder="Nouvelle saveur">
+        <button class="btn btn-add" onclick="addParam('saveur')">+</button>
+      </div>
+    </div>
+
+    <div class="params-section">
+      <div class="section-title">Couleurs de bouchon</div>
+      <div class="params-list" id="couleurs-list"></div>
+      <div class="params-add">
+        <input type="text" id="add-couleur" placeholder="Nouvelle couleur">
+        <button class="btn btn-add" onclick="addParam('couleur')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stock" class="tab-content">
+  </div>
+</div>
+
+<div class="share-fab">
+  <div class="share-pill">
+    <button class="share-pill-btn" onclick="shareNow('email')">📧 Email</button>
+    <div class="share-pill-sep"></div>
+    <button class="share-pill-btn" onclick="shareNow('sms')">📱 SMS</button>
+  </div>
+</div>
+
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-txt" id="modal-txt"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="modal-btn modal-btn-ok" id="modal-ok" onclick="confirmModal()">Clôturer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS_KEY = 'flipo-jus-v1';
+
+// ─── Supabase Sync ───────────────────────────────────────
+var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjY2OH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
+function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
+function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
+function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
+function syncInitPull(afterCb){
+  var local=localStorage.getItem(LS_KEY);
+  if(local){setSyncSt('ok');return;}
+  setSyncSt('syncing');
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
+    setSyncSt('ok');
+  });
+}
+function syncManualPull(){
+  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+  setSyncSt('syncing');
+  supaGet(LS_KEY,function(d){
+    if(d){
+      try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+      location.reload();
+    } else {
+      setSyncSt('ok');
+      alert('Aucune donnée cloud disponible.');
+    }
+  });
+}
+const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
+const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
+const CLIENTS_INIT = ['VDP','PRESTA BEAURAINVILLE','PRESTA BENARDERIE','PRESTA MARTINE','PRESTA MOISMONT'];
+const COULEURS_INIT = ['Doré','Rouge','Vert','Neutre'];
+
+const S = {
+  tab: 'resume',
+  saison: '2026/2027',
+  clients: [...CLIENTS_INIT],
+  formats: [...FORMATS_INIT],
+  saveurs: [...SAVEURS_INIT],
+  couleurs: [...COULEURS_INIT],
+  entries: [],
+  reappro: [], // {id, type, date, qte} — arrivées de stock
+  stock: {
+    carton33: 0, carton1L: 0,
+    gnr: 0, gnrDate: null,
+    ibcPomme: 0, ibcPommeDate: null,
+    ibcPoire: 0, ibcPoireDate: null
+  },
+  filterClient: 'Tous',
+  filterSaveur: 'Toutes',
+  filterFormat: 'Tous'
+};
+
+let modalCB = null;
+
+function $(id){ return document.getElementById(id); }
+function es(s){ const div = document.createElement('div'); div.textContent = s; return div.innerHTML; }
+function R2(v){ return Math.round(v*100)/100; }
+
+function saveFocus(){ return document.activeElement?.id; }
+function restFocus(id){ if(id) setTimeout(() => $(id)?.focus(), 0); }
+
+function loadLS(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw) return;
+  const d = JSON.parse(raw);
+  S.saison = d.saison || S.saison;
+  S.clients = d.clients || [...CLIENTS_INIT];
+  S.formats = d.formats || [...FORMATS_INIT];
+  S.saveurs = d.saveurs || [...SAVEURS_INIT];
+  S.couleurs = d.couleurs || [...COULEURS_INIT];
+  S.entries = d.entries || [];
+  S.stock = d.stock || S.stock;
+  S.reappro = d.reappro || [];
+  S.filterClient = d.filterClient || 'Tous';
+  S.filterSaveur = d.filterSaveur || 'Toutes';
+  S.filterFormat = d.filterFormat || 'Tous';
+}
+
+function saveLS(){
+  localStorage.setItem(LS_KEY, JSON.stringify(S));
+  syncPush(S);
+  render();
+}
+
+function render(){
+  const labelEl = $('saison-label');
+  if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
+  renderFilters();
+  if(S.tab === 'resume') buildResume();
+  else if(S.tab === 'saisie') buildSaisie();
+  else if(S.tab === 'params') buildParams();
+  else if(S.tab === 'stock') buildStock();
+}
+
+function switchTab(t){
+  S.tab = t;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    const tabs = ['resume','saisie','params','stock'];
+    b.classList.toggle('active', tabs[i] === t);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  $(t).classList.add('active');
+  render();
+}
+
+function renderFilters(){
+  const fc = $('filter-client');
+  const fs = $('filter-saveur');
+  const ff = $('filter-format');
+
+  if(fc){
+    fc.innerHTML = '<option>Tous</option>';
+    S.clients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.textContent = c;
+      opt.value = c;
+      fc.appendChild(opt);
+    });
+    fc.value = S.filterClient;
+  }
+
+  if(fs){
+    fs.innerHTML = '<option>Toutes</option>';
+    S.saveurs.forEach(s => {
+      const opt = document.createElement('option');
+      opt.textContent = s;
+      opt.value = s;
+      fs.appendChild(opt);
+    });
+    fs.value = S.filterSaveur;
+  }
+
+  if(ff){
+    ff.innerHTML = '<option>Tous</option>';
+    S.formats.forEach(f => {
+      const opt = document.createElement('option');
+      opt.textContent = f;
+      opt.value = f;
+      ff.appendChild(opt);
+    });
+    ff.value = S.filterFormat;
+  }
+}
+
+function updateFilters(){
+  S.filterClient = $('filter-client').value;
+  S.filterSaveur = $('filter-saveur').value;
+  S.filterFormat = $('filter-format').value;
+  saveLS();
+}
+
+function buildResume(){
+  const pivot = {};
+  S.saveurs.forEach(s => { pivot[s] = {}; S.formats.forEach(f => { pivot[s][f] = 0; }); });
+
+  S.entries.forEach(e => {
+    if(S.filterClient !== 'Tous' && e.client !== S.filterClient) return;
+    if(S.filterSaveur !== 'Toutes' && e.saveur !== S.filterSaveur) return;
+    if(S.filterFormat !== 'Tous' && e.format !== S.filterFormat) return;
+    if(pivot[e.saveur] && pivot[e.saveur][e.format] !== undefined) {
+      pivot[e.saveur][e.format] += e.qte;
+    }
+  });
+
+  let html = '<thead><tr><th>Saveur</th>';
+  S.formats.forEach(f => { html += '<th>' + es(f) + '</th>'; });
+  html += '<th class="total-col">TOTAL</th></tr></thead><tbody>';
+
+  let totalsFormat = {};
+  S.formats.forEach(f => { totalsFormat[f] = 0; });
+
+  S.saveurs.forEach(s => {
+    let lineTotal = 0;
+    html += '<tr><td><strong>' + es(s) + '</strong></td>';
+    S.formats.forEach(f => {
+      const v = pivot[s][f] || 0;
+      lineTotal += v;
+      totalsFormat[f] += v;
+      html += '<td class="total-col">' + (v ? v : '—') + '</td>';
+    });
+    html += '<td class="total-col"><strong>' + (lineTotal ? lineTotal : '—') + '</strong></td></tr>';
+  });
+
+  let grandTotal = 0;
+  html += '<tr class="total-row"><td><strong>TOTAL</strong></td>';
+  S.formats.forEach(f => {
+    const v = totalsFormat[f] || 0;
+    grandTotal += v;
+    html += '<td><strong>' + (v ? v : '—') + '</strong></td>';
+  });
+  html += '<td><strong>' + (grandTotal ? grandTotal : '—') + '</strong></td></tr></tbody>';
+
+  $('pivot-table').innerHTML = '<div class="table-wrap"><table>' + html + '</table></div>';
+
+  let topSaveur = 'N/A', topClient = 'N/A';
+  let maxS = 0, maxC = 0;
+  const saveurQte = {}, clientQte = {};
+  S.entries.forEach(e => {
+    saveurQte[e.saveur] = (saveurQte[e.saveur] || 0) + e.qte;
+    clientQte[e.client] = (clientQte[e.client] || 0) + e.qte;
+  });
+  Object.entries(saveurQte).forEach(([k, v]) => { if(v > maxS) { maxS = v; topSaveur = k; } });
+  Object.entries(clientQte).forEach(([k, v]) => { if(v > maxC) { maxC = v; topClient = k; } });
+
+  const statsHtml = '<div class="stat-card"><div class="stat-label">Entrées</div><div class="stat-value">' + S.entries.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Top saveur</div><div class="stat-value">' + es(topSaveur) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Top client</div><div class="stat-value">' + es(topClient) + '</div></div>';
+  $('stats').innerHTML = statsHtml;
+}
+
+function buildSaisie(){
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = $('entry-date');
+  if(dateInput && !dateInput.value) dateInput.value = today;
+
+  const formatEl = $('entry-format');
+  if(formatEl){
+    formatEl.innerHTML = '';
+    S.formats.forEach(f => {
+      const opt = document.createElement('option');
+      opt.textContent = f;
+      opt.value = f;
+      formatEl.appendChild(opt);
+    });
+  }
+
+  const saveurEl = $('entry-saveur');
+  if(saveurEl){
+    saveurEl.innerHTML = '';
+    S.saveurs.forEach(s => {
+      const opt = document.createElement('option');
+      opt.textContent = s;
+      opt.value = s;
+      saveurEl.appendChild(opt);
+    });
+  }
+
+  const clientEl = $('entry-client');
+  if(clientEl){
+    clientEl.innerHTML = '';
+    S.clients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.textContent = c;
+      opt.value = c;
+      clientEl.appendChild(opt);
+    });
+    clientEl.value = 'VDP';
+  }
+
+  const couleurEl = $('entry-couleur');
+  if(couleurEl){
+    couleurEl.innerHTML = '';
+    S.couleurs.forEach(c => {
+      const opt = document.createElement('option');
+      opt.textContent = c;
+      opt.value = c;
+      couleurEl.appendChild(opt);
+    });
+  }
+
+  let journalHtml = '';
+  const sorted = [...S.entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  sorted.forEach(e => {
+    journalHtml += '<div class="journal-entry">' +
+      '<div class="journal-entry-main">' +
+      '<span style="font-size:18px">🧃</span>' +
+      '<div class="journal-entry-txt">' +
+      '<strong>' + es(e.saveur) + ' • ' + es(e.format) + ' × ' + e.qte + '</strong>' +
+      '<span style="color:var(--mu);font-size:12px">' + es(e.client) + ' • bouchon ' + es(e.couleur) + ' • ' + e.date + '</span>' +
+      '</div>' +
+      '</div>' +
+      '<button class="btn btn-del" onclick="deleteEntry(\'' + e.id + '\')">✕</button>' +
+      '</div>';
+  });
+  $('journal').innerHTML = journalHtml || '<div style="color:var(--mu);font-size:13px;padding:12px">Aucune entrée pour l\'instant.</div>';
+}
+
+function addEntry(){
+  const dateEl = $('entry-date');
+  const formatEl = $('entry-format');
+  const saveurEl = $('entry-saveur');
+  const clientEl = $('entry-client');
+  const couleurEl = $('entry-couleur');
+  const qteEl = $('entry-qte');
+  if(!dateEl || !formatEl || !saveurEl || !clientEl || !couleurEl) return;
+  const date = dateEl.value;
+  const format = formatEl.value;
+  const saveur = saveurEl.value;
+  const client = clientEl.value;
+  const couleur = couleurEl.value;
+  const qte = parseInt(qteEl.value) || 1;
+
+  if(!date || !format || !saveur || !client || !couleur) {
+    alert('Veuillez remplir tous les champs');
+    return;
+  }
+
+  const id = 'e-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  S.entries.push({ id, date, saveur, format, client, couleur, qte, ts: Date.now() });
+  S.entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const qteResetEl = $('entry-qte');
+  if(qteResetEl) qteResetEl.value = '1';
+  const dateResetEl = $('entry-date');
+  if(dateResetEl) dateResetEl.value = new Date().toISOString().split('T')[0];
+  saveLS();
+}
+
+function deleteEntry(id){
+  S.entries = S.entries.filter(e => e.id !== id);
+  saveLS();
+}
+
+function buildParams(){
+  const renderList = (key, list, listId) => {
+    const el = $(listId);
+    if(!el) return;
+    let html = '';
+    const sorted = [...list].sort((a, b) => {
+      if(key === 'clients' && (a === 'VDP' || b === 'VDP')) {
+        return a === 'VDP' ? -1 : (b === 'VDP' ? 1 : a.localeCompare(b));
+      }
+      return a.localeCompare(b);
+    });
+    sorted.forEach(item => {
+      const used = S.entries.some(e => {
+        if(key === 'clients') return e.client === item;
+        if(key === 'formats') return e.format === item;
+        if(key === 'saveurs') return e.saveur === item;
+        if(key === 'couleurs') return e.couleur === item;
+        return false;
+      });
+      const warn = used ? ' <div class="params-warn">Utilisé dans les entrées</div>' : '';
+      html += '<div class="params-item"><span>' + es(item) + '</span>' +
+        '<button class="btn btn-del" onclick="delParam(\'' + key + '\',\'' + es(item) + '\')" ' + (used ? 'disabled' : '') + '>✕</button></div>' +
+        warn;
+    });
+    el.innerHTML = html;
+  };
+
+  renderList('clients', S.clients, 'clients-list');
+  renderList('formats', S.formats, 'formats-list');
+  renderList('saveurs', S.saveurs, 'saveurs-list');
+  renderList('couleurs', S.couleurs, 'couleurs-list');
+}
+
+function addParam(type){
+  const inputId = 'add-' + type;
+  const inputEl = $(inputId);
+  if(!inputEl) return;
+  const val = inputEl.value.trim();
+  if(!val) { alert('Veuillez entrer une valeur'); return; }
+
+  const key = (type === 'client' ? 'clients' : (type === 'format' ? 'formats' : (type === 'saveur' ? 'saveurs' : 'couleurs')));
+  if(!S[key].includes(val)) {
+    S[key].push(val);
+    saveLS();
+  }
+  inputEl.value = '';
+}
+
+function delParam(key, val){
+  const k = (key === 'clients' ? 'clients' : (key === 'formats' ? 'formats' : (key === 'saveurs' ? 'saveurs' : 'couleurs')));
+  S[k] = S[k].filter(x => x !== val);
+  saveLS();
+}
+
+function buildStock(){
+  // Calcul des arrivées par type
+  function totalEntree(type){
+    return S.reappro.filter(r => r.type === type).reduce((a, r) => a + r.qte, 0);
+  }
+  // Calcul de la consommation par type
+  function calcConsomme(type){
+    if(type === 'b33') return S.entries.filter(e => e.format === '33cl').reduce((a, e) => a + e.qte, 0);
+    if(type === 'b1L') return S.entries.filter(e => ['1L','1L Rhum','1L Soft'].includes(e.format)).reduce((a, e) => a + e.qte, 0);
+    if(type === 'bouchon') return S.entries.filter(e => !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
+    if(type === 'bib') return S.entries.filter(e => e.format === 'BIB 3L').reduce((a, e) => a + e.qte, 0);
+    if(type === 'bibGen') return S.entries.filter(e => e.format === 'BIB générique 3L').reduce((a, e) => a + e.qte, 0);
+    return 0;
+  }
+
+  const STOCK_ITEMS = [
+    {type:'b33', label:'Bouteilles 33cl'},
+    {type:'b1L', label:'Bouteilles 1L'},
+    {type:'bouchon', label:'Bouchons'},
+    {type:'bib', label:'BIBs 3L'},
+    {type:'bibGen', label:'BIBs générique 3L'}
+  ];
+
+  // Render section A
+  let htmlA = '<div class="stock-section"><div class="stock-section-title">A — Stock emballages (calculé)</div>';
+  htmlA += '<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--brd)">Article</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Entré</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Consommé</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Restant</th></tr></thead><tbody>';
+  STOCK_ITEMS.forEach(item => {
+    const entree = totalEntree(item.type);
+    const conso = calcConsomme(item.type);
+    const rest = entree - conso;
+    const cls = rest < 0 ? 'color:var(--gr);font-weight:700' : (entree > 0 && rest / entree > 0.2 ? 'color:#27ae60;font-weight:700' : '');
+    htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + item.label + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
+  });
+  htmlA += '</tbody></table></div>';
+
+  // Render section B — cartons (manuel)
+  const carton33 = S.stock.carton33 || 0;
+  const carton1L = S.stock.carton1L || 0;
+  let htmlB = '<div class="stock-section"><div class="stock-section-title">B — Cartons (manuel)</div>';
+  htmlB += '<div class="stock-row"><div class="stock-label">Cartons 33cl</div><div class="stock-input-group"><input type="number" min="0" id="stock-carton33" value="' + carton33 + '" onchange="updCarton(\'carton33\',this.value)"></div></div>';
+  htmlB += '<div class="stock-row"><div class="stock-label">Cartons 1L</div><div class="stock-input-group"><input type="number" min="0" id="stock-carton1L" value="' + carton1L + '" onchange="updCarton(\'carton1L\',this.value)"></div></div>';
+  htmlB += '</div>';
+
+  // Render section C — produits spéciaux
+  const gnrDate = S.stock.gnrDate ? 'Saisi le ' + S.stock.gnrDate : 'Jamais saisi';
+  const ibcPommeDate = S.stock.ibcPommeDate ? 'Saisi le ' + S.stock.ibcPommeDate : 'Jamais saisi';
+  const ibcPoireDate = S.stock.ibcPoireDate ? 'Saisi le ' + S.stock.ibcPoireDate : 'Jamais saisi';
+  let htmlC = '<div class="stock-section"><div class="stock-section-title">C — Produits spéciaux</div>';
+  htmlC += '<div class="stock-row"><div class="stock-label">GNR (%)</div><div class="stock-input-group"><input type="number" min="0" max="100" step="0.1" id="stock-gnr" value="' + (S.stock.gnr||0) + '" onchange="updateSpecial(\'gnr\')"></div></div>';
+  htmlC += '<div class="stock-date" id="gnr-date">' + gnrDate + '</div>';
+  htmlC += '<div class="stock-row"><div class="stock-label">IBC Pomme (L)</div><div class="stock-input-group"><input type="number" min="0" step="10" id="stock-ibcPomme" value="' + (S.stock.ibcPomme||0) + '" onchange="updateSpecial(\'ibcPomme\')"></div></div>';
+  htmlC += '<div class="stock-date" id="ibcPomme-date">' + ibcPommeDate + '</div>';
+  htmlC += '<div class="stock-row"><div class="stock-label">IBC Poire (L)</div><div class="stock-input-group"><input type="number" min="0" step="10" id="stock-ibcPoire" value="' + (S.stock.ibcPoire||0) + '" onchange="updateSpecial(\'ibcPoire\')"></div></div>';
+  htmlC += '<div class="stock-date" id="ibcPoire-date">' + ibcPoireDate + '</div></div>';
+
+  // Render section D — réapprovisionnements
+  const LABELS = {b33:'Bouteilles 33cl',b1L:'Bouteilles 1L',bouchon:'Bouchons',bib:'BIBs 3L',bibGen:'BIBs générique 3L'};
+  const today = new Date().toISOString().split('T')[0];
+  let htmlD = '<div class="stock-section"><div class="stock-section-title">D — Arrivées de stock</div>';
+  htmlD += '<div class="form-row" style="margin-bottom:12px">';
+  htmlD += '<div class="form-group"><label>Article</label><select id="reappro-type">';
+  Object.entries(LABELS).forEach(([k,l]) => { htmlD += '<option value="' + k + '">' + l + '</option>'; });
+  htmlD += '</select></div>';
+  htmlD += '<div class="form-group"><label>Date</label><input type="date" id="reappro-date" value="' + today + '"></div>';
+  htmlD += '<div class="form-group"><label>Quantité</label><input type="number" min="1" id="reappro-qte" value="1"></div>';
+  htmlD += '<div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="addReappro()">➕ Ajouter</button></div>';
+  htmlD += '</div>';
+
+  const sorted = [...S.reappro].sort((a,b) => new Date(b.date)-new Date(a.date));
+  if(sorted.length === 0){
+    htmlD += '<div style="color:var(--mu);font-size:13px;padding:8px 0">Aucune arrivée enregistrée.</div>';
+  } else {
+    htmlD += '<div class="journal" style="max-height:220px;overflow-y:auto">';
+    sorted.forEach(r => {
+      htmlD += '<div class="journal-entry"><div class="journal-entry-main"><span style="font-size:18px">📦</span>';
+      htmlD += '<div class="journal-entry-txt"><strong>' + LABELS[r.type] + ' × ' + r.qte + '</strong>';
+      htmlD += '<span style="color:var(--mu);font-size:12px">' + r.date + '</span></div></div>';
+      htmlD += '<button class="btn btn-del" onclick="deleteReappro(\'' + r.id + '\')">✕</button></div>';
+    });
+    htmlD += '</div>';
+  }
+  htmlD += '</div>';
+
+  const stockEl = $('stock');
+  if(stockEl) stockEl.innerHTML = htmlA + htmlB + htmlC + htmlD;
+}
+
+
+function updateSpecial(key){
+  const inputEl = $('stock-' + key);
+  if(!inputEl) return;
+  S.stock[key] = parseFloat(inputEl.value) || 0;
+  S.stock[key + 'Date'] = new Date().toLocaleDateString('fr-FR');
+  const dateEl = $(key + '-date');
+  if(dateEl) dateEl.textContent = 'Saisi le ' + S.stock[key + 'Date'];
+  saveLS();
+}
+
+function closeSeasonModal(){
+  modalCB = () => {
+    const rows = [];
+    rows.push(['date','saveur','format','client','couleur','qte'].join('\t'));
+    S.entries.forEach(e => {
+      rows.push([e.date, e.saveur, e.format, e.client, e.couleur, e.qte].join('\t'));
+    });
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'flipo-jus-' + S.saison.replace('/', '-') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    S.entries = [];
+    const parts = S.saison.split('/');
+    S.saison = (parseInt(parts[0]) + 1) + '/' + (parseInt(parts[1]) + 1);
+    S.filterClient = 'Tous';
+    S.filterSaveur = 'Toutes';
+    S.filterFormat = 'Tous';
+    saveLS();
+  };
+
+  $('modal-title').textContent = 'Clôturer la saison';
+  $('modal-txt').textContent = 'Cela va exporter les données, vider le journal et démarrer une nouvelle saison. Êtes-vous sûr ?';
+  $('modal-ok').textContent = 'Clôturer';
+  $('modal-overlay').classList.add('active');
+}
+
+function confirmModal(){
+  closeModal();
+  if(modalCB) modalCB();
+}
+
+function closeModal(){
+  $('modal-overlay').classList.remove('active');
+  modalCB = null;
+}
+
+function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,emailPlain){
+  const w=window.open('','_blank','width=800,height=680,scrollbars=yes');
+  if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
+  const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
+  const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+moduleTitle+'</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
+    +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
+    +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
+    +'.tbtn{padding:8px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}'
+    +'.tbtn-print{background:'+accentColor+';color:#fff}.tbtn-email{background:#185FA5;color:#fff}.tbtn-close{background:#eee;color:#333;margin-left:auto}'
+    +'.logo-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:3px solid '+accentColor+';margin-bottom:22px}'
+    +'.logo-box{width:44px;height:44px;border-radius:12px;background:'+accentColor+';display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+    +'.logo-title{font-size:20px;font-weight:700;color:'+accentColor+'}.logo-sub{font-size:11px;color:#888;margin-top:3px}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 16px}'
+    +'th{background:#f2f2f0;padding:7px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700}'
+    +'td{padding:7px 10px;border-bottom:1px solid #eee}'
+    +'.tr{background:#f9f9f0;font-weight:700}.tar{text-align:right}'
+    +'.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:18px 0 8px;padding-top:14px;border-top:1px solid #eee}'
+    +'.stat-box{display:inline-block;text-align:center;padding:12px 18px;background:#f5f5f5;border-radius:8px;margin:0 8px 10px 0}'
+    +'.stat-val{font-size:20px;font-weight:700;color:'+accentColor+'}.stat-lbl{font-size:11px;color:#666;margin-top:2px}'
+    +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}}</style>'
+    +'</head><body><div class="page">'
+    +'<div class="toolbar">'
+    +'<button class="tbtn tbtn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>'
+    +'<a class="tbtn tbtn-email" href="'+emailHref+'">📧 Envoyer par email</a>'
+    +'<button class="tbtn tbtn-close" onclick="window.close()">✕ Fermer</button>'
+    +'</div>'
+    +'<div class="logo-hdr">'
+    +'<div class="logo-box"><svg viewBox="0 0 28 32" fill="none" width="26" height="30"><rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/><ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/><circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/><circle cx="14" cy="18" r="2.2" fill="#f4a020"/></svg></div>'
+    +'<div><div class="logo-title">Flipo — '+moduleTitle+'</div><div class="logo-sub">Généré le '+dt+'</div></div>'
+    +'</div>'
+    +contentHTML
+    +'</div></body></html>');
+  w.document.close();
+}
+
+function shareNow(type){
+  void type;
+  const dt = new Date().toLocaleDateString('fr-FR');
+  let html = '', plain = '', title = 'Jus — ' + S.saison, subject = 'Jus Flipo ' + S.saison + ' — ' + dt;
+  if(S.tab === 'resume' || S.tab === 'saisie'){
+    // Tableau par saveur × format
+    const pivot = {}; S.saveurs.forEach(s=>{ pivot[s]={}; S.formats.forEach(f=>{ pivot[s][f]=0; }); });
+    S.entries.forEach(e=>{ if(pivot[e.saveur]!==undefined&&e.format) pivot[e.saveur][e.format]=(pivot[e.saveur][e.format]||0)+(e.qte||0); });
+    const totFormat = {}; S.formats.forEach(f=>{ totFormat[f]=0; });
+    let grandTot = 0;
+    html = '<div class="section-title">Production par saveur — Saison ' + S.saison + '</div>';
+    html += '<table><thead><tr><th>Saveur</th>' + S.formats.map(f=>'<th class="tar">'+es(f)+'</th>').join('') + '<th class="tar">Total</th></tr></thead><tbody>';
+    plain = 'Jus Flipo — Saison ' + S.saison + '\n' + dt + '\n\n';
+    S.saveurs.forEach(s=>{
+      const row = pivot[s]; let rowTot = 0;
+      S.formats.forEach(f=>{ totFormat[f]+=(row[f]||0); rowTot+=(row[f]||0); });
+      grandTot += rowTot;
+      if(rowTot===0) return;
+      html += '<tr><td>'+es(s)+'</td>' + S.formats.map(f=>'<td class="tar">'+(row[f]||0)+'</td>').join('') + '<td class="tar"><strong>'+rowTot+'</strong></td></tr>';
+      plain += s + ' : ' + rowTot + '\n';
+    });
+    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('') + '<td class="tar">'+grandTot+'</td></tr>';
+    html += '</tbody></table>';
+  } else if(S.tab === 'stock'){
+    title = 'Jus — Stock'; subject = 'Stock Jus Flipo — ' + dt;
+    html = '<div class="section-title">Stock bouteilles</div>';
+    html += '<div style="margin-bottom:16px">';
+    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b33||0) + '</div><div class="stat-lbl">Bouteilles 33cl</div></div>';
+    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b1L||0) + '</div><div class="stat-lbl">Bouteilles 1L</div></div>';
+    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.bouchon||0) + '</div><div class="stat-lbl">Bouchons</div></div>';
+    html += '</div>';
+    plain = 'Stock Jus Flipo\n' + dt + '\n\n33cl : ' + (S.stock.b33||0) + '\n1L : ' + (S.stock.b1L||0) + '\nBouchons : ' + (S.stock.bouchon||0);
+  } else if(S.tab === 'params'){
+    title = 'Jus — Paramètres'; subject = 'Paramètres Jus Flipo — ' + dt;
+    html = '<div class="section-title">Clients</div><table><thead><tr><th>Nom</th></tr></thead><tbody>';
+    plain = 'Jus Flipo — Paramètres\n' + dt + '\n\nClients:\n';
+    S.clients.forEach(c=>{ html+='<tr><td>'+es(c)+'</td></tr>'; plain+=c+'\n'; });
+    html += '</tbody></table>';
+    html += '<div class="section-title">Formats</div><table><thead><tr><th>Format</th></tr></thead><tbody>';
+    plain += '\nFormats:\n';
+    S.formats.forEach(f=>{ html+='<tr><td>'+es(f)+'</td></tr>'; plain+=f+'\n'; });
+    html += '</tbody></table>';
+  }
+  openSharePreview(title, '#185FA5', html, subject, plain + '\n— Flipo');
+}
+
+function addReappro(){
+  const type = $('reappro-type').value;
+  const date = $('reappro-date').value;
+  const qte = parseInt($('reappro-qte').value) || 0;
+  if(!date || qte <= 0){ alert('Veuillez remplir tous les champs'); return; }
+  const id = 'r-' + Date.now() + '-' + Math.random().toString(36).substr(2,6);
+  S.reappro.push({id, type, date, qte});
+  saveLS();
+}
+
+function deleteReappro(id){
+  S.reappro = S.reappro.filter(r => r.id !== id);
+  saveLS();
+}
+
+function updCarton(key, val){
+  if(!key || val === undefined) return;
+  S.stock[key] = parseInt(val) || 0;
+  saveLS();
+}
+
+
+loadLS();
+render();
+syncInitPull(function(){location.reload();});
+
+// ─── Auth ────────────────────────────────────────────────
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['jus'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['resume','saisie','params','stock'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    if(!tabs[tid]||!tabs[tid].enabled){
+      var b=document.querySelector('[data-tab="'+tid+'"]');
+      if(b)b.style.display='none';
+      var p=document.getElementById(tid);
+      if(p)p.style.display='none';
+    }else if(!first)first=tid;
+  });
+  if(first&&typeof switchTab==='function'){switchTab(first);}
+})();
+</script>
+
+</body>
+</html>

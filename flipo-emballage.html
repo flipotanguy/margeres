@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tri / Emballage - Flipo 2026</title>
+  <style>
+    :root{--gr:#e07020;--gd:#a85010;--gl:#fff3e8;--brd:#e0e0e0;--bg:#f7f7f5;--wh:#fff;--tx:#1a1a1a;--mu:#666}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;background:var(--bg);color:var(--tx)}
+    .app{max-width:1200px;margin:0 auto;background:var(--wh);min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,.07)}
+    .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:2px solid var(--gr);background:var(--wh)}
+    .htxt h1{font-size:17px;font-weight:700;color:var(--gd)}.htxt p{font-size:11px;color:var(--mu)}
+    .tabs{display:flex;padding:0 20px;background:var(--wh);border-bottom:1px solid var(--brd);flex-wrap:wrap}
+    .tab{font-size:13px;padding:11px 18px;border:none;border-bottom:3px solid transparent;cursor:pointer;background:transparent;color:var(--mu);font-weight:500}
+    .tab:hover{color:var(--gr)}.tab.act{color:var(--gr);border-bottom-color:var(--gr)}
+    .content{padding:20px}
+    .stabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+    .stab{font-size:12px;padding:5px 14px;border-radius:99px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--mu);font-weight:500}
+    .stab:hover{color:var(--gr)}.stab.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+    .btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;gap:5px;font-weight:500;min-height:36px}
+    .btn:hover{background:var(--bg)}
+    .btn.add{background:var(--gl);color:var(--gd);border-color:var(--gr)}.btn.add:hover{background:#ffe0c0}
+    .btn.ok{background:var(--gr);color:#fff;border-color:var(--gd)}.btn.ok:hover{background:var(--gd)}
+    .btn.ok.sm{padding:4px 10px;font-size:11px}
+    .btn.del{background:#d9534f;color:#fff;border-color:#c9302c}.btn.del:hover{background:#c9302c}
+    .btn.del.sm{padding:4px 8px;font-size:11px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .tw{overflow-x:auto;border:1px solid var(--brd);border-radius:10px;margin-bottom:10px}
+    .tw table{width:100%;border-collapse:collapse;font-size:13px}
+    .tw thead{background:#f2f2f0}
+    .tw th{padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid var(--brd);white-space:nowrap}
+    .tw th.r{text-align:right}
+    .tw td{padding:7px 12px;border-bottom:1px solid #f0f0f0}
+    .tw tbody tr:last-child td{border-bottom:none}
+    .tw tbody tr:hover{background:var(--gl)}
+    .tw td.r{text-align:right}
+    .tw td.ctr{text-align:center}
+    .tw .tr-tot td{font-weight:700;background:#f8f4f0;border-top:2px solid var(--brd)}
+    .form-hdr{background:var(--gl);padding:12px 14px;border-radius:10px;margin-bottom:12px;border:1px solid #f0c080}
+    .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .form-field{display:flex;flex-direction:column;min-width:110px}
+    .form-field.wide{flex:1;min-width:160px}
+    .form-field label{font-size:11px;font-weight:600;color:var(--gd);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+    .form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:16px;background:var(--wh)}
+    .form-field input:focus,.form-field select:focus{outline:none;border-color:var(--gr)}
+    .pal-input{width:80px;text-align:right;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-weight:600;background:var(--wh)}
+    .pal-input:focus{outline:none;border-color:var(--gr);box-shadow:0 0 0 2px rgba(224,112,32,.15)}
+    .add-var-row{display:flex;gap:8px;align-items:center;padding:10px 12px;background:#f8f8f6;border-top:1px solid var(--brd);border-radius:0 0 10px 10px;flex-wrap:wrap}
+    .info-box{background:var(--gl);border-left:3px solid var(--gr);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--gd);margin-bottom:12px;line-height:1.5}
+    .stitle{font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--brd)}
+    .empty{text-align:center;color:#aaa;padding:36px 20px;font-size:13px}
+    .hidden{display:none}
+    .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600}
+    .badge.pom{background:#fff0e0;color:#a85010}.badge.poi{background:#e8f0ff;color:#1855a8}
+    /* Stock */
+    .bat-card{border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin-bottom:14px}
+    .bat-hdr{background:var(--gd);color:#fff;padding:10px 16px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between}
+    .bat-hdr .sub{font-weight:400;font-size:12px;opacity:.85}
+    .fri-section{border-top:1px solid var(--brd)}
+    .fri-hdr{background:#e8f2e8;padding:8px 16px;font-weight:700;font-size:12px;color:#2d5a2d;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #d0e8d0}
+    .fri-body{padding:10px 14px}
+    .stock-filter-bar{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+    .stat-card{border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:14px}
+    .stat-title{font-weight:700;font-size:13px;color:var(--gd);margin-bottom:10px}
+    .neg{color:#d9534f;font-weight:700}
+    .pos{color:#2d7a4a;font-weight:700}
+    .share-fab{position:fixed;bottom:20px;right:20px;z-index:1000}
+    .share-pill{background:var(--wh);border-radius:50px;box-shadow:0 4px 12px rgba(0,0,0,.15);display:flex;overflow:hidden}
+    .share-pill-btn{padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600}
+    .share-pill-btn:hover{background:#f5f5f5}.share-pill-sep{width:1px;background:var(--brd)}
+    #info-banner{position:fixed;bottom:70px;right:20px;z-index:1001;background:#333;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;opacity:0;transition:opacity .3s}
+    /* Mobile responsiveness */
+    @media(max-width:600px){
+      .hdr{flex-wrap:wrap;gap:8px;padding:10px 12px}
+      .htxt h1{font-size:14px}
+      .htxt p{font-size:10px}
+      #sync-status{display:none}
+      button[onclick*="syncPullManual"]{font-size:10px;padding:3px 8px}
+      .tabs{padding:0 12px;overflow-x:auto;flex-wrap:nowrap;gap:0}
+      .tab{font-size:11px;padding:9px 12px;min-width:auto;white-space:nowrap}
+      .content{padding:12px}
+      .form-row{gap:8px}
+      .form-field{min-width:auto}
+      .form-field input,.form-field select{font-size:16px;padding:8px}
+      .btn{font-size:11px;padding:6px 10px;min-height:44px}
+      .btn.ok.sm,.btn.del.sm{min-height:40px}
+      .stabs{gap:4px;margin-bottom:10px}
+      .stab{font-size:11px;padding:4px 10px}
+      .pal-input{font-size:16px}
+      .tw{margin-bottom:8px;border-radius:6px}
+      .tw table{font-size:12px}
+      .tw th{padding:6px 8px}
+      .tw td{padding:4px 6px}
+      .form-hdr{padding:10px 12px;margin-bottom:10px;border-radius:6px}
+      .add-var-row{flex-wrap:wrap;gap:6px;padding:8px 10px}
+      .bat-card{margin-bottom:10px}
+      .bat-hdr{font-size:13px;padding:8px 12px}
+      .bat-hdr .sub{font-size:11px}
+      .fri-hdr{font-size:11px;padding:6px 12px}
+      .stat-card{padding:10px;margin-bottom:10px}
+      .stat-title{font-size:12px;margin:12px 0 6px}
+      .info-box{font-size:11px;padding:8px 10px;margin-bottom:10px}
+      .empty{padding:20px 12px;font-size:12px}
+      .share-fab{bottom:12px;right:12px}
+      .share-pill{padding:6px 10px;gap:6px}
+      .share-pill-btn{font-size:11px;padding:1px 4px}
+      #info-banner{bottom:60px;right:12px;font-size:11px;padding:6px 10px}
+      @supports(padding:max(0px)){.share-fab{bottom:max(12px,env(safe-area-inset-bottom));right:max(12px,env(safe-area-inset-right))}}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 28 32" fill="none" width="22" height="26">
+          <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+          <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+          <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+          <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+        </svg>
+      </div>
+      <span style="font-size:14px;font-weight:800;color:var(--gd)">Flipo</span>
+    </a>
+    <div style="width:1px;height:28px;background:var(--brd);margin:0 4px"></div>
+    <div class="htxt"><h1>Tri / Emballage</h1><p>Saison 2026/2027</p></div>
+    <span id="sync-status" style="margin-left:auto;font-size:11px;color:#bbb;white-space:nowrap">☁️</span>
+    <button onclick="syncPullManual()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+  </div>
+  <div class="tabs" id="main-tabs">
+    <button class="tab act" id="tab-pomme" onclick="setTab('pomme',this)">🍎 Pomme</button>
+    <button class="tab" id="tab-poire" onclick="setTab('poire',this)">🍐 Poire</button>
+    <button class="tab" id="tab-stock" onclick="setTab('stock',this)">🏪 Stock</button>
+    <button class="tab" id="tab-transfert" onclick="setTab('transfert',this)">🔄 Transfert</button>
+    <button class="tab" id="tab-stats" onclick="setTab('stats',this)">📊 Stats</button>
+  </div>
+  <div class="content">
+    <div id="panel-pomme"></div>
+    <div id="panel-poire" class="hidden"></div>
+    <div id="panel-stock" class="hidden"></div>
+    <div id="panel-transfert" class="hidden"></div>
+    <div id="panel-stats" class="hidden"></div>
+  </div>
+</div>
+<div class="share-fab">
+  <div class="share-pill">
+    <button class="share-pill-btn" onclick="shareNow('email')">📧 Email</button>
+    <div class="share-pill-sep"></div>
+    <button class="share-pill-btn" onclick="shareNow('sms')">💬 SMS</button>
+  </div>
+</div>
+<div id="info-banner"></div>
+
+<script>
+var LS_KEY='flipo-emballage-v1';
+var VERGER_KEY='flipo-verger-v2';
+var MARG_ID='__margeres__';
+var MARG_NOM='Margères (tri)';
+
+var S={
+  tab:'pomme',
+  pommeSub:'saisie',poireSub:'saisie',
+  stockSub:'bilan',stockFilter:'',
+  batCulture:'',batVar:'',
+  bilanVar:'',
+  sessions:[],transfers:[],
+  varList:{pomme:[],poire:[]}
+};
+
+// ─── Utilitaires ─────────────────────────────────────────
+function $(id){return document.getElementById(id);}
+function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtD(s){if(!s)return'—';var p=s.split('-');if(p.length===3&&p[0].length===4)return p[2]+'/'+p[1]+'/'+p[0];return s;}
+function isoToday(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();}
+function isoMonday(){var d=new Date();var dow=d.getDay()||7;var mon=new Date(d.getFullYear(),d.getMonth(),d.getDate()-dow+1);return mon.getFullYear()+'-'+(mon.getMonth()<9?'0':'')+(mon.getMonth()+1)+'-'+(mon.getDate()<10?'0':'')+mon.getDate();}
+function isoFirstOfMonth(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-01';}
+function isoLastMonth(){var d=new Date(new Date().getFullYear(),new Date().getMonth()-1,1);return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-01';}
+function showBanner(msg){var b=$('info-banner');b.textContent=msg;b.style.opacity='1';setTimeout(function(){b.style.opacity='0';},2500);}
+function numFr(n){return(+n||0).toLocaleString('fr-FR');}
+
+// ─── Supabase Sync ────────────────────────────────────────
+var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+
+function _supaHdr(extra){
+  var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+  if(extra)Object.keys(extra).forEach(function(k){h[k]=extra[k];});
+  return h;
+}
+function supaGet(key,cb){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(key)+'&select=data',{headers:_supaHdr()})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){cb(rows&&rows.length?rows[0].data:null);})
+  .catch(function(){cb(null);});
+}
+function supaSet(key,data){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+    method:'POST',
+    headers:_supaHdr({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+    body:JSON.stringify({key:key,data:data,updated_at:new Date().toISOString()})
+  }).catch(function(){});
+}
+function setSyncStatus(s){
+  var el=$('sync-status');if(!el)return;
+  if(s==='ok'){el.textContent='☁️ Sync';el.style.color='#2d7a4a';}
+  else if(s==='syncing'){el.textContent='🔄...';el.style.color='#e07020';}
+  else if(s==='offline'){el.textContent='⚠️ Hors ligne';el.style.color='#d9534f';}
+  else{el.textContent='☁️';el.style.color='#bbb';}
+}
+function syncSave(){
+  setSyncStatus('syncing');
+  supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,varList:S.varList});
+  setTimeout(function(){setSyncStatus('ok');},600);
+}
+function syncPull(cb){
+  // Pull Supabase → local (UNIQUEMENT sur demande explicite)
+  setSyncStatus('syncing');
+  var done=0;
+  function check(){if(++done>=2){setSyncStatus('ok');if(cb)cb();}}
+  supaGet(LS_KEY,function(data){
+    if(data){
+      if(Array.isArray(data.sessions))S.sessions=data.sessions;
+      if(Array.isArray(data.transfers))S.transfers=data.transfers;
+      if(data.varList){
+        if(Array.isArray(data.varList.pomme))S.varList.pomme=data.varList.pomme;
+        if(Array.isArray(data.varList.poire))S.varList.poire=data.varList.poire;
+      }
+      localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,varList:S.varList}));
+    }
+    check();
+  });
+  supaGet(VERGER_KEY,function(data){
+    if(data)localStorage.setItem(VERGER_KEY,JSON.stringify(data));
+    check();
+  });
+}
+function syncPullManual(){
+  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+  syncPull(function(){
+    var f=window._embFirst||'pomme';
+    var b=document.getElementById('tab-'+f);
+    if(b)setTab(f,b);else rebuildTab('pomme');
+    alert('✅ Données récupérées.');
+  });
+}
+
+// ─── Persistance ─────────────────────────────────────────
+function saveLS(){
+  localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,varList:S.varList}));
+  syncSave();
+}
+function loadLS(){
+  var d;try{d=JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){d={};}
+  if(Array.isArray(d.sessions))S.sessions=d.sessions;
+  if(Array.isArray(d.transfers))S.transfers=d.transfers;
+  if(d.varList){
+    if(Array.isArray(d.varList.pomme))S.varList.pomme=d.varList.pomme;
+    if(Array.isArray(d.varList.poire))S.varList.poire=d.varList.poire;
+  }
+}
+
+// ─── Données Verger ───────────────────────────────────────
+function getVergerData(){try{return JSON.parse(localStorage.getItem(VERGER_KEY)||'{}');}catch(e){return {};}}
+function getVergerVarieties(type){
+  var vd=getVergerData();
+  var arr=(type==='pomme'?vd.pomR:vd.poiR)||[];
+  return arr.map(function(r){return r.v||'';}).filter(Boolean).sort();
+}
+function getVergerBats(){return getVergerData().bats||[];}
+
+// Palox cueillis → TOUJOURS vers MARG_ID (virtuel, jamais les vrais bâtiments)
+function getCueilletteByVar(type){
+  var vd=getVergerData();
+  var rows=(type==='pomme'?vd.pomR:vd.poiR)||[];
+  var res={};
+  rows.forEach(function(r){
+    if(!r.v)return;
+    var total=r.d?r.d.reduce(function(a,b){return a+(+b||0);},0):0;
+    if(total>0)res[r.v]=(res[r.v]||0)+Math.round(total);
+  });
+  return res;
+}
+
+// ─── Calcul du stock ─────────────────────────────────────
+// Clés : MARG_ID | batId | batId+'|'+friId
+function getStockMap(){
+  var map={};
+  function add(key,type,v,n){
+    if(!map[key])map[key]={};
+    if(!map[key][type])map[key][type]={};
+    map[key][type][v]=(map[key][type][v]||0)+n;
+  }
+
+  // Bâtiment Margères défini en premier — clé unique pour tout ce qui concerne Margères
+  var margBat=getVergerBats().find(function(b){return b.nom&&b.nom.toLowerCase().indexOf('marg')>=0;});
+  var margKey=margBat?margBat.id:MARG_ID;
+
+  // 1. Cueillette
+  var vd=getVergerData();
+  var entries=vd.entries||[];
+  var knownBatIds=getVergerBats().map(function(b){return b.id;});
+  if(entries.length){
+    entries.forEach(function(e){
+      var type=e.cult,v=e.variete,pal=+(e.palox||0);
+      if(!type||!v||pal<=0)return;
+      var key;
+      if(!e.bat||e.bat===MARG_ID||e.bat===margKey||knownBatIds.indexOf(e.bat)<0){
+        key=margKey; // Margères, virtuel, ou ancien bâtiment supprimé → margKey
+      } else {
+        key=e.fri?e.bat+'|'+e.fri:e.bat;
+      }
+      add(key,type,v,pal);
+    });
+  } else {
+    ['pomme','poire'].forEach(function(type){
+      var cueil=getCueilletteByVar(type);
+      Object.keys(cueil).forEach(function(v){add(margKey,type,v,cueil[v]);});
+    });
+  }
+
+  // 2. Transferts — AVANT la fusion Margères pour que tout soit visible
+  S.transfers.forEach(function(t){
+    var pal=+(t.palox||0);if(pal<=0)return;
+    var fBat=t.fromBat===MARG_ID?margKey:t.fromBat;
+    var tBat=t.toBat===MARG_ID?margKey:t.toBat;
+    add(t.fromFri?fBat+'|'+t.fromFri:fBat,t.type,t.variete,-pal);
+    add(t.toFri?tBat+'|'+t.toFri:tBat,t.type,t.variete,+pal);
+  });
+
+  // 3. Fusion Margères : MARG_ID + tous les frigos de Margères → margKey (après transferts)
+  if(map[MARG_ID]){
+    Object.keys(map[MARG_ID]).forEach(function(tp){
+      Object.keys(map[MARG_ID][tp]).forEach(function(v){add(margKey,tp,v,map[MARG_ID][tp][v]);});
+    });
+    delete map[MARG_ID];
+  }
+  Object.keys(map).filter(function(k){return k.indexOf(margKey+'|')===0;}).forEach(function(fk){
+    Object.keys(map[fk]).forEach(function(tp){
+      Object.keys(map[fk][tp]).forEach(function(v){add(margKey,tp,v,map[fk][tp][v]);});
+    });
+    delete map[fk];
+  });
+
+  // 4. Tri → déduit de margKey (toujours, même si négatif)
+  S.sessions.forEach(function(s){
+    var pal=+(s.palox||0);if(pal<=0)return;
+    add(margKey,s.type,s.variete,-pal);
+  });
+  return map;
+}
+
+// ─── Navigation ──────────────────────────────────────────
+function setTab(name,btn){
+  S.tab=name;
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('act');});
+  btn.classList.add('act');
+  document.querySelectorAll('[id^="panel-"]').forEach(function(p){p.classList.add('hidden');});
+  var p=$('panel-'+name);if(p)p.classList.remove('hidden');
+  if(name==='pomme'||name==='poire')rebuildTab(name);
+  else if(name==='stock')initStock();
+  else if(name==='transfert')initTransfert();
+  else if(name==='stats')buildStats();
+}
+function setSub(type,v){S[type+'Sub']=v;rebuildTab(type);}
+function rebuildTab(type){var p=$('panel-'+type);if(p)p.innerHTML=buildTab(type);}
+
+function buildTab(type){
+  var sub=S[type+'Sub'];
+  var allSubs=[{id:'saisie',l:'📝 Saisie'},{id:'histo',l:'📋 Historique'}];
+  var ok=FLIPO_STABS[type];
+  var subs=ok&&ok.length?allSubs.filter(function(t){return ok.indexOf(t.id)>=0;}):allSubs;
+  if(!subs.length)subs=allSubs;
+  if(!subs.find(function(t){return t.id===sub;}))sub=subs[0].id;
+  S[type+'Sub']=sub;
+  var h='<div class="stabs">';
+  subs.forEach(function(t){h+='<button class="stab'+(sub===t.id?' act':'')+'" onclick="setSub(\''+type+'\',\''+t.id+'\')">'+t.l+'</button>';});
+  h+='</div>';
+  return h+(sub==='saisie'?buildSaisie(type):buildHistorique(type));
+}
+
+// ─── Saisie ───────────────────────────────────────────────
+// Liste permanente : toujours visible, saisie par ligne ou globale
+function buildSaisie(type){
+  var list=S.varList[type];
+  var allVars=getVergerVarieties(type);
+
+  // En-tête : période + saisie rapide hors liste
+  var qVarOpts='<option value="">— Variété —</option>';
+  allVars.forEach(function(v){qVarOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
+  qVarOpts+='<option value="__new__">✏️ Autre...</option>';
+
+  var h='<div class="form-hdr">';
+  h+='<div class="form-row">';
+  h+='<div class="form-field"><label>Du</label><input type="date" id="sai-from-'+type+'" value="'+isoMonday()+'"></div>';
+  h+='<div class="form-field"><label>Au</label><input type="date" id="sai-to-'+type+'" value="'+isoToday()+'"></div>';
+  h+='<div style="width:1px;background:rgba(0,0,0,.1);align-self:stretch;margin:0 4px"></div>';
+  h+='<div class="form-field wide"><label>Saisie hors liste — Variété</label><select id="sai-qvar-'+type+'" onchange="toggleQNew(\''+type+'\',this.value)">'+qVarOpts+'</select></div>';
+  h+='<div id="sai-qnewwrap-'+type+'" class="hidden form-field wide"><input type="text" id="sai-qnew-'+type+'" placeholder="Nom variété..."></div>';
+  h+='<div class="form-field"><label>Palox</label><input class="pal-input" type="number" id="sai-qpal-'+type+'" min="1" step="1" placeholder="0" style="width:80px"></div>';
+  h+='<div class="form-field"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="saveSessQuick(\''+type+'\')">✅</button></div>';
+  h+='</div></div>';
+
+  // Tableau de la liste permanente
+  h+='<div class="tw"><table>';
+  h+='<thead><tr>';
+  h+='<th style="width:50%">Variété</th>';
+  h+='<th class="r">Palox triés</th>';
+  h+='<th class="ctr" style="width:80px">Enreg.</th>';
+  h+='<th class="ctr" style="width:44px">Liste</th>';
+  h+='</tr></thead>';
+  h+='<tbody>';
+
+  if(list.length===0){
+    h+='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:22px;font-style:italic">Liste vide — ajoutez des variétés ci-dessous</td></tr>';
+  } else {
+    list.forEach(function(item,i){
+      h+='<tr>';
+      h+='<td style="font-weight:700;font-size:14px">'+es(item.v)+'</td>';
+      h+='<td class="r"><input class="pal-input" type="number" id="sai-pal-'+type+'-'+i+'" min="0" step="1" placeholder="—"></td>';
+      h+='<td class="ctr"><button class="btn ok sm" onclick="saveSessRow(\''+type+'\','+i+')">✅</button></td>';
+      h+='<td class="ctr"><button class="btn del sm" title="Retirer de la liste" onclick="rmVar(\''+type+'\','+i+')">✕</button></td>';
+      h+='</tr>';
+    });
+  }
+  h+='</tbody>';
+
+  // Pied du tableau : ajout variété + bouton tout enregistrer
+  var usedSet={};list.forEach(function(x){usedSet[x.v]=1;});
+  var varOpts='<option value="">+ Ajouter une variété à la liste...</option>';
+  allVars.forEach(function(v){if(!usedSet[v])varOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
+  varOpts+='<option value="__new__">✏️ Autre variété...</option>';
+
+  h+='<tfoot><tr><td colspan="4">';
+  h+='<div class="add-var-row">';
+  h+='<select id="sai-addvar-'+type+'" style="flex:1;padding:6px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)" onchange="toggleNewVar(\''+type+'\',this.value)">'+varOpts+'</select>';
+  h+='<input type="text" id="sai-newvar-'+type+'" class="hidden" placeholder="Nom de la variété..." style="flex:1;padding:6px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px">';
+  h+='<button class="btn add" onclick="addVar(\''+type+'\')">+ Ajouter</button>';
+  if(list.length>0)h+='<button class="btn ok" style="margin-left:auto" onclick="saveSessAll(\''+type+'\')">✅ Tout enregistrer</button>';
+  h+='</div>';
+  h+='</td></tr></tfoot>';
+  h+='</table></div>';
+  return h;
+}
+
+function toggleNewVar(type,val){
+  var inp=$('sai-newvar-'+type);
+  if(inp){inp.classList.toggle('hidden',val!=='__new__');if(val!=='__new__')inp.value='';}
+}
+function addVar(type){
+  var sel=$('sai-addvar-'+type);
+  var val=sel?sel.value:'';
+  if(val==='__new__'){var inp=$('sai-newvar-'+type);val=inp?(inp.value||'').trim():'';}
+  if(!val||val===''){alert('Choisissez ou saisissez une variété.');return;}
+  if(S.varList[type].find(function(x){return x.v===val;})){showBanner('Variété déjà dans la liste');return;}
+  S.varList[type].push({v:val});
+  saveLS();rebuildTab(type);
+}
+function rmVar(type,i){
+  if(!confirm('Retirer "'+S.varList[type][i].v+'" de la liste ?'))return;
+  S.varList[type].splice(i,1);
+  saveLS();rebuildTab(type);
+}
+function _getSaiHeader(type){
+  var fromEl=$('sai-from-'+type),toEl=$('sai-to-'+type);
+  var from=fromEl?fromEl.value:'';
+  if(!from){alert('Veuillez saisir la date de début.');return null;}
+  return{from:from,to:(toEl?toEl.value:'')||from,toBat:'',toBatNom:'',toFri:'',toFriNom:''};
+}
+function toggleQNew(type,val){
+  var w=$('sai-qnewwrap-'+type);if(w)w.classList.toggle('hidden',val!=='__new__');
+}
+// Enregistre la saisie rapide hors liste (barre orange)
+function saveSessQuick(type){
+  var h=_getSaiHeader(type);if(!h)return;
+  var sel=$('sai-qvar-'+type);
+  var variete=sel?sel.value:'';
+  if(variete==='__new__'){var inp=$('sai-qnew-'+type);variete=inp?(inp.value||'').trim():'';}
+  var palEl=$('sai-qpal-'+type);
+  var pal=palEl?+(palEl.value||0):0;
+  if(!variete){alert('Veuillez choisir ou saisir une variété.');return;}
+  if(pal<=0){alert('Saisissez un nombre de palox.');return;}
+  S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:variete,palox:pal,
+    toBat:'',toBatNom:'',toFri:'',toFriNom:''});
+  saveLS();
+  if(palEl)palEl.value='';
+  if(sel)sel.value='';
+  var w=$('sai-qnewwrap-'+type);if(w)w.classList.add('hidden');
+  showBanner(numFr(pal)+' palox '+es(variete)+' enregistrés');
+}
+// Enregistre UNE seule ligne (la ligne i)
+function saveSessRow(type,i){
+  var h=_getSaiHeader(type);if(!h)return;
+  var palEl=$('sai-pal-'+type+'-'+i);
+  var pal=palEl?+(palEl.value||0):0;
+  if(pal<=0){alert('Saisissez un nombre de palox pour cette ligne.');return;}
+  var item=S.varList[type][i];
+  if(!item)return;
+  S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
+    toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom});
+  saveLS();
+  // Vider juste ce champ sans rebuild complet
+  if(palEl)palEl.value='';
+  showBanner(numFr(pal)+' palox '+es(item.v)+' enregistrés');
+}
+// Enregistre TOUTES les lignes avec palox > 0
+function saveSessAll(type){
+  var h=_getSaiHeader(type);if(!h)return;
+  var list=S.varList[type];
+  var saved=0,now=Date.now();
+  list.forEach(function(item,i){
+    var palEl=$('sai-pal-'+type+'-'+i);
+    var pal=palEl?+(palEl.value||0):0;
+    if(pal<=0)return;
+    S.sessions.push({id:now+saved,type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
+      toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom});
+    saved++;
+  });
+  if(!saved){alert('Aucun palox saisi. Remplissez au moins une ligne.');return;}
+  saveLS();
+  showBanner(saved+(saved>1?' sessions enregistrées':' session enregistrée'));
+  rebuildTab(type);
+}
+
+// ─── Historique ──────────────────────────────────────────
+function buildHistorique(type){
+  var list=S.sessions.filter(function(s){return s.type===type;}).sort(function(a,b){return b.id-a.id;});
+  if(!list.length)return '<div class="empty">Aucune session de tri enregistrée.</div>';
+  var h='<div class="tw"><table><thead><tr>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Destination</th><th style="width:36px"></th>';
+  h+='</tr></thead><tbody>';
+  var tot=0;
+  list.forEach(function(s){
+    var pal=+(s.palox||0);tot+=pal;
+    var dest=s.toBatNom||'';if(s.toFriNom)dest+=(dest?' / ':'')+s.toFriNom;
+    h+='<tr>';
+    h+='<td>'+es(fmtD(s.dateFrom))+(s.dateTo&&s.dateTo!==s.dateFrom?' → '+es(fmtD(s.dateTo)):'')+'</td>';
+    h+='<td style="font-weight:600">'+es(s.variete)+'</td>';
+    h+='<td class="r" style="font-weight:700">'+numFr(pal)+'</td>';
+    h+='<td style="color:var(--mu);font-size:12px">'+es(dest||'—')+'</td>';
+    h+='<td class="ctr"><button class="btn del sm" onclick="delSess('+s.id+',\''+type+'\')">✕</button></td>';
+    h+='</tr>';
+  });
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
+  h+='</tbody></table></div>';
+  return h;
+}
+function delSess(id,type){
+  if(!confirm('Supprimer cette session ?'))return;
+  S.sessions=S.sessions.filter(function(s){return s.id!==id;});
+  saveLS();rebuildTab(type||S.tab);
+}
+
+// ─── Stock ───────────────────────────────────────────────
+function initStock(){var p=$('panel-stock');if(p)p.innerHTML=buildStockShell();}
+
+function buildStockShell(){
+  var allSubs=[{id:'bilan',l:'📊 Bilan par variété'},{id:'bat',l:'🏗️ Bâtiment'}];
+  var ok=FLIPO_STABS['stock'];
+  var subs=ok&&ok.length?allSubs.filter(function(t){return ok.indexOf(t.id)>=0;}):allSubs;
+  if(!subs.length)subs=allSubs;
+  var sub=S.stockSub;
+  if(!subs.find(function(t){return t.id===sub;}))sub=subs[0].id;
+  S.stockSub=sub;
+
+  var map=getStockMap();
+  var h='<div class="stabs" id="stock-stabs">';
+  subs.forEach(function(t){h+='<button class="stab'+(sub===t.id?' act':'')+'" onclick="setStockSub(\''+t.id+'\')">'+t.l+'</button>';});
+  h+='</div>';
+  h+='<div id="stock-content">'+(sub==='bat'?buildStockBat():buildStockBilan(map))+'</div>';
+  return h;
+}
+
+// Tableau bilan : cueillis / triés — sous-onglet
+function buildStockBilan(map){
+  var varFlt=S.bilanVar||'';
+  var varSet={};
+  ['pomme','poire'].forEach(function(tp){
+    Object.keys(getCueilletteByVar(tp)).forEach(function(v){varSet[tp+'§'+v]=1;});
+    S.sessions.filter(function(s){return s.type===tp;}).forEach(function(s){varSet[tp+'§'+s.variete]=1;});
+  });
+  var keys=Object.keys(varSet).sort();
+  if(!keys.length)return '<div class="info-box">Aucune donnée de cueillette dans Verger. Saisissez d\'abord les palox dans Verger → Cueillette.</div>';
+
+  // Toutes les variétés pour le dropdown (peu importe culture)
+  var allVarSet={};
+  keys.forEach(function(k){allVarSet[k.split('§')[1]]=1;});
+  var allVars=Object.keys(allVarSet).sort();
+  var varOpts='<option value="">Toutes variétés</option>';
+  allVars.forEach(function(v){varOpts+='<option value="'+es(v)+'"'+(varFlt===v?' selected':'')+'>'+es(v)+'</option>';});
+
+  var h='<div class="form-hdr" style="margin-bottom:10px"><div class="form-row">';
+  h+='<div class="form-field wide"><label>Variété</label><select onchange="setStockBilanVar(this.value)" style="padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">'+varOpts+'</select></div>';
+  h+='</div></div>';
+
+  h+='<div class="stat-card" style="margin-bottom:6px">';
+  h+='<div class="tw"><table><thead><tr>';
+  h+='<th style="width:44px">Type</th><th>Variété</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Palox cueillis saisis dans Verger">🌳 Cueillis</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Palox triés enregistrés dans les sessions">✂️ Triés</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Cueillis − Triés : stock en attente de tri">📦 Restant</th>';
+  h+='</tr></thead><tbody>';
+
+  var hasRows=false;
+  ['pomme','poire'].forEach(function(type){
+    var tvars=keys.filter(function(k){return k.split('§')[0]===type;}).map(function(k){return k.split('§')[1];});
+    if(varFlt)tvars=tvars.filter(function(v){return v===varFlt;});
+    if(!tvars.length)return;
+    hasRows=true;
+    var totCueil=0,totTrie=0;
+    tvars.forEach(function(v){
+      var cueil=(getCueilletteByVar(type)[v])||0;
+      var trie=S.sessions.filter(function(s){return s.type===type&&s.variete===v;}).reduce(function(a,s){return a+(+(s.palox||0));},0);
+      var restant=cueil-trie;
+      totCueil+=cueil;totTrie+=trie;
+      var restNeg=restant<0;
+      h+='<tr>';
+      h+='<td style="vertical-align:middle"><span class="badge '+(type==='pomme'?'pom':'poi')+'">'+(type==='pomme'?'🍎':'🍐')+'</span></td>';
+      h+='<td style="font-weight:700;vertical-align:middle">'+es(v)+'</td>';
+      h+='<td class="r" style="vertical-align:middle;white-space:nowrap">'+numFr(cueil)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+      h+='<td class="r" style="color:var(--gd);font-weight:600;vertical-align:middle;white-space:nowrap">'+numFr(trie)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+      h+='<td class="r" style="font-weight:700;vertical-align:middle;white-space:nowrap'+(restNeg?';color:#d9534f':restant===0?';color:#bbb':';color:var(--acc)')+'">'+numFr(restant)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+      h+='</tr>';
+    });
+    if(!varFlt){
+      var totRestant=totCueil-totTrie;
+      h+='<tr class="tr-tot"><td colspan="2">'+(type==='pomme'?'🍎 Total pomme':'🍐 Total poire')+'</td>';
+      h+='<td class="r" style="white-space:nowrap">'+numFr(totCueil)+'</td>';
+      h+='<td class="r" style="white-space:nowrap">'+numFr(totTrie)+'</td>';
+      h+='<td class="r" style="white-space:nowrap'+(totRestant<0?';color:#d9534f':'')+'">'+numFr(totRestant)+'</td></tr>';
+    }
+  });
+  if(!hasRows)h+='<tr><td colspan="5" style="padding:10px;text-align:center;color:var(--mu)">Aucune donnée pour cette variété.</td></tr>';
+  h+='</tbody></table></div></div>';
+  return h;
+}
+function setStockSub(v){
+  S.stockSub=v;
+  var c=$('stock-content');if(!c)return;
+  var map=getStockMap();
+  c.innerHTML=(v==='bat'?buildStockBat():buildStockBilan(map));
+  document.querySelectorAll('#stock-stabs .stab').forEach(function(b){
+    b.classList.toggle('act',b.getAttribute('onclick').indexOf("'"+v+"'")>=0);
+  });
+}
+function setStockBatCulture(v){
+  S.batCulture=v;
+  S.batVar=''; // reset variety when culture changes
+  var c=$('stock-content');if(!c)return;
+  c.innerHTML=buildStockBat();
+}
+function setStockBatVar(v){
+  S.batVar=v;
+  var c=$('stock-content');if(!c)return;
+  c.innerHTML=buildStockBat();
+}
+function setStockBilanVar(v){
+  S.bilanVar=v;
+  var c=$('stock-content');if(!c)return;
+  var map=getStockMap();
+  c.innerHTML=buildStockBilan(map);
+}
+function setStockFilter(v){
+  S.stockFilter=v;
+  initStock();
+}
+
+// Rendu d'un tableau stock pour un emplacement (applique filtres variété + culture)
+function renderStockTable(stockByTypeVar, varFilter, cultFilter){
+  var rows=[];
+  ['pomme','poire'].forEach(function(type){
+    if(cultFilter&&type!==cultFilter)return;
+    var tm=stockByTypeVar[type]||{};
+    Object.keys(tm).sort().forEach(function(v){
+      if(varFilter&&v!==varFilter)return;
+      if(tm[v]!==0)rows.push({type:type,variete:v,palox:tm[v]});
+    });
+  });
+  if(!rows.length)return '<p style="color:#bbb;font-size:12px;padding:4px 0">—</p>';
+  var h='<table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">';
+  h+='<colgroup><col style="width:44px"><col style="width:auto"><col style="width:72px"></colgroup>';
+  var tot=0;
+  rows.forEach(function(r){
+    tot+=r.palox;
+    var neg=r.palox<0;
+    h+='<tr style="border-bottom:1px solid #f0f0f0">';
+    h+='<td style="padding:5px 6px;vertical-align:middle"><span class="badge '+(r.type==='pomme'?'pom':'poi')+'">'+(r.type==='pomme'?'🍎':'🍐')+'</span></td>';
+    h+='<td style="padding:5px 6px;font-weight:600;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+es(r.variete)+'</td>';
+    h+='<td style="padding:5px 6px;text-align:right;font-weight:700;white-space:nowrap;vertical-align:middle'+(neg?';color:#d9534f':'')+'">'+numFr(r.palox)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+    h+='</tr>';
+  });
+  if(rows.length>1){
+    h+='<tr style="background:#f8f4f0;font-weight:700;border-top:2px solid var(--brd)">';
+    h+='<td colspan="2" style="padding:5px 6px">Total</td>';
+    h+='<td style="padding:5px 6px;text-align:right;white-space:nowrap'+(tot<0?';color:#d9534f':'')+'">'+numFr(tot)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+    h+='</tr>';
+  }
+  h+='</table>';
+  return h;
+}
+
+// ─── Stock : Par bâtiment / frigo ────────────────────────
+function buildStockBat(){
+  var map=getStockMap();
+  var bats=getVergerBats();
+  var cultFlt=S.batCulture||'';
+  var varFlt=S.batVar||'';
+
+  // Collecter toutes les variétés visibles (selon culture sélectionnée)
+  var varSet={};
+  var typesToScan=cultFlt?[cultFlt]:['pomme','poire'];
+  typesToScan.forEach(function(tp){
+    Object.keys(getCueilletteByVar(tp)).forEach(function(v){varSet[v]=1;});
+    S.sessions.filter(function(s){return s.type===tp;}).forEach(function(s){varSet[s.variete]=1;});
+  });
+  var allVars=Object.keys(varSet).sort();
+
+  // Barre de filtres
+  var cultOpts='<option value="">🍎🍐 Toutes cultures</option>';
+  cultOpts+='<option value="pomme"'+(cultFlt==='pomme'?' selected':'')+'>🍎 Pomme</option>';
+  cultOpts+='<option value="poire"'+(cultFlt==='poire'?' selected':'')+'>🍐 Poire</option>';
+  var varOpts='<option value="">Toutes variétés</option>';
+  allVars.forEach(function(v){varOpts+='<option value="'+es(v)+'"'+(varFlt===v?' selected':'')+'>'+es(v)+'</option>';});
+
+  var h='<div class="form-hdr" style="margin-bottom:12px"><div class="form-row">';
+  h+='<div class="form-field"><label>Culture</label><select onchange="setStockBatCulture(this.value)" style="padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">'+cultOpts+'</select></div>';
+  h+='<div class="form-field wide"><label>Variété</label><select onchange="setStockBatVar(this.value)" style="padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">'+varOpts+'</select></div>';
+  h+='</div></div>';
+
+  var cards='';
+
+  // Bâtiments réels avec leurs frigos
+  bats.forEach(function(bat){
+    var hasBat=!!map[bat.id];
+    var frigos=(bat.frigos||[]).filter(function(f){return !!map[bat.id+'|'+f.id];});
+    if(!hasBat&&!frigos.length)return;
+
+    var batTot=0;
+    function sumLoc(m){
+      typesToScan.forEach(function(tp){
+        Object.keys((m[tp])||{}).forEach(function(v){if(!varFlt||v===varFlt)batTot+=(m[tp][v]||0);});
+      });
+    }
+    if(map[bat.id])sumLoc(map[bat.id]);
+    frigos.forEach(function(f){if(map[bat.id+'|'+f.id])sumLoc(map[bat.id+'|'+f.id]);});
+
+    cards+='<div class="bat-card">';
+    cards+='<div class="bat-hdr">🏗️ '+es(bat.nom)+'<span class="sub">'+numFr(batTot)+' palox au total</span></div>';
+
+    if(map[bat.id]){
+      var bTot=0;
+      typesToScan.forEach(function(tp){Object.keys((map[bat.id][tp])||{}).forEach(function(v){if(!varFlt||v===varFlt)bTot+=(map[bat.id][tp][v]||0);});});
+      cards+='<div class="fri-section">';
+      cards+='<div class="fri-hdr">📦 Sans frigo attitré<span>'+numFr(bTot)+' palox</span></div>';
+      cards+='<div class="fri-body">'+renderStockTable(map[bat.id],varFlt,cultFlt)+'</div>';
+      cards+='</div>';
+    }
+
+    frigos.forEach(function(f){
+      var fkey=bat.id+'|'+f.id;
+      var fTot=0;
+      typesToScan.forEach(function(tp){Object.keys((map[fkey][tp])||{}).forEach(function(v){if(!varFlt||v===varFlt)fTot+=(map[fkey][tp][v]||0);});});
+      cards+='<div class="fri-section">';
+      cards+='<div class="fri-hdr">❄️ '+es(f.nom)+'<span>'+numFr(fTot)+' palox</span></div>';
+      cards+='<div class="fri-body">'+renderStockTable(map[fkey],varFlt,cultFlt)+'</div>';
+      cards+='</div>';
+    });
+    cards+='</div>';
+  });
+
+  if(!cards){
+    var hasCueil=false;
+    var vd=getVergerData();
+    ['pomR','poiR'].forEach(function(k){if(vd[k])vd[k].forEach(function(r){if(r.d)r.d.forEach(function(v){if(+v>0)hasCueil=true;});});});
+    cards=hasCueil?'<div class="empty">Aucun stock'+(varFlt?' pour la variété '+es(varFlt):'')+'.</div>':'<div class="info-box">Aucune donnée de cueillette dans Verger. Saisissez d\'abord les palox dans Verger → Cueillette.</div>';
+  }
+  return h+cards;
+}
+
+// ─── Stock : Par variété ──────────────────────────────────
+function buildStockVar(){
+  var map=getStockMap();
+  var bats=getVergerBats();
+  var flt=S.stockFilter;
+
+  // Construire la liste des emplacements
+  var locs=[{key:MARG_ID,nom:MARG_NOM,short:'Margères'}];
+  bats.forEach(function(bat){
+    var inMap=Object.keys(map).some(function(k){return k===bat.id||k.indexOf(bat.id+'|')===0;});
+    if(!inMap)return;
+    if(map[bat.id])locs.push({key:bat.id,nom:bat.nom,short:bat.nom});
+    (bat.frigos||[]).forEach(function(f){
+      var k=bat.id+'|'+f.id;
+      if(map[k])locs.push({key:k,nom:bat.nom+' / '+f.nom,short:f.nom});
+    });
+  });
+
+  // Collecter variétés
+  var varSet={};
+  Object.keys(map).forEach(function(k){
+    ['pomme','poire'].forEach(function(type){
+      Object.keys((map[k][type])||{}).forEach(function(v){
+        if(!flt||v===flt)varSet[type+'§'+v]=1;
+      });
+    });
+  });
+  var varKeys=Object.keys(varSet).sort();
+  if(!varKeys.length)return '<div class="empty">Aucun stock'+(flt?' pour la variété '+es(flt):'')+'.</div>';
+
+  var h='';
+  ['pomme','poire'].forEach(function(type){
+    var tvars=varKeys.filter(function(k){return k.split('§')[0]===type;}).map(function(k){return k.split('§')[1];});
+    if(!tvars.length)return;
+    h+='<div class="stat-card">';
+    h+='<div class="stat-title">'+(type==='pomme'?'🍎 Pomme':'🍐 Poire')+'</div>';
+    h+='<div class="tw"><table><thead><tr><th>Variété</th>';
+    locs.forEach(function(l){h+='<th class="r" style="font-size:11px;max-width:100px">'+es(l.short)+'</th>';});
+    h+='<th class="r">Total</th></tr></thead><tbody>';
+    tvars.forEach(function(v){
+      var rowTotal=0;
+      var cells='';
+      locs.forEach(function(l){
+        var pal=(map[l.key]&&map[l.key][type]&&map[l.key][type][v])||0;
+        rowTotal+=pal;
+        var s=pal<0?'color:#d9534f;font-weight:700':pal===0?'color:#ddd':'';
+        cells+='<td class="r" style="'+s+'">'+( pal!==0?numFr(pal):'—')+'</td>';
+      });
+      h+='<tr><td style="font-weight:700">'+es(v)+'</td>'+cells;
+      h+='<td class="r" style="font-weight:700'+(rowTotal<0?';color:#d9534f':'')+'">'+numFr(rowTotal)+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+  });
+  return h||'<div class="empty">Aucun stock.</div>';
+}
+
+// ─── Transfert ───────────────────────────────────────────
+function initTransfert(){var p=$('panel-transfert');if(p)p.innerHTML=buildXfrPanel();}
+function _xfrVarOpts(type){
+  // Collecte toutes les variétés connues pour ce type (cueillette + sessions)
+  var vset={};
+  Object.keys(getCueilletteByVar(type)).forEach(function(v){vset[v]=1;});
+  S.sessions.filter(function(s){return s.type===type;}).forEach(function(s){vset[s.variete]=1;});
+  var vars=Object.keys(vset).sort();
+  var o='<option value="">— Variété —</option>';
+  vars.forEach(function(v){o+='<option value="'+es(v)+'">'+es(v)+'</option>';});
+  return o;
+}
+function xfrCult(val){
+  // Recharge les variétés quand le type change
+  var sel=$('xv');if(!sel)return;
+  sel.innerHTML=_xfrVarOpts(val||'pomme');
+}
+function buildXfrPanel(){
+  var bats=getVergerBats();
+  var batOpts='<option value="">— Bâtiment —</option>';
+  bats.forEach(function(b){batOpts+='<option value="'+es(b.id)+'">'+es(b.nom)+'</option>';});
+  var h='<div class="form-hdr"><div class="form-row">';
+  h+='<div class="form-field"><label>Date</label><input type="date" id="xd" value="'+isoToday()+'"></div>';
+  h+='<div class="form-field"><label>Type</label><select id="xt" onchange="xfrCult(this.value)"><option value="pomme">🍎 Pomme</option><option value="poire">🍐 Poire</option></select></div>';
+  h+='<div class="form-field wide"><label>Variété</label><select id="xv">'+_xfrVarOpts('pomme')+'</select></div>';
+  h+='<div class="form-field"><label>Palox</label><input type="number" id="xn" min="1" step="1" placeholder="0" style="width:80px"></div>';
+  h+='</div><div class="form-row">';
+  h+='<div class="form-field wide"><label>De — Bâtiment</label><select id="xfb" onchange="xfrFri(\'from\')">'+batOpts+'</select></div>';
+  h+='<div class="form-field wide"><label>De — Frigo</label><select id="xff"><option value="">—</option></select></div>';
+  h+='<div class="form-field wide"><label>Vers — Bâtiment</label><select id="xtb" onchange="xfrFri(\'to\')">'+batOpts+'</select></div>';
+  h+='<div class="form-field wide"><label>Vers — Frigo</label><select id="xtf"><option value="">—</option></select></div>';
+  h+='</div><div class="form-row">';
+  h+='<div class="form-field wide"><label>Note (optionnel)</label><input type="text" id="xnote" placeholder="Remarque..."></div>';
+  h+='<div class="form-field"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="saveXfr()">✅ Enregistrer</button></div>';
+  h+='</div></div>';
+  h+='<div class="stitle">Historique des transferts</div>';
+  if(!S.transfers.length){h+='<div class="empty">Aucun transfert enregistré.</div>';}
+  else{
+    h+='<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Variété</th><th class="r">Palox</th><th>De</th><th></th><th>Vers</th><th style="width:36px"></th></tr></thead><tbody>';
+    S.transfers.slice().sort(function(a,b){return b.id-a.id;}).forEach(function(t){
+      var from=es(t.fromBatNom||t.fromBat)+(t.fromFriNom?' / '+es(t.fromFriNom):'');
+      var to=es(t.toBatNom||t.toBat)+(t.toFriNom?' / '+es(t.toFriNom):'');
+      h+='<tr>';
+      h+='<td>'+es(fmtD(t.date))+'</td>';
+      h+='<td><span class="badge '+(t.type==='pomme'?'pom':'poi')+'">'+(t.type==='pomme'?'🍎':'🍐')+'</span></td>';
+      h+='<td style="font-weight:600">'+es(t.variete)+'</td>';
+      h+='<td class="r" style="font-weight:700">'+numFr(t.palox||0)+'</td>';
+      h+='<td style="font-size:12px;color:var(--mu)">'+from+'</td>';
+      h+='<td style="text-align:center;color:var(--gr);font-weight:700">→</td>';
+      h+='<td style="font-size:12px;color:var(--mu)">'+to+'</td>';
+      h+='<td class="ctr"><button class="btn del sm" onclick="delXfr('+t.id+')">✕</button></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  return h;
+}
+function xfrFri(dir){
+  var batSel=$(dir==='from'?'xfb':'xtb'),friSel=$(dir==='from'?'xff':'xtf');
+  if(!batSel||!friSel)return;
+  var bat=getVergerBats().find(function(b){return b.id===batSel.value;});
+  friSel.innerHTML='<option value="">—</option>';
+  if(bat&&bat.frigos)bat.frigos.forEach(function(f){var o=document.createElement('option');o.value=f.id;o.textContent=f.nom;friSel.appendChild(o);});
+}
+function saveXfr(){
+  var date=($('xd')||{}).value||isoToday();
+  var type=($('xt')||{}).value||'pomme';
+  var variete=(($('xv')||{}).value||'').trim();
+  var palox=+(($('xn')||{}).value||0);
+  var fromBat=($('xfb')||{}).value||'',fromFri=($('xff')||{}).value||'';
+  var toBat=($('xtb')||{}).value||'',toFri=($('xtf')||{}).value||'';
+  var note=(($('xnote')||{}).value||'').trim();
+  if(!variete){alert('Veuillez saisir la variété.');return;}
+  if(!fromBat||!toBat){alert('Veuillez choisir les emplacements.');return;}
+  if(fromBat===toBat&&fromFri===toFri){alert('Source et destination identiques.');return;}
+  if(palox<=0){alert('Nombre de palox invalide.');return;}
+  var bats=getVergerBats();
+  var fb=bats.find(function(b){return b.id===fromBat;})||{nom:fromBat,frigos:[]};
+  var ff=fromFri?((fb.frigos||[]).find(function(f){return f.id===fromFri;})||{nom:fromFri}):{nom:''};
+  var tb=bats.find(function(b){return b.id===toBat;})||{nom:toBat,frigos:[]};
+  var tf=toFri?((tb.frigos||[]).find(function(f){return f.id===toFri;})||{nom:toFri}):{nom:''};
+  S.transfers.push({id:Date.now(),date:date,type:type,variete:variete,palox:palox,
+    fromBat:fromBat,fromBatNom:fb.nom,fromFri:fromFri,fromFriNom:ff.nom,
+    toBat:toBat,toBatNom:tb.nom,toFri:toFri,toFriNom:tf.nom,note:note});
+  saveLS();showBanner('Transfert enregistré');initTransfert();
+}
+function delXfr(id){
+  if(!confirm('Supprimer ce transfert ?'))return;
+  S.transfers=S.transfers.filter(function(t){return t.id!==id;});
+  saveLS();initTransfert();
+}
+
+// ─── Stats ───────────────────────────────────────────────
+function buildStats(){
+  var p=$('panel-stats');if(!p)return;
+  var lmStart=isoLastMonth();
+  var lmEnd=(function(){var d=new Date();d.setDate(0);return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();})();
+  var h='<div class="stat-card"><div class="stat-title">📊 Comparaison de périodes</div>';
+  h+='<div class="form-row" style="margin-bottom:10px">';
+  h+='<div class="form-field"><label style="color:#1855a8">Période 1 — Du</label><input type="date" id="p1f" value="'+lmStart+'" style="border-color:#b0c8f0"></div>';
+  h+='<div class="form-field"><label style="color:#1855a8">Période 1 — Au</label><input type="date" id="p1t" value="'+lmEnd+'" style="border-color:#b0c8f0"></div>';
+  h+='<div style="display:flex;align-items:center;padding-bottom:2px;font-size:16px;color:var(--mu)">vs</div>';
+  h+='<div class="form-field"><label style="color:#a85010">Période 2 — Du</label><input type="date" id="p2f" value="'+isoFirstOfMonth()+'" style="border-color:#f0c080"></div>';
+  h+='<div class="form-field"><label style="color:#a85010">Période 2 — Au</label><input type="date" id="p2t" value="'+isoToday()+'" style="border-color:#f0c080"></div>';
+  h+='<div class="form-field"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="runCmp()">Comparer</button></div>';
+  h+='</div><div id="cmp-result"></div></div>';
+
+  h+='<div class="stat-card"><div class="stat-title">📦 Total palox triés par variété</div>';
+  ['pomme','poire'].forEach(function(type){
+    var ss=S.sessions.filter(function(s){return s.type===type;});
+    if(!ss.length)return;
+    var bv={};ss.forEach(function(s){bv[s.variete]=(bv[s.variete]||0)+(+(s.palox||0));});
+    h+='<div style="font-weight:600;margin:8px 0 6px">'+(type==='pomme'?'🍎 Pomme':'🍐 Poire')+'</div>';
+    h+='<div class="tw"><table><thead><tr><th>Variété</th><th class="r">Palox triés</th></tr></thead><tbody>';
+    var tot=0;
+    Object.keys(bv).sort().forEach(function(v){h+='<tr><td style="font-weight:600">'+es(v)+'</td><td class="r">'+numFr(bv[v])+'</td></tr>';tot+=bv[v];});
+    h+='<tr class="tr-tot"><td>Total</td><td class="r">'+numFr(tot)+'</td></tr></tbody></table></div>';
+  });
+  h+='</div>';
+
+  h+='<div class="stat-card"><div class="stat-title">🗓️ Dernières sessions</div>';
+  var rec=S.sessions.slice().sort(function(a,b){return b.id-a.id;}).slice(0,20);
+  if(!rec.length){h+='<div class="empty">Aucune session.</div>';}
+  else{
+    h+='<div class="tw"><table><thead><tr><th>Période</th><th>Type</th><th>Variété</th><th class="r">Palox</th><th>Destination</th></tr></thead><tbody>';
+    rec.forEach(function(s){
+      var dest=s.toBatNom||'';if(s.toFriNom)dest+=(dest?' / ':'')+s.toFriNom;
+      h+='<tr><td>'+es(fmtD(s.dateFrom))+(s.dateTo&&s.dateTo!==s.dateFrom?' → '+es(fmtD(s.dateTo)):'')+'</td>';
+      h+='<td><span class="badge '+(s.type==='pomme'?'pom':'poi')+'">'+(s.type==='pomme'?'🍎':'🍐')+'</span></td>';
+      h+='<td style="font-weight:600">'+es(s.variete)+'</td>';
+      h+='<td class="r" style="font-weight:700">'+numFr(s.palox||0)+'</td>';
+      h+='<td style="color:var(--mu);font-size:12px">'+es(dest||'—')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+  p.innerHTML=h;
+  runCmp();
+}
+function runCmp(){
+  var p1f=($('p1f')||{}).value||'',p1t=($('p1t')||{}).value||isoToday();
+  var p2f=($('p2f')||{}).value||'',p2t=($('p2t')||{}).value||isoToday();
+  var res=$('cmp-result');if(!res)return;
+  function agg(from,to){
+    var r={};
+    S.sessions.forEach(function(s){
+      if(!from||s.dateFrom<from||s.dateFrom>to)return;
+      var k=s.type+'§'+s.variete;r[k]=(r[k]||0)+(+(s.palox||0));
+    });
+    return r;
+  }
+  var a1=agg(p1f,p1t),a2=agg(p2f,p2t);
+  var all={};Object.keys(a1).forEach(function(k){all[k]=1;});Object.keys(a2).forEach(function(k){all[k]=1;});
+  var keys=Object.keys(all).sort();
+  if(!keys.length){res.innerHTML='<div class="empty">Aucune session dans ces périodes.</div>';return;}
+  var l1=p1f?fmtD(p1f)+' → '+fmtD(p1t):'—';
+  var l2=p2f?fmtD(p2f)+' → '+fmtD(p2t):'—';
+  var h='<div class="tw"><table><thead><tr><th>Type</th><th>Variété</th>';
+  h+='<th class="r" style="background:#e8f4ff;color:#1855a8">'+es(l1)+'</th>';
+  h+='<th class="r" style="background:#fff0e8;color:#a85010">'+es(l2)+'</th>';
+  h+='<th class="r">Δ</th></tr></thead><tbody>';
+  var t1=0,t2=0;
+  keys.forEach(function(k){
+    var parts=k.split('§'),type=parts[0],variete=parts[1];
+    var v1=a1[k]||0,v2=a2[k]||0,diff=v2-v1;
+    t1+=v1;t2+=v2;
+    var dc=diff>0?'class="pos"':diff<0?'class="neg"':'';
+    h+='<tr>';
+    h+='<td><span class="badge '+(type==='pomme'?'pom':'poi')+'">'+(type==='pomme'?'🍎':'🍐')+'</span></td>';
+    h+='<td style="font-weight:600">'+es(variete)+'</td>';
+    h+='<td class="r" style="background:#f4f9ff">'+numFr(v1)+'</td>';
+    h+='<td class="r" style="background:#fff8f4">'+numFr(v2)+'</td>';
+    h+='<td class="r"><span '+dc+'>'+(diff>=0?'+':'')+numFr(diff)+'</span></td>';
+    h+='</tr>';
+  });
+  var td=t2-t1;
+  h+='<tr class="tr-tot"><td colspan="2">Total</td>';
+  h+='<td class="r" style="background:#f4f9ff">'+numFr(t1)+'</td>';
+  h+='<td class="r" style="background:#fff8f4">'+numFr(t2)+'</td>';
+  h+='<td class="r"><span '+(td>0?'class="pos"':td<0?'class="neg"':'')+'>'+(td>=0?'+':'')+numFr(td)+'</span></td></tr>';
+  h+='</tbody></table></div>';
+  res.innerHTML=h;
+}
+
+// ─── Partage ─────────────────────────────────────────────
+function shareNow(mode){
+  var map=getStockMap();var bats=getVergerBats();
+  var lines=['Flipo — Stock ('+new Date().toLocaleDateString('fr-FR')+')'];
+  if(map[MARG_ID]){
+    ['pomme','poire'].forEach(function(tp){Object.keys((map[MARG_ID][tp])||{}).sort().forEach(function(v){if(map[MARG_ID][tp][v]>0)lines.push(MARG_NOM+' | '+v+' : '+numFr(map[MARG_ID][tp][v])+' palox');});});
+  }
+  bats.forEach(function(bat){
+    (bat.frigos||[]).forEach(function(f){
+      var k=bat.id+'|'+f.id;if(!map[k])return;
+      ['pomme','poire'].forEach(function(tp){Object.keys((map[k][tp])||{}).sort().forEach(function(v){if(map[k][tp][v]>0)lines.push(bat.nom+' / '+f.nom+' | '+v+' : '+numFr(map[k][tp][v])+' palox');});});
+    });
+  });
+  var txt=lines.join('\n');
+  if(mode==='sms')window.open('sms:?body='+encodeURIComponent(txt));
+  else window.open('mailto:?subject=Flipo Emballage&body='+encodeURIComponent(txt));
+}
+
+// ─── Auth + Init ─────────────────────────────────────────
+var FLIPO_STABS={};
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['emballage'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['pomme','poire','stock','transfert','stats'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    var tp=tabs[tid];
+    if(!tp||!tp.enabled){
+      var b=document.getElementById('tab-'+tid);if(b)b.style.display='none';
+      var pn=document.getElementById('panel-'+tid);if(pn)pn.classList.add('hidden');
+    } else {
+      if(!first)first=tid;
+      if(tp.stabs&&tp.stabs.length>0)FLIPO_STABS[tid]=tp.stabs;
+    }
+  });
+  window._embFirst=first||'pomme';
+})();
+loadLS();
+(function(){
+  var f=window._embFirst||'pomme';
+  var b=document.getElementById('tab-'+f);
+  if(b)setTab(f,b);else rebuildTab('pomme');
+  setSyncStatus('ok');
+})();
+</script>
+</body>
+</html>

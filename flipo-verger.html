@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flipo — Verger</title>
+<style>
+:root{--gr:#1D9E75;--gd:#0F6E56;--gl:#E1F5EE;--bl:#185FA5;--am:#FFF3CD;--amb:#E6A817;--brd:#e0e0e0;--bg:#f7f7f5;--wh:#fff;--tx:#1a1a1a;--mu:#666;--mn:#d4edda;--mnd:#155724}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;background:var(--bg);color:var(--tx)}
+.app{max-width:1300px;margin:0 auto;background:var(--wh);min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,.07)}
+.hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:2px solid var(--gr);background:var(--wh)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.htxt h1{font-size:17px;font-weight:700;color:var(--gd)}.htxt p{font-size:11px;color:var(--mu)}
+.tabs{display:flex;padding:0 20px;background:var(--wh);border-bottom:1px solid var(--brd)}
+.tab{font-size:13px;padding:11px 18px;border:none;border-bottom:3px solid transparent;cursor:pointer;background:transparent;color:var(--mu);font-weight:500}
+.tab.act{color:var(--gr);border-bottom-color:var(--gr)}
+.tab.sec{color:#8B4513}.tab.sec.act{color:#8B4513;border-bottom-color:#8B4513}
+.content{padding:20px}
+.hidden{display:none!important}
+.stabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.stab{font-size:12px;padding:5px 14px;border-radius:99px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--mu);font-weight:500}
+.stab.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+.btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;gap:5px;font-weight:500;min-height:36px}
+.btn:hover{background:var(--bg)}
+.btn.pdf{background:var(--bl);color:#fff;border-color:var(--bl)}.btn.pdf:hover{background:#1450a0}
+.btn.mail{background:#7c3aed;color:#fff;border-color:#5b21b6}.btn.mail:hover{background:#5b21b6}
+.btn.add{background:var(--gl);color:var(--gd);border-color:var(--gr)}.btn.add:hover{background:#c5e8d8}
+.btn.ok{background:var(--gr);color:#fff;border-color:var(--gd)}.btn.ok:hover{background:var(--gd)}
+.btn.del{background:#fff0f0;color:#c0392b;border-color:#f5c6c6;padding:3px 8px;font-size:11px}.btn.del:hover{background:#fde8e8}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tw{overflow-x:auto;border:1px solid var(--brd);border-radius:10px;margin-bottom:10px}
+.tw.fh{max-height:420px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{background:#f2f2f0;padding:7px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--brd);white-space:nowrap;position:sticky;top:0;z-index:2}
+th.am{background:#FEF3CD} th.cost{background:#fce8d5}
+td{padding:5px 8px;border-bottom:1px solid #f0f0ee;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+td.f{background:var(--am)!important;color:#7a5200}
+td.f input{color:#7a5200!important}
+td.tt{background:#efefec!important;font-weight:700}
+td.pos{background:#d4edda!important;color:#155724;font-weight:600}
+td.neg{background:#fde8e8!important;color:#a32d2d;font-weight:600}
+td.cost{background:#fce8d5!important;color:#7a3d00;font-weight:600}
+td input{border:none;background:transparent;width:100%;font-size:12px;color:inherit;outline:none;padding:2px 3px}
+td input:focus{background:rgba(255,255,255,.8);border-radius:3px;outline:1px solid var(--gr)}
+td.f input:focus{background:rgba(255,255,255,.6)}
+input.w48{width:48px} input.w60{width:60px} input.w80{width:80px} input.w100{width:100px} input.w120{width:120px}
+select.wsel{border:none;background:transparent;font-size:12px;color:inherit;outline:none;padding:2px 3px;cursor:pointer;width:100%}
+.sts{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.st{background:var(--bg);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;border:1px solid var(--brd)}
+.sl{font-size:11px;color:var(--mu);margin-bottom:3px}.sv{font-size:22px;font-weight:700;line-height:1}.su{font-size:11px;color:var(--mu)}
+.info{background:var(--gl);border-left:3px solid var(--gr);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--gd);margin-bottom:12px;line-height:1.5}
+.leg{display:flex;align-items:center;gap:12px;font-size:11px;color:var(--mu);margin-bottom:10px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px}
+.lb{width:13px;height:13px;border-radius:3px;border:1px solid var(--brd)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:99px;background:#fef3c7;color:#854F0B;font-weight:600}
+.stitle{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--brd)}
+.note{font-size:10px;color:var(--mu);font-style:italic;margin-left:4px}
+.rb{font-size:9px;padding:1px 4px;border-radius:3px;border:1px solid #ccc;background:transparent;cursor:pointer;color:var(--mu);vertical-align:middle;margin-left:2px}
+.rb:hover{background:var(--gl)}
+.chart-wrap{background:var(--bg);border-radius:10px;padding:16px;border:1px solid var(--brd)}
+.chart-ctrl{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.wbtn{font-size:12px;padding:4px 12px;border-radius:99px;border:1px solid var(--brd);cursor:pointer;background:transparent;color:var(--mu)}
+.wbtn.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.mc{background:var(--wh);border-radius:14px;max-width:780px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--brd)}
+.mh h2{font-size:15px;font-weight:700;color:var(--gd)}
+.mclose{background:var(--bg);border:1px solid var(--brd);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--brd)}
+/* Entry form */
+.cult-sel{display:flex;gap:10px;margin-bottom:14px}
+.cult-btn{flex:1;padding:14px;border-radius:12px;border:2px solid var(--brd);cursor:pointer;background:var(--bg);font-size:15px;font-weight:600;text-align:center;transition:.15s}
+.cult-btn:hover{border-color:var(--gr)}
+.cult-btn.pom.act{background:#e8f5d4;border-color:#5a8a1a;color:#3a6e11}
+.cult-btn.poi.act{background:#ddeaff;border-color:var(--bl);color:var(--bl)}
+.entry-form{background:var(--bg);border-radius:12px;padding:16px;border:1px solid var(--brd);margin-bottom:16px}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:11px;color:var(--mu);font-weight:500}
+.form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:16px;background:var(--wh);color:var(--tx);outline:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(29,158,117,.15)}
+.form-field input.fw{width:100%}
+.journal-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
+.journal-row .jicon{font-size:18px}
+.journal-row .jinfo{flex:1;font-size:12px}
+.journal-row .jinfo strong{font-size:13px}
+.journal-row .jdate{font-size:11px;color:var(--mu)}
+.empty-journal{text-align:center;color:var(--mu);font-size:12px;padding:20px;background:var(--bg);border-radius:10px}
+/* Share FAB */
+.share-fab{position:fixed;bottom:22px;right:18px;display:flex;flex-direction:column;align-items:center;gap:9px;z-index:1000}
+.share-pill{display:flex;gap:8px;background:#fff;border-radius:99px;padding:7px 12px;box-shadow:0 3px 16px rgba(0,0,0,.2);border:1px solid var(--brd)}
+.share-pill-btn{border:none;background:transparent;cursor:pointer;font-size:19px;padding:2px 6px;border-radius:99px;transition:.15s;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--mu)}
+.share-pill-btn:hover{background:var(--gl);color:var(--gd)}
+.share-pill-sep{width:1px;background:var(--brd);align-self:stretch}
+/* Mobile responsiveness */
+@media(max-width:600px){
+  .hdr{flex-wrap:wrap;gap:8px;padding:10px 12px}
+  .htxt h1{font-size:14px}
+  .htxt p{font-size:10px}
+  #saison-hdr{font-size:9px}
+  button[onclick*="syncPullVerger"]{font-size:10px;padding:3px 8px}
+  .tabs{padding:0 12px;overflow-x:auto;flex-wrap:nowrap;gap:0}
+  .tab{font-size:11px;padding:9px 12px;min-width:auto;white-space:nowrap}
+  .tab.sec{font-size:11px}
+  .content{padding:12px}
+  .form-row{gap:8px}
+  .form-field{min-width:auto}
+  .form-field input,.form-field select{font-size:16px;padding:8px}
+  .btn{font-size:11px;padding:6px 10px;min-height:44px}
+  .btn.pdf,.btn.mail{font-size:11px}
+  .stabs{gap:4px;margin-bottom:10px}
+  .stab{font-size:11px;padding:4px 10px}
+  .tw{margin-bottom:8px;border-radius:6px;overflow-x:auto}
+  .tw.fh{max-height:300px}
+  table{font-size:11px}
+  th{padding:5px 6px;font-size:10px}
+  td{padding:4px 5px;font-size:11px}
+  input.w48,input.w60,input.w80{width:100%;max-width:60px}
+  .cult-sel{gap:6px;margin-bottom:10px}
+  .cult-btn{padding:10px;font-size:13px;border-radius:8px}
+  .entry-form{padding:12px;margin-bottom:12px;border-radius:8px}
+  .sts{gap:8px;margin-bottom:12px}
+  .st{min-width:90px;padding:10px 12px;font-size:12px}
+  .sv{font-size:18px}
+  .info{font-size:11px;padding:8px 10px;margin-bottom:10px}
+  .stitle{font-size:11px;margin:12px 0 6px}
+  .chart-wrap{padding:12px;margin-bottom:10px}
+  .share-fab{bottom:12px;right:12px}
+  .share-pill{padding:6px 10px;gap:6px}
+  .share-pill-btn{font-size:11px;padding:1px 4px;gap:3px}
+  .badge{font-size:10px;padding:2px 6px}
+  @supports(padding:max(0px)){.share-fab{bottom:max(12px,env(safe-area-inset-bottom));right:max(12px,env(safe-area-inset-right))}}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0" title="Retour à l'accueil Flipo">
+    <div class="logo" style="flex-shrink:0">
+      <svg viewBox="0 0 28 32" fill="none" width="24" height="28">
+        <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+        <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+        <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+        <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+        <circle cx="8.5" cy="10.2" r="0.7" fill="rgba(255,255,255,.45)"/>
+        <circle cx="17.5" cy="8.2" r="0.7" fill="rgba(255,255,255,.45)"/>
+      </svg>
+    </div>
+    <span style="font-size:15px;font-weight:800;color:var(--gd);letter-spacing:-.2px">Flipo</span>
+  </a>
+  <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
+  <div class="htxt"><h1>Verger</h1><p id="saison-hdr">Saison 2026/2027</p></div>
+  <span id="sync-status" style="margin-left:auto;font-size:11px;color:#bbb;white-space:nowrap">☁️</span>
+  <button onclick="syncPullVerger()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+</div>
+<div class="tabs">
+  <button id="tab-trait" class="tab act" onclick="setTab('trait',this)">Traitements</button>
+  <button id="tab-cueill" class="tab" onclick="setTab('cueill',this)">Cueillette</button>
+  <button id="tab-stock" class="tab" onclick="setTab('stock',this)">🏗️ Bâtiments</button>
+  <button id="tab-phyto" class="tab sec" onclick="setTab('phyto',this)">🔒 Phyto / Coûts</button>
+</div>
+<div class="content">
+  <div id="panel-trait"></div>
+  <div id="panel-cueill" class="hidden"></div>
+  <div id="panel-stock" class="hidden"></div>
+  <div id="panel-phyto" class="hidden"></div>
+</div>
+</div>
+<div id="modal-root"></div>
+<!-- Share FAB -->
+<div class="share-fab">
+  <div class="share-pill">
+    <button class="share-pill-btn" onclick="shareNow('email')" title="Envoyer par e-mail">📧 Email</button>
+    <div class="share-pill-sep"></div>
+    <button class="share-pill-btn" onclick="shareNow('sms')" title="Envoyer par SMS">📱 SMS</button>
+  </div>
+</div>
+<datalist id="prod-list"></datalist>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════
+// DONNÉES RÉELLES
+// ══════════════════════════════════════════════
+let DATES_POM = ["20/08","22/08","26/08","27/08","28/08","29/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
+let DATES_POI = ["20/08","21/08","22/08","23/08","25/08","26/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
+
+const POM_INIT = [
+  {v:"Boskoop",d:new Array(44).fill(0)},
+  {v:"Braeburn",d:new Array(44).fill(0)},
+  {v:"Canada",d:new Array(44).fill(0)},
+  {v:"Chantecler",d:new Array(44).fill(0)},
+  {v:"Clocharde",d:new Array(44).fill(0)},
+  {v:"Cox's",d:new Array(44).fill(0)},
+  {v:"Daliclass",d:new Array(44).fill(0)},
+  {v:"Dalilight",d:new Array(44).fill(0)},
+  {v:"Dalinette",d:new Array(44).fill(0)},
+  {v:"Dalinsweet",d:new Array(44).fill(0)},
+  {v:"Delbard",d:new Array(44).fill(0)},
+  {v:"Elstar",d:new Array(44).fill(0)},
+  {v:"Fuji",d:new Array(44).fill(0)},
+  {v:"Gala",d:new Array(44).fill(0)},
+  {v:"Golden",d:new Array(44).fill(0)},
+  {v:"Goldrush",d:new Array(44).fill(0)},
+  {v:"Gravenstein",d:new Array(44).fill(0)},
+  {v:"Idared",d:new Array(44).fill(0)},
+  {v:"Initiale",d:new Array(44).fill(0)},
+  {v:"Jonagold",d:new Array(44).fill(0)},
+  {v:"Jus",d:new Array(44).fill(0)},
+  {v:"Lafayette",d:new Array(44).fill(0)},
+  {v:"Melrose",d:new Array(44).fill(0)},
+  {v:"Opale",d:new Array(44).fill(0)},
+  {v:"Patte de loup",d:new Array(44).fill(0)},
+  {v:"Pirouette",d:new Array(44).fill(0)},
+  {v:"Reinette",d:new Array(44).fill(0)},
+  {v:"Rubinette",d:new Array(44).fill(0)},
+  {v:"Rusticana",d:new Array(44).fill(0)},
+  {v:"Wellant",d:new Array(44).fill(0)}
+];
+const POI_INIT = [
+  {v:"Comice",d:new Array(44).fill(0)},
+  {v:"Concorde",d:new Array(44).fill(0)},
+  {v:"Conférence",d:new Array(44).fill(0)},
+  {v:"Conférence Bel",d:new Array(44).fill(0)},
+  {v:"William's",d:new Array(44).fill(0)}
+];
+
+const PC_POM_INIT = [
+  {p:"Regalis",     d:[0.3,0.75,1.5,3,4.5,6,34.14]},
+  {p:"Velkado",     d:[0.1,0.25,0.5,1,1.5,2,11.38]},
+  {p:"Delan pro",   d:[0.5,1.25,2.5,5,7.5,10,56.9]},
+  {p:"Phylgreen",   d:[0.1,0.25,0.5,1,1.5,2,11.38]},
+  {p:"Syncrofruit", d:[0.2,0.5,1.0,2,3,4,22.76]},
+  {p:"Kaishi",      d:[0.1,0.25,0.5,1,1.5,2,11.38]},
+  {p:"Abinel",      d:[0.6,1.5,3.0,6,9,12,68.28]},
+  {p:"Velmeri",     d:[0.028,0.07,0.14,0.28,0.42,0.56,3.1864]}
+];
+const PC_POI_INIT = [
+  {p:"Delan pro",   d:[0.25,0.625,1.25,2.5,3.75,5,13.175]},
+  {p:"Citrothiol",  d:[0.2,0.5,1.0,2,3,4,10.54]},
+  {p:"Abinel",      d:[0.4,1,2.0,4,6,8,21.08]},
+  {p:"Kaishi max",  d:[0.1,0.25,0.5,1,1.5,2,5.27]}
+];
+const PC_NOY_INIT = [];
+const BLOCS_POM_INIT = [
+  {n:"Sancourt bloc 1", s:3,    note:"à faire 2 fois"},
+  {n:"Sancourt bloc 2", s:3.6,  note:""},
+  {n:"Pirouette Didier",s:3.6,  note:"Pomme cuve"},
+  {n:"Du Haut",         s:3.61, note:""},
+  {n:"Bernard",         s:2.19, note:""},
+  {n:"Didier",          s:3.76, note:""}
+];
+const BLOCS_POI_INIT = [
+  {n:"Margères",    s:4},
+  {n:"Poire Didier",s:3.25},
+  {n:"Poire Cuve",  s:3.05}
+];
+const BLOCS_NOY_INIT = [
+  {n:"Abricot",         s:1,    note:""},
+  {n:"Prune Margères",  s:1,    note:""}
+];
+const TARIF_INIT = [
+  {p:"Abinel ultra",px:5,d1:3,d2:3},{p:"Actiflow MgO",px:7.9,d1:1,d2:1},{p:"Actiflow Zn",px:12.25,d1:1,d2:1},
+  {p:"Aliette flash",px:16.1,d1:2.5,d2:2},{p:"Armicarb",px:16.5,d1:3,d2:3},{p:"Boronia LS",px:4.8,d1:2,d2:1.5},
+  {p:"Bouillie disperss NC",px:6.83,d1:3,d2:3},{p:"Citrothiol rainfree",px:3.8,d1:4,d2:4},{p:"Dahido",px:28.383,d1:2,d2:2},
+  {p:"Delan pro",px:16.79,d1:2.5,d2:2},{p:"Delan SC",px:34.49,d1:0.7,d2:0.5},{p:"Dipel df",px:25.3,d1:1,d2:1},
+  {p:"Estiuoil",px:3.3,d1:15,d2:15},{p:"Final K",px:6.5,d1:3,d2:2},{p:"Fixa Mn",px:3.2,d1:1,d2:1},
+  {p:"Fructifort",px:610,d1:0.45,d2:0.32},{p:"Ginko duo",px:283,d1:1,d2:1},{p:"Kaishi Max",px:28,d1:0.5,d2:0.5},
+  {p:"Karate Xflow",px:48.81,d1:0.075,d2:0.075},{p:"Larvblock",px:24,d1:1,d2:1},{p:"Madex pro",px:120,d1:0.1,d2:0.1},
+  {p:"Madex twin",px:113,d1:0.1,d2:0.1},{p:"Megagreen",px:19.3,d1:1,d2:1},{p:"Merpan 80 WG",px:18,d1:1.9,d2:1.5},
+  {p:"Natchez",px:46.47,d1:0.15,d2:0.1},{p:"Naturalis",px:39.9,d1:2,d2:2},{p:"Oikos",px:138.38,d1:1.5,d2:1.5},
+  {p:"Pledge",px:190.96,d1:1.2,d2:1.2},{p:"Proclaim",px:26.2,d1:2,d2:2},{p:"Quassol",px:150,d1:0.6,d2:0.6},
+  {p:"Regalis plus",px:102.36,d1:1.5,d2:1.5},{p:"Respect",px:12.5,d1:1,d2:0.5},{p:"Revysion",px:17.59,d1:2,d2:2},
+  {p:"Round up ultimate",px:11.43,d1:0.9,d2:0.9},{p:"Sercadis",px:132.19,d1:0.3,d2:0.3},{p:"Syllit max",px:26,d1:1.25,d2:1},
+  {p:"Velmeri",px:135,d1:0.14,d2:0.14}
+];
+
+// ══════════════════════════════════════════════
+// SUPABASE SYNC
+// ══════════════════════════════════════════════
+const SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+function _supaHdr(extra){
+  const h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+  if(extra)Object.keys(extra).forEach(k=>{h[k]=extra[k];});
+  return h;
+}
+function supaGet(key,cb){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(key)+'&select=data',{headers:_supaHdr()})
+  .then(r=>r.ok?r.json():[])
+  .then(rows=>cb(rows&&rows.length?rows[0].data:null))
+  .catch(()=>cb(null));
+}
+function supaSet(key,data){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+    method:'POST',
+    headers:_supaHdr({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+    body:JSON.stringify({key,data,updated_at:new Date().toISOString()})
+  }).catch(()=>{});
+}
+function setSyncStatus(s){
+  const el=document.getElementById('sync-status');if(!el)return;
+  if(s==='ok'){el.textContent='☁️ Sync';el.style.color='#2d7a4a';}
+  else if(s==='syncing'){el.textContent='🔄...';el.style.color='#e07020';}
+  else if(s==='offline'){el.textContent='⚠️ Hors ligne';el.style.color='#d9534f';}
+  else{el.textContent='☁️';el.style.color='#bbb';}
+}
+function syncSaveVerger(data){
+  // Push local → Supabase (ne touche jamais au localStorage)
+  setSyncStatus('syncing');
+  supaSet(LS_KEY,data);
+  setTimeout(()=>setSyncStatus('ok'),600);
+}
+function syncPullVerger(){
+  // Pull Supabase → local (UNIQUEMENT sur demande explicite de l'utilisateur)
+  setSyncStatus('syncing');
+  supaGet(LS_KEY,data=>{
+    if(data){
+      try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+      loadLS();rebuildProdList();
+      const t=window._vergFirst||'trait';
+      const bt=document.getElementById('tab-'+t);
+      if(bt)setTab(t,bt);
+      setSyncStatus('ok');
+      alert('✅ Données récupérées depuis le cloud.');
+    } else {
+      setSyncStatus('ok');
+      alert('ℹ️ Aucune donnée cloud disponible.');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+// LOCAL STORAGE
+// ══════════════════════════════════════════════
+const LS_KEY = 'flipo-verger-v2';
+function saveLS(){
+  const d={
+    pomR:S.pomR,poiR:S.poiR,datesPom:DATES_POM,datesPoi:DATES_POI,
+    entries:S.entries,facPom:S.facPom,facPoi:S.facPoi,facPrix:S.facPrix,
+    pcPom:S.pcPom,pcPoi:S.pcPoi,pcNoy:S.pcNoy,
+    bp:S.bp,br:S.br,bn:S.bn,
+    pd:S.pd,qd:S.qd,nd:S.nd,
+    tarif:S.tarif,pxPom:S.pxPom,pxPoi:S.pxPoi,
+    bats:S.bats
+  };
+  try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+  syncSaveVerger(d);
+}
+function loadLS(){
+  try{
+    const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
+    if(d.pomR&&d.pomR.length)S.pomR=d.pomR;
+    if(d.poiR&&d.poiR.length)S.poiR=d.poiR;
+    if(d.datesPom&&d.datesPom.length)DATES_POM=d.datesPom;
+    if(d.datesPoi&&d.datesPoi.length)DATES_POI=d.datesPoi;
+    if(d.entries)S.entries=d.entries;
+    if(d.facPom)S.facPom=d.facPom;
+    if(d.facPoi)S.facPoi=d.facPoi;
+    if(d.facPrix)S.facPrix=d.facPrix;
+    if(Array.isArray(d.pcPom))S.pcPom=d.pcPom;
+    if(Array.isArray(d.pcPoi))S.pcPoi=d.pcPoi;
+    if(Array.isArray(d.pcNoy))S.pcNoy=d.pcNoy;
+    if(Array.isArray(d.bp)&&d.bp.length)S.bp=d.bp;
+    if(Array.isArray(d.br)&&d.br.length)S.br=d.br;
+    if(Array.isArray(d.bn)&&d.bn.length)S.bn=d.bn;
+    if(d.pd)S.pd=d.pd;
+    if(d.qd)S.qd=d.qd;
+    if(d.nd)S.nd=d.nd;
+    if(Array.isArray(d.tarif))S.tarif=d.tarif;
+    if(d.pxPom!==undefined)S.pxPom=d.pxPom;
+    if(d.pxPoi!==undefined)S.pxPoi=d.pxPoi;
+    if(Array.isArray(d.bats)&&d.bats.length)S.bats=d.bats;
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const S = {
+  tSub:'pc',
+  pcPom: PC_POM_INIT.map(r=>({p:r.p,d:[...r.d]})),
+  pcPoi: PC_POI_INIT.map(r=>({p:r.p,d:[...r.d]})),
+  pcNoy: PC_NOY_INIT.map(r=>({p:r.p,d:[...r.d]})),
+  bp: BLOCS_POM_INIT.map(b=>({...b})),
+  br: BLOCS_POI_INIT.map(b=>({...b})),
+  bn: BLOCS_NOY_INIT.map(b=>({...b})),
+  pd:{}, qd:{}, nd:{},
+  cvw:'saisie', cwin:5,
+  pomR: POM_INIT.map(r=>({v:r.v,d:[...r.d]})),
+  poiR: POI_INIT.map(r=>({v:r.v,d:[...r.d]})),
+  pxPom:360, pxPoi:430,
+  facPom:{}, facPoi:{}, facPrix:null,
+  tarif: TARIF_INIT.map(r=>({...r,t1:R2(r.px*r.d1),t2:R2(r.px*r.d2)})),
+  entries:[],
+  entCult:'pomme',
+  bats:[{id:'b1',nom:'Bâtiment 1',frigos:[{id:'f1',nom:'Frigo 1'}]}]
+};
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function R2(v,n=2){return Math.round(v*Math.pow(10,n))/Math.pow(10,n);}
+function eau(s){return Math.ceil(500*parseFloat(s||0)/50)*50;}
+function sm(a){return a.reduce((x,y)=>x+(parseFloat(y)||0),0);}
+function fr(n){return (parseFloat(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:2});}
+function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function $(id){return document.getElementById(id);}
+function setText(id,v){const e=$(id);if(e)e.textContent=v;}
+function saveFocus(){const e=document.activeElement;return e?{id:e.id,v:e.value,s:e.selectionStart,en:e.selectionEnd}:null;}
+function restFocus(f){if(!f||!f.id)return;const e=$(f.id);if(e){e.focus();try{e.setSelectionRange(f.s,f.en);}catch(_){}}}
+
+// Prix lookup depuis le tarif phyto
+function getPrix(productName){
+  const pn=(productName||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const found=S.tarif.find(t=>{
+    const tn=(t.p||'').toLowerCase().replace(/\s+/g,' ').trim();
+    return tn===pn||pn.startsWith(tn)||tn.startsWith(pn);
+  });
+  return found?found.px:0;
+}
+
+// Coût total pour un bloc (somme produits × prix)
+function coutBloc(culture,bi){
+  const pc=culture==='pomme'?S.pcPom:culture==='poire'?S.pcPoi:S.pcNoy;
+  const dist=culture==='pomme'?S.pd:culture==='poire'?S.qd:S.nd;
+  const blocs=culture==='pomme'?S.bp:culture==='poire'?S.br:S.bn;
+  return R2(pc.reduce((sum,row,ri)=>{
+    const k=`${ri}-${bi}`;
+    const dose=dist[k]!==undefined?dist[k]:R2(row.d[2]*blocs[bi].s);
+    return sum+dose*getPrix(row.p);
+  },0));
+}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function setTab(name,btn){
+  S.tab=name;
+  ['trait','cueill','stock','phyto'].forEach(t=>{const p=$('panel-'+t);if(p)p.classList.toggle('hidden',t!==name);});
+  document.querySelectorAll('.tabs .tab').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+  if(name==='cueill'&&S.cvw==='courbe')setTimeout(drawChart,60);
+  if(name==='stock'){const ps=$('panel-stock');if(ps&&!ps.innerHTML.trim())initStock();}
+}
+
+// ══════════════════════════════════════════════
+// PDF
+// ══════════════════════════════════════════════
+function doPDF(title,rows,blocs){
+  const w=window.open('','_blank');if(!w)return;
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    @media print{body{margin:0}}
+    body{font-family:Arial,sans-serif;font-size:11px;padding:24px;max-width:900px;margin:0 auto;color:#1a1a1a}
+    .logo-bar{display:flex;align-items:center;gap:10px;border-bottom:3px solid #1D9E75;padding-bottom:10px;margin-bottom:16px}
+    .logo-circle{width:36px;height:36px;border-radius:8px;background:#1D9E75;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:900}
+    h1{color:#0F6E56;font-size:16px;margin:0}
+    .subtitle{color:#666;font-size:11px;margin:0}
+    .bloc-card{margin-bottom:18px;break-inside:avoid}
+    .bloc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;padding:8px 12px;background:#e8f5ee;border-radius:6px;border-left:4px solid #1D9E75}
+    .bloc-name{font-weight:700;font-size:13px;color:#0F6E56}
+    .bloc-meta{font-size:11px;color:#555}
+    .bloc-note{font-size:10px;color:#888;font-style:italic}
+    table{border-collapse:collapse;width:100%;margin:0}
+    th{background:#f0f7ee;padding:6px 10px;border:1px solid #ccc;font-size:11px;text-align:left;color:#333}
+    td{padding:5px 10px;border:1px solid #ddd;font-size:11px}
+    td.dose{background:#fffae8;font-weight:600;text-align:right}
+    .footer{margin-top:24px;font-size:9px;color:#aaa;border-top:1px solid #eee;padding-top:8px;text-align:center}
+    .no-print{margin-top:16px;text-align:center}
+    @media print{.no-print{display:none}}
+  </style></head><body>
+  <div class="logo-bar">
+    <div class="logo-circle">🌿</div>
+    <div><h1>Flipo — Programme de traitement</h1><p class="subtitle">${title} &nbsp;|&nbsp; Saison 2026/2027 &nbsp;|&nbsp; Édité le ${dt}</p></div>
+  </div>`;
+  blocs.forEach(b=>{
+    h+=`<div class="bloc-card">
+      <div class="bloc-head">
+        <span class="bloc-name">${es(b.n)}</span>
+        <span class="bloc-meta">${b.s} ha &nbsp;—&nbsp; 💧 ${eau(b.s)} L</span>
+        ${b.note?`<span class="bloc-note">(${es(b.note)})</span>`:''}
+      </div>
+      <table><thead><tr><th>Produit</th><th style="text-align:right">Dose (L)</th></tr></thead><tbody>`;
+    rows.forEach(r=>{
+      const dose=b._d&&b._d[r.p]!==undefined?b._d[r.p]:R2(r.d[2]*b.s);
+      h+=`<tr><td>${es(r.p)}</td><td class="dose">${dose}</td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  });
+  h+=`<div class="footer">Flipo — Usage exploitation uniquement — Coûts phyto non inclus dans ce document</div>
+  <div class="no-print" style="display:flex;gap:10px;justify-content:center">
+    <button onclick="window.print()" style="padding:8px 20px;background:#185FA5;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Imprimer / Enregistrer PDF</button>
+    <button onclick="window.close()" style="padding:8px 16px;background:#f0f0f0;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:13px">✕ Fermer</button>
+  </div>
+  <script>setTimeout(()=>window.print(),400);<\/script></body></html>`;
+  w.document.write(h);w.document.close();
+}
+
+// SMS résumé traitement
+function doSMS(title,rows,blocs){
+  let body='Traitement '+title+' — '+new Date().toLocaleDateString('fr-FR')+'\nSaison 2026/2027\n\n';
+  blocs.forEach(b=>{
+    body+=b.n+' ('+b.s+'ha):\n';
+    rows.forEach(r=>{const dose=b._d&&b._d[r.p]!==undefined?b._d[r.p]:R2(r.d[2]*b.s);body+='  '+r.p+' : '+dose+' L\n';});
+    body+='\n';
+  });
+  body+='— Flipo';
+  window.open('sms:?body='+encodeURIComponent(body),'_blank');
+}
+function smsDist(culture){
+  const pc=getPcArr(culture);
+  const label=culture==='pomme'?'Pomme':culture==='poire'?'Poire':'Noyaux';
+  doSMS(label,pc,buildBlocsWithDoses(culture));
+}
+function smsPC(){
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let body='Par Culture — Verger\n'+dt+'\nSaison 2026/2027\n\n';
+  [['Pomme (22,76ha)',S.pcPom],['Poire (10,54ha)',S.pcPoi],['Noyaux (2ha)',S.pcNoy]].forEach(([label,pc])=>{
+    if(!pc.length)return;
+    body+=label+':\n';
+    pc.forEach(r=>body+='  '+r.p+' : 500L='+r.d[2]+' — Total='+r.d[6]+'\n');
+    body+='\n';
+  });
+  body+='— Flipo';
+  window.open('sms:?body='+encodeURIComponent(body),'_blank');
+}
+function emailPC(){
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let body='Par Culture — Verger\nSaison 2026/2027\nDate : '+dt+'\n\n';
+  [['Pomme (22,76ha)',S.pcPom],['Poire (10,54ha)',S.pcPoi],['Noyaux (2ha)',S.pcNoy]].forEach(([label,pc])=>{
+    if(!pc.length)return;
+    body+=label+':\n';
+    pc.forEach(r=>body+='  '+r.p+' : 500L/ha='+r.d[2]+' — Total='+r.d[6]+' L\n');
+    body+='\n';
+  });
+  body+='—\nFlipo — Usage exploitation uniquement';
+  const sub=encodeURIComponent('Par Culture Verger — '+dt);
+  const bdy=encodeURIComponent(body);
+  window.open('https://mail.google.com/mail/u/0/?view=cm&fs=1&to=flipotanguy%40gmail.com&su='+sub+'&body='+bdy,'_blank');
+}
+// ── Partage — prévisualisation imprimable ──────────────────
+function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,emailPlain){
+  const w=window.open('','_blank','width=800,height=680,scrollbars=yes');
+  if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
+  const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
+  const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+moduleTitle+'</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
+    +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
+    +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
+    +'.tbtn{padding:8px 18px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}'
+    +'.tbtn-print{background:'+accentColor+';color:#fff}.tbtn-email{background:#185FA5;color:#fff}.tbtn-close{background:#eee;color:#333;margin-left:auto}'
+    +'.logo-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:3px solid '+accentColor+';margin-bottom:22px}'
+    +'.logo-box{width:44px;height:44px;border-radius:12px;background:'+accentColor+';display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+    +'.logo-title{font-size:20px;font-weight:700;color:'+accentColor+'}.logo-sub{font-size:11px;color:#888;margin-top:3px}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 16px}'
+    +'th{background:#f2f2f0;padding:7px 10px;text-align:left;border-bottom:2px solid #ddd;font-weight:700}'
+    +'td{padding:7px 10px;border-bottom:1px solid #eee}'
+    +'.tr{background:#f9f9f0;font-weight:700}.tar{text-align:right}'
+    +'.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:18px 0 8px;padding-top:14px;border-top:1px solid #eee}'
+    +'.grand-total{font-size:14px;font-weight:700;margin-top:20px;padding-top:14px;border-top:2px solid #ddd;color:'+accentColor+'}'
+    +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}}</style>'
+    +'</head><body><div class="page">'
+    +'<div class="toolbar">'
+    +'<button class="tbtn tbtn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>'
+    +'<a class="tbtn tbtn-email" href="'+emailHref+'">📧 Envoyer par email</a>'
+    +'<button class="tbtn tbtn-close" onclick="window.close()">✕ Fermer</button>'
+    +'</div>'
+    +'<div class="logo-hdr">'
+    +'<div class="logo-box"><svg viewBox="0 0 28 32" fill="none" width="26" height="30"><rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/><ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/><circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/><circle cx="14" cy="18" r="2.2" fill="#f4a020"/></svg></div>'
+    +'<div><div class="logo-title">Flipo — '+moduleTitle+'</div><div class="logo-sub">Généré le '+dt+'</div></div>'
+    +'</div>'
+    +contentHTML
+    +'</div></body></html>');
+  w.document.close();
+}
+
+function buildShareHTML(){
+  const tab=S.tab||'trait';
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let html='',plain='';
+  if(tab==='trait'){
+    const sub=S.tSub||'pc';
+    if(sub==='pc'){
+      html='<div class="section-title">Programme par culture — Saison '+(S.saison||'2026/2027')+'</div>';
+      plain='Par Culture — Verger\nSaison '+(S.saison||'2026/2027')+'\n'+dt+'\n\n';
+      [['🍎 Pomme','22,76 ha',S.pcPom],['🍐 Poire','10,54 ha',S.pcPoi],['🍑 Noyaux','2 ha',S.pcNoy]].forEach(([label,surf,pc])=>{
+        if(!pc.length)return;
+        html+='<p style="font-weight:700;margin:14px 0 6px">'+label+' — '+surf+'</p>';
+        html+='<table><thead><tr><th>Produit</th><th class="tar">Dose 500L/ha</th><th class="tar">Total parcelle</th></tr></thead><tbody>';
+        pc.forEach(r=>{html+='<tr><td>'+es(r.p)+'</td><td class="tar">'+(r.d[2]||0)+'</td><td class="tar">'+(r.d[6]||0)+'</td></tr>';});
+        html+='</tbody></table>';
+        plain+=label+' ('+surf+'):\n';
+        pc.forEach(r=>{plain+='  '+r.p+' : 500L/ha='+r.d[2]+' — Total='+r.d[6]+' L\n';});
+        plain+='\n';
+      });
+    } else {
+      const culture=sub;
+      const pc=getPcArr(culture);
+      const blocs=getBlocArr(culture);
+      const dist=getDistArr(culture);
+      const label=culture==='pomme'?'🍎 Pomme':culture==='poire'?'🍐 Poire':'🍑 Noyaux';
+      html='<div class="section-title">Programme de traitement — '+label+' — Saison '+(S.saison||'2026/2027')+'</div>';
+      plain='Traitement Verger — '+label+'\nSaison '+(S.saison||'2026/2027')+'\n'+dt+'\n\n';
+      blocs.forEach((b,bi)=>{
+        const eauB=eau(b.s);
+        html+='<p style="font-weight:700;margin:14px 0 6px">'+es(b.n)+' — '+b.s+' ha — 💧 '+eauB+' L'+(b.note?' ('+es(b.note)+')':'')+'</p>';
+        html+='<table><thead><tr><th>Produit</th><th class="tar">Dose (L)</th></tr></thead><tbody>';
+        plain+=b.n+' — '+b.s+' ha — Eau: '+eauB+' L\n';
+        pc.forEach((row,ri)=>{const k=ri+'-'+bi;const isMn=dist[k]!==undefined;const val=isMn?dist[k]:R2(row.d[2]*b.s);html+='<tr><td>'+es(row.p)+'</td><td class="tar">'+val+'</td></tr>';plain+='  '+row.p+' : '+val+' L\n';});
+        if(!pc.length)html+='<tr><td colspan="2" style="color:#aaa;font-style:italic">Aucun produit</td></tr>';
+        html+='</tbody></table>';
+        plain+='\n';
+      });
+    }
+    return {html,plain,title:'Verger — Traitements',subject:'Traitements Verger — '+dt};
+  } else if(tab==='cueill'){
+    const tot=arr=>arr.reduce((s,r)=>s+r.d.reduce((a,b)=>a+b,0),0);
+    const tPom=Math.round(tot(S.pomR)),tPoi=Math.round(tot(S.poiR));
+    html='<div style="display:flex;gap:24px;margin-bottom:18px">';
+    html+='<div style="text-align:center;padding:14px 20px;background:#f5f5f5;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#0F6E56">'+tPom+'</div><div style="font-size:11px;color:#666">palox pomme</div></div>';
+    html+='<div style="text-align:center;padding:14px 20px;background:#f5f5f5;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#185FA5">'+tPoi+'</div><div style="font-size:11px;color:#666">palox poire</div></div>';
+    html+='<div style="text-align:center;padding:14px 20px;background:#f9f5e8;border-radius:8px"><div style="font-size:22px;font-weight:700;color:#6b4000">'+(tPom+tPoi)+'</div><div style="font-size:11px;color:#666">palox total</div></div>';
+    html+='</div>';
+    plain='Cueillette Verger\nSaison '+(S.saison||'2026/2027')+'\n'+dt+'\n\nPomme : '+tPom+' palox\nPoire : '+tPoi+' palox\n\n';
+    const pomHasData=S.pomR.some(r=>r.d.reduce((a,b)=>a+b,0)>0);
+    const poiHasData=S.poiR.some(r=>r.d.reduce((a,b)=>a+b,0)>0);
+    if(pomHasData){
+      html+='<div class="section-title">🍎 Pomme par variété</div>';
+      html+='<table><thead><tr><th>Variété</th><th class="tar">Palox</th><th class="tar">Poids (kg)</th></tr></thead><tbody>';
+      S.pomR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=(t*(S.pxPom||300)).toLocaleString('fr-FR');html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
+      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPom+'</td><td class="tar">'+((tPom*(S.pxPom||300)).toLocaleString('fr-FR'))+'</td></tr>';
+      html+='</tbody></table>';
+    }
+    if(poiHasData){
+      html+='<div class="section-title">🍐 Poire par variété</div>';
+      html+='<table><thead><tr><th>Variété</th><th class="tar">Palox</th><th class="tar">Poids (kg)</th></tr></thead><tbody>';
+      S.poiR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=(t*(S.pxPoi||440)).toLocaleString('fr-FR');html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
+      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPoi+'</td><td class="tar">'+((tPoi*(S.pxPoi||440)).toLocaleString('fr-FR'))+'</td></tr>';
+      html+='</tbody></table>';
+    }
+    return {html,plain:plain+'\n— Flipo',title:'Verger — Cueillette',subject:'Cueillette Verger — '+dt};
+  } else if(tab==='phyto'){
+    html='<div class="section-title">Tarif produits phytosanitaires</div>';
+    html+='<table><thead><tr><th>Produit</th><th class="tar">Prix (€/L)</th><th class="tar">Dose mini</th><th class="tar">Dose maxi</th></tr></thead><tbody>';
+    plain='Produits phyto Verger\n'+dt+'\n\n';
+    S.tarif.forEach(r=>{html+='<tr><td>'+es(r.p)+'</td><td class="tar">'+r.px+'</td><td class="tar">'+r.d1+'</td><td class="tar">'+r.d2+'</td></tr>';plain+=r.p+' : '+r.px+' €/L ('+r.d1+'→'+r.d2+' L/ha)\n';});
+    html+='</tbody></table>';
+    return {html,plain:plain+'\n— Flipo',title:'Verger — Phyto',subject:'Phyto Verger — '+dt};
+  }
+  return {html:'<p>Onglet actif : '+tab+'</p>',plain:'Verger — '+dt,title:'Verger',subject:'Verger — '+dt};
+}
+
+function shareNow(type){
+  void type;
+  const r=buildShareHTML();
+  openSharePreview(r.title,'#1D9E75',r.html,r.subject,r.plain);
+}
+
+// Email de résumé traitement
+function doEmail(title,rows,blocs){
+  let body=`Programme de traitement — ${title}\nSaison 2026/2027\nDate : ${new Date().toLocaleDateString('fr-FR')}\n\n`;
+  blocs.forEach(b=>{
+    body+=`== ${b.n} — ${b.s} ha — Eau : ${eau(b.s)} L${b.note?' ('+b.note+')':''} ==\n`;
+    rows.forEach(r=>{const dose=b._d&&b._d[r.p]!==undefined?b._d[r.p]:R2(r.d[2]*b.s);body+=`  ${r.p} : ${dose} L\n`;});
+    body+='\n';
+  });
+  body+='—\nFlipo — Usage exploitation uniquement';
+  const sub=encodeURIComponent('Traitement Verger — '+title+' — '+new Date().toLocaleDateString('fr-FR'));
+  const bdy=encodeURIComponent(body);
+  window.open(`https://mail.google.com/mail/u/0/?view=cm&fs=1&to=flipotanguy%40gmail.com&su=${sub}&body=${bdy}`,'_blank');
+}
+
+// ══════════════════════════════════════════════
+// TRAITEMENTS
+// ══════════════════════════════════════════════
+function initTrait(){$('panel-trait').innerHTML=buildTrait();}
+function buildTrait(){return buildTraitStabs()+`<div id="tc">${buildTC()}</div>`;}
+function buildTraitStabs(){
+  var allTabs=[{id:'pc',l:'Par Culture'},{id:'pomme',l:'🍎 Pomme'},{id:'poire',l:'🍐 Poire'},{id:'noyaux',l:'🍑 Noyaux'}];
+  var allowed=FLIPO_STABS['trait'];
+  var tabs=allowed&&allowed.length?allTabs.filter(function(t){return allowed.indexOf(t.id)>=0;}):allTabs;
+  if(!tabs.length)tabs=allTabs;
+  if(!tabs.find(function(t){return t.id===S.tSub;})&&tabs.length)S.tSub=tabs[0].id;
+  return `<div class="stabs">${tabs.map(t=>`<button class="stab${S.tSub===t.id?' act':''}" onclick="setTSub('${t.id}')">${t.l}</button>`).join('')}</div>`;
+}
+function setTSub(v){S.tSub=v;const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
+function buildTC(){
+  if(S.tSub==='pc')return buildPC();
+  if(S.tSub==='pomme')return buildDist('pomme');
+  if(S.tSub==='poire')return buildDist('poire');
+  return buildDist('noyaux');
+}
+
+function printParCulture(){
+  const w=window.open('','_blank');if(!w)return;
+  const dt=new Date().toLocaleDateString('fr-FR');
+  let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Par Culture</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h2{color:#0F6E56;margin-bottom:4px}h3{color:#555;margin:14px 0 5px;font-size:12px}table{border-collapse:collapse;width:auto;margin-bottom:12px}th{background:#e8f5ee;padding:6px 12px;border:1px solid #ccc;font-size:11px}td{padding:5px 12px;border:1px solid #ddd;font-size:11px}td.f{background:#fffae8;font-weight:600}.footer{font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px}@media print{.np{display:none}}</style></head><body>
+  <h2>🌿 Flipo — Par Culture · ${dt}</h2>`;
+  [['🍎 Pomme','22,76 ha',S.pcPom,'dp'],['🍐 Poire','10,54 ha',S.pcPoi,'dq'],['🍑 Noyaux','2 ha',S.pcNoy,'dn']].forEach(([label,surf,pc,pf])=>{
+    h+=`<h3>${label} — ${surf}</h3><table><thead><tr><th>Produit</th><th>Dose 500L/ha</th><th>Total parcelle</th></tr></thead><tbody>`;
+    pc.forEach(row=>h+=`<tr><td>${es(row.p)}</td><td>${row.d[2]||0}</td><td class="f">${row.d[6]||0}</td></tr>`);
+    if(!pc.length)h+=`<tr><td colspan="3" style="color:#aaa;font-style:italic">Aucun produit</td></tr>`;
+    h+=`</tbody></table>`;
+  });
+  h+=`<div class="footer">Flipo — Usage exploitation uniquement</div>
+  <div class="np" style="margin-top:12px;text-align:center"><button onclick="window.print()" style="padding:7px 18px;background:#185FA5;color:#fff;border:none;border-radius:6px;cursor:pointer">Imprimer</button></div>
+  <script>setTimeout(()=>window.print(),300);<\/script></body></html>`;
+  w.document.write(h);w.document.close();
+}
+
+// ─── PAR CULTURE (sans 100L / 200L) ────────────
+// ─── PAR CULTURE (sans 100L / 200L) ────────────
+function buildPC(){
+  // Colonnes: idx 2=500L(base), 3=1000L, 4=1500L, 5=2000L, 6=Total
+  const HDR=['500L / 1ha','Total parcelle'];
+  const CI=[2,6]; // indices dans d[] à afficher
+  let h=`<div class="leg">
+    <div class="li"><div class="lb" style="background:var(--am);border-color:var(--amb)"></div><span>Cellule formule (calculée auto)</span></div>
+    <div class="li"><div class="lb"></div><span>Saisie manuelle</span></div>
+  </div>`;
+  h+=`<div class="btns" style="margin-bottom:14px">
+    <button class="btn pdf" onclick="printParCulture()">🖨️ Imprimer tableau</button>
+  </div>`;
+  // Pomme
+  h+=`<p style="font-weight:700;color:#3a6e11;font-size:12px;margin-bottom:6px">🍎 Pomme — surface totale : 22,76 ha</p>`;
+  h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
+  S.pcPom.forEach((row,ri)=>{
+    h+=`<tr><td><input class="w120" id="pnp-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcPom[${ri}].p=this.value;saveLS()"></td>`;
+    CI.forEach(ci=>{
+      if(ci===2) h+=`<td><input class="w60" id="dp-${ri}-2" value="${row.d[2]??''}" onchange="updDose('pom',${ri},this.value)"></td>`;
+      else h+=`<td class="f"><span id="dp-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
+    });
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('pom',${ri})">🗑</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addProdPC('pom')">+ Produit pomme</button></div>`;
+  // Poire
+  h+=`<p style="font-weight:700;color:#185FA5;font-size:12px;margin:14px 0 6px">🍐 Poire — surface totale : 10,54 ha</p>`;
+  h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
+  S.pcPoi.forEach((row,ri)=>{
+    h+=`<tr><td><input class="w120" id="pnq-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcPoi[${ri}].p=this.value;saveLS()"></td>`;
+    CI.forEach(ci=>{
+      if(ci===2) h+=`<td><input class="w60" id="dq-${ri}-2" value="${row.d[2]??''}" onchange="updDose('poi',${ri},this.value)"></td>`;
+      else h+=`<td class="f"><span id="dq-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
+    });
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('poi',${ri})">🗑</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addProdPC('poi')">+ Produit poire</button></div>`;
+  // Noyaux
+  h+=`<p style="font-weight:700;color:#8B4513;font-size:12px;margin:14px 0 6px">🍑 Noyaux — surface totale : 2 ha</p>`;
+  h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
+  S.pcNoy.forEach((row,ri)=>{
+    h+=`<tr><td><input class="w120" id="pnn-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcNoy[${ri}].p=this.value;saveLS()"></td>`;
+    CI.forEach(ci=>{
+      if(ci===2) h+=`<td><input class="w60" id="dn-${ri}-2" value="${row.d[2]??''}" onchange="updDose('noy',${ri},this.value)"></td>`;
+      else h+=`<td class="f"><span id="dn-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
+    });
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('noy',${ri})">🗑</button></td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addProdPC('noy')">+ Produit noyaux</button></div>`;
+  return h;
+}
+function updDose(type,ri,val){
+  const dv=parseFloat(val)||0;
+  const pc=type==='pom'?S.pcPom:type==='poi'?S.pcPoi:S.pcNoy;
+  const d=pc[ri].d;
+  const pf=type==='pom'?'dp':type==='poi'?'dq':'dn';
+  const surf=type==='pom'?22.76:type==='poi'?10.54:2;
+  d[2]=dv;d[0]=R2(dv/5);d[1]=R2(dv/2);d[3]=R2(dv*2);d[4]=R2(dv*3);d[5]=R2(dv*4);d[6]=R2(dv*surf);
+  const e6=$(`${pf}-${ri}-6`);if(e6)e6.textContent=d[6]||0;
+  if(type!=='noy'){
+    const blocs=type==='pom'?S.bp:S.br;
+    const dist=type==='pom'?S.pd:S.qd;
+    const cult=type==='pom'?'pomme':'poire';
+    blocs.forEach((_,bi)=>{if(dist[`${ri}-${bi}`]===undefined){const e=$(`dc-${cult}-${ri}-${bi}`);if(e)e.value=R2(dv*blocs[bi].s);}});
+    updDistTotal(cult,ri);
+  }
+}
+function addProdPC(type){
+  if(type==='pom')S.pcPom.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  else if(type==='poi')S.pcPoi.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  else S.pcNoy.push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
+}
+function deleteProdPC(type,ri){
+  const norm=type==='pom'||type==='pomme'?'pomme':type==='poi'||type==='poire'?'poire':'noyaux';
+  const pc=getPcArr(norm);
+  const dist=getDistArr(norm);
+  pc.splice(ri,1);
+  // Re-indexer les clés de distribution
+  const newDist={};
+  Object.keys(dist).forEach(k=>{
+    const parts=k.split('-');const r=parseInt(parts[0]);const b=parseInt(parts[1]);
+    if(r===ri)return;
+    const newR=r>ri?r-1:r;
+    newDist[`${newR}-${b}`]=dist[k];
+  });
+  if(norm==='pomme')S.pd=newDist;
+  else if(norm==='poire')S.qd=newDist;
+  else S.nd=newDist;
+  saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
+}
+
+// ─── MATRICE DISTRIBUTION (pomme / poire / noyaux) ──────
+function buildDist(culture){
+  const blocs=culture==='pomme'?S.bp:culture==='poire'?S.br:S.bn;
+  const dist=culture==='pomme'?S.pd:culture==='poire'?S.qd:S.nd;
+  const pc=culture==='pomme'?S.pcPom:culture==='poire'?S.pcPoi:S.pcNoy;
+  const canPDF=culture!=='noyaux';
+  const cultLabel=culture==='pomme'?'🍎 Pomme':culture==='poire'?'🍐 Poire':'🍑 Noyaux';
+  let h=`<div class="info">Saisissez la dose <strong>base/ha</strong> → les doses par bloc se calculent automatiquement (base × surface). <span style="color:var(--mnd)">Cellule verte</span> = valeur modifiée manuellement (bouton ↺ pour revenir à l'auto).</div>`;
+  h+=`<div class="leg">
+    <div class="li"><div class="lb" style="background:var(--am);border-color:var(--amb)"></div><span>Calculé auto</span></div>
+    <div class="li"><div class="lb" style="background:var(--mn);border-color:var(--mnd)"></div><span>Modifié manuellement</span></div>
+    <div class="li"><div class="lb" style="background:#fce8d5;border-color:#e07020"></div><span>Coût estimé</span></div>
+  </div>`;
+  h+=`<div class="tw fh"><table><thead><tr><th>Produit</th><th>Base /ha</th>`;
+  blocs.forEach(b=>h+=`<th class="am">${es(b.n)}<br><small style="font-weight:400;color:var(--mu)">${b.s}ha${b.note?' · '+es(b.note):''}</small></th>`);
+  h+=`<th class="am">Total</th><th></th></tr></thead><tbody>`;
+  // Ligne eau
+  const totEau=blocs.reduce((s,b)=>s+eau(b.s),0);
+  h+=`<tr style="background:var(--gl);font-size:11px"><td style="color:var(--gd);font-weight:600">💧 Eau calculée</td><td style="color:var(--mu)">500L/ha</td>`;
+  blocs.forEach(b=>h+=`<td class="f">${eau(b.s)} L</td>`);
+  h+=`<td class="f" style="font-weight:700">${totEau} L</td></tr>`;
+  // Produits
+  pc.forEach((row,ri)=>{
+    const totRow=blocs.reduce((s,b,bi)=>{const k=`${ri}-${bi}`;return s+(dist[k]!==undefined?dist[k]:R2(row.d[2]*b.s));},0);
+    h+=`<tr><td><input class="w120" id="pname-${culture}-${ri}" value="${es(row.p)}" list="prod-list" onchange="getPcArr('${culture}')[${ri}].p=this.value;saveLS()"></td><td><input class="w60" id="base-${culture}-${ri}" value="${row.d[2]??''}" onchange="updBase('${culture}',${ri},this.value)"></td>`;
+    blocs.forEach((b,bi)=>{
+      const k=`${ri}-${bi}`;const auto=R2(row.d[2]*b.s);
+      const isMn=dist[k]!==undefined;const val=isMn?dist[k]:auto;
+      h+=`<td class="${isMn?'mn':'f'}" id="dcc-${culture}-${ri}-${bi}">`;
+      h+=`<input class="w60" id="dc-${culture}-${ri}-${bi}" value="${val}" onchange="setMD('${culture}',${ri},${bi},this.value)">`;
+      if(isMn)h+=`<button class="rb" onclick="resetMD('${culture}',${ri},${bi})">↺</button>`;
+      h+=`</td>`;
+    });
+    h+=`<td class="f" id="dt-${culture}-${ri}" style="font-weight:700">${R2(totRow)}</td><td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('${culture}',${ri})">🗑</button></td></tr>`;
+  });
+  if(!pc.length)h+=`<tr><td colspan="${3+blocs.length}" style="color:var(--mu);font-style:italic;text-align:center;padding:12px">Aucun produit — cliquez "+ Ajouter un produit" pour commencer</td></tr>`;
+  h+=`</tbody></table></div>`;
+  // Blocs table (avec coût)
+  h+=`<div class="stitle">Blocs — surfaces</div>`;
+  h+=`<div class="tw"><table><thead><tr><th>Bloc</th><th>Surface (ha)</th><th>Note</th><th class="am">Eau calculée</th><th class="cost">Coût estimé (€)</th></tr></thead><tbody>`;
+  blocs.forEach((b,i)=>{
+    const cout=coutBloc(culture,i);
+    h+=`<tr>
+      <td><input class="w120" id="bn-${culture}-${i}" value="${es(b.n)}" onchange="updBN('${culture}',${i},this.value)"></td>
+      <td><input class="w60" id="bs-${culture}-${i}" value="${b.s}" onchange="updBS('${culture}',${i},this.value)"></td>
+      <td><input class="w120" id="bnote-${culture}-${i}" value="${es(b.note||'')}" placeholder="note..." onchange="getBlocArr('${culture}')[${i}].note=this.value;saveLS()"></td>
+      <td class="f" id="beau-${culture}-${i}">${eau(b.s)} L</td>
+      <td class="cost" id="bcout-${culture}-${i}">${cout>0?cout.toLocaleString('fr-FR',{maximumFractionDigits:2})+' €':'—'}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns">
+    <button class="btn add" onclick="addBloc('${culture}')">+ Ajouter un bloc</button>
+    <button class="btn add" onclick="addProdDist('${culture}')">+ Ajouter un produit</button>
+    ${canPDF?`<button class="btn pdf" onclick="pdfDist('${culture}')">⬇ PDF ${culture==='pomme'?'Pomme':'Poire'}</button>
+    <button class="btn mail" onclick="emailDist('${culture}')">✉ E-mail</button>`:''}
+    <button class="btn ok" onclick="openModal('${culture}')">✓ Valider le traitement</button>
+  </div>`;
+  return h;
+}
+function getBlocArr(culture){return culture==='pomme'?S.bp:culture==='poire'?S.br:S.bn;}
+function getPcArr(culture){return culture==='pomme'?S.pcPom:culture==='poire'?S.pcPoi:S.pcNoy;}
+function getDistArr(culture){return culture==='pomme'?S.pd:culture==='poire'?S.qd:S.nd;}
+
+function updBase(culture,ri,val){
+  const dv=parseFloat(val)||0;
+  const pc=getPcArr(culture);
+  pc[ri].d[2]=dv;pc[ri].d[0]=R2(dv/5);pc[ri].d[1]=R2(dv/2);pc[ri].d[3]=R2(dv*2);pc[ri].d[4]=R2(dv*3);pc[ri].d[5]=R2(dv*4);
+  const blocs=getBlocArr(culture);const dist=getDistArr(culture);
+  blocs.forEach((b,bi)=>{if(dist[`${ri}-${bi}`]===undefined){const e=$(`dc-${culture}-${ri}-${bi}`);if(e)e.value=R2(dv*b.s);}});
+  updDistTotal(culture,ri);updBlocCouts(culture);
+  const pf=culture==='pomme'?'dp':culture==='poire'?'dq':null;
+  if(pf)[3,4,5].forEach(ci=>{const e=$(`${pf}-${ri}-${ci}`);if(e)e.textContent=pc[ri].d[ci]||0;});
+  saveLS();
+}
+function updDistTotal(culture,ri){
+  const blocs=getBlocArr(culture);const dist=getDistArr(culture);const pc=getPcArr(culture);
+  const tot=blocs.reduce((s,b,bi)=>{const k=`${ri}-${bi}`;return s+(dist[k]!==undefined?dist[k]:R2(pc[ri].d[2]*b.s));},0);
+  const e=$(`dt-${culture}-${ri}`);if(e)e.textContent=R2(tot);
+}
+function updBlocCouts(culture){
+  const blocs=getBlocArr(culture);
+  blocs.forEach((_,bi)=>{
+    const e=$(`bcout-${culture}-${bi}`);
+    if(e){const c=coutBloc(culture,bi);e.textContent=c>0?c.toLocaleString('fr-FR',{maximumFractionDigits:2})+' €':'—';}
+  });
+}
+function setMD(culture,ri,bi,val){
+  const v=parseFloat(val)||0;
+  getDistArr(culture)[`${ri}-${bi}`]=v;
+  const cell=$(`dcc-${culture}-${ri}-${bi}`);
+  if(cell&&!cell.querySelector('.rb')){
+    const btn=document.createElement('button');btn.className='rb';btn.textContent='↺';btn.title='Réinitialiser';
+    btn.onclick=()=>resetMD(culture,ri,bi);cell.className='mn';cell.appendChild(btn);
+  }
+  updDistTotal(culture,ri);updBlocCouts(culture);saveLS();
+}
+function resetMD(culture,ri,bi){
+  const dist=getDistArr(culture);delete dist[`${ri}-${bi}`];
+  const blocs=getBlocArr(culture);const pc=getPcArr(culture);
+  const auto=R2(pc[ri].d[2]*blocs[bi].s);
+  const cell=$(`dcc-${culture}-${ri}-${bi}`);
+  if(cell){cell.className='f';cell.innerHTML=`<input class="w60" id="dc-${culture}-${ri}-${bi}" value="${auto}" onchange="setMD('${culture}',${ri},${bi},this.value)">`;}
+  updDistTotal(culture,ri);updBlocCouts(culture);saveLS();
+}
+function updBN(culture,i,v){getBlocArr(culture)[i].n=v;saveLS();}
+function updBS(culture,i,val){
+  const v=parseFloat(val)||0;const bl=getBlocArr(culture);bl[i].s=v;
+  const e=$(`beau-${culture}-${i}`);if(e)e.textContent=eau(v)+' L';
+  const pc=getPcArr(culture);const dist=getDistArr(culture);
+  pc.forEach((_,ri)=>{if(dist[`${ri}-${i}`]===undefined){const e=$(`dc-${culture}-${ri}-${i}`);if(e)e.value=R2(pc[ri].d[2]*v);}updDistTotal(culture,ri);});
+  updBlocCouts(culture);saveLS();
+}
+function addBloc(culture){getBlocArr(culture).push({n:'Nouveau bloc',s:0,note:''});saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
+function addProdDist(culture){
+  getPcArr(culture).push({p:'Nouveau produit',d:[0,0,0,0,0,0,0]});
+  saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
+}
+function buildBlocsWithDoses(culture){
+  const blocs=getBlocArr(culture);const dist=getDistArr(culture);const pc=getPcArr(culture);
+  return blocs.map((b,bi)=>{const _d={};pc.forEach((row,ri)=>{const k=`${ri}-${bi}`;_d[row.p]=dist[k]!==undefined?dist[k]:R2(row.d[2]*b.s);});return{...b,_d};});
+}
+function pdfDist(culture){
+  const pc=getPcArr(culture);
+  doPDF(culture==='pomme'?'🍎 Pomme':'🍐 Poire',pc,buildBlocsWithDoses(culture));
+}
+function emailDist(culture){
+  const pc=getPcArr(culture);
+  doEmail(culture==='pomme'?'Pomme':'Poire',pc,buildBlocsWithDoses(culture));
+}
+// Modal validation
+function openModal(culture){
+  const blocs=getBlocArr(culture);const dist=getDistArr(culture);const pc=getPcArr(culture);
+  const canPDF=culture!=='noyaux';
+  let h=`<div class="mbg"><div class="mc"><div class="mh"><h2>✓ Traitement validé — ${culture==='pomme'?'🍎 Pomme':culture==='poire'?'🍐 Poire':'🍑 Noyaux'}</h2><button class="mclose" onclick="$('modal-root').innerHTML=''">✕ Fermer</button></div>`;
+  blocs.forEach((b,bi)=>{
+    h+=`<div style="margin-bottom:14px"><div style="font-weight:700;color:var(--gd);margin-bottom:6px">${es(b.n)} — ${b.s} ha${b.note?' <span class="note">('+es(b.note)+')</span>':''} — 💧 ${eau(b.s)} L</div>`;
+    h+=`<div class="tw"><table><thead><tr><th>Produit</th><th class="am">Dose (L)</th></tr></thead><tbody>`;
+    pc.forEach((row,ri)=>{const k=`${ri}-${bi}`;const isMn=dist[k]!==undefined;const val=isMn?dist[k]:R2(row.d[2]*b.s);h+=`<tr><td>${es(row.p)}</td><td class="${isMn?'mn':'f'}">${val}</td></tr>`;});
+    if(!pc.length)h+=`<tr><td colspan="2" style="color:var(--mu);font-style:italic">Aucun produit</td></tr>`;
+    h+=`</tbody></table></div></div>`;
+  });
+  h+=`<div class="mfoot">
+    ${canPDF?`<button class="btn pdf" onclick="pdfDist('${culture}')">⬇ PDF</button><button class="btn mail" onclick="emailDist('${culture}')">✉ E-mail</button>`:''}
+    <button class="btn ok" onclick="$('modal-root').innerHTML=''">✓ Terminer — Sortir</button>
+  </div></div></div>`;
+  $('modal-root').innerHTML=h;
+}
+
+// ══════════════════════════════════════════════
+// CUEILLETTE
+// ══════════════════════════════════════════════
+function initCueill(){$('panel-cueill').innerHTML=buildCueill();}
+function buildCueill(){
+  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
+  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
+  let h=`<div class="sts">
+    <div class="st"><div class="sl">Total pommes</div><div class="sv" id="sp">${tP}</div><div class="su">palox</div></div>
+    <div class="st"><div class="sl">Poids pommes</div><div class="sv" id="swp" style="font-size:16px">${(tP*300).toLocaleString('fr-FR')}</div><div class="su">kg</div></div>
+    <div class="st"><div class="sl">Total poires</div><div class="sv" id="sq">${tQ}</div><div class="su">palox</div></div>
+    <div class="st"><div class="sl">Poids poires</div><div class="sv" id="swq" style="font-size:16px">${(tQ*440).toLocaleString('fr-FR')}</div><div class="su">kg</div></div>
+    <div class="st" style="border-left:3px solid var(--gr)"><div class="sl">Total général</div><div class="sv" id="stot" style="font-size:16px">${tP+tQ}</div><div class="su">palox</div></div>
+  </div>`;
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div class="stabs" style="margin-bottom:0">
+      ${(function(){var all=[{id:'saisie',l:'📝 Saisie'},{id:'courbe',l:'📈 Courbe'},{id:'tableau',l:'📋 Tableau'},{id:'factu',l:'🧾 Facturation'}];var ok=FLIPO_STABS['cueill'];var tabs=ok&&ok.length?all.filter(function(t){return ok.indexOf(t.id)>=0;}):all;if(!tabs.length)tabs=all;if(!tabs.find(function(t){return t.id===S.cvw;})&&tabs.length)S.cvw=tabs[0].id;return tabs.map(function(t){return '<button class="stab'+(S.cvw===t.id?' act':'')+'" onclick="setCVw(\''+t.id+'\')">'+t.l+'</button>';}).join('');})()}
+    </div>
+    <button class="btn" onclick="cloturerAnnee()" style="background:#fff3f3;color:#c0392b;border-color:#f5c6c6;font-size:11px">🗓 Clôturer la saison ${S.saison||'2026/2027'}</button>
+  </div>`;
+  h+=`<div id="cvw">${buildCVw()}</div>`;
+  return h;
+}
+function setCVw(v){S.cvw=v;const f=saveFocus();$('cvw').innerHTML=buildCVw();if(v==='courbe')setTimeout(drawChart,60);restFocus(f);}
+function buildCVw(){
+  if(S.cvw==='saisie')return buildSaisie();
+  if(S.cvw==='courbe')return buildCourbe();
+  if(S.cvw==='tableau')return buildTableau();
+  return buildFactu();
+}
+function updCeilStats(){
+  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
+  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
+  setText('sp',tP);setText('swp',(tP*300).toLocaleString('fr-FR'));
+  setText('sq',tQ);setText('swq',(tQ*440).toLocaleString('fr-FR'));
+  setText('stot',tP+tQ);
+}
+
+// ─── SAISIE RAPIDE ────────────────────────────
+function buildSaisie(){
+  const pomVars=S.pomR.map(r=>r.v);
+  const poiVars=S.poiR.map(r=>r.v);
+  const vars=S.entCult==='pomme'?pomVars:poiVars;
+  const today=new Date();
+  const todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0');
+  const kgDef=S.entCult==='pomme'?300:440;
+  let h=`<div class="cult-sel">
+    <button class="cult-btn pom${S.entCult==='pomme'?' act':''}" onclick="setEntCult('pomme')">🍎 Pomme</button>
+    <button class="cult-btn poi${S.entCult==='poire'?' act':''}" onclick="setEntCult('poire')">🍐 Poire</button>
+  </div>`;
+  h+=`<div class="entry-form">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter une récolte</p>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Date (JJ/MM)</label>
+        <input type="text" id="ent-date" value="${todayStr}" placeholder="15/09" style="width:90px">
+      </div>
+      <div class="form-field" style="flex:2">
+        <label>Variété</label>
+        <select id="ent-var" style="min-width:160px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          ${vars.map(v=>`<option value="${es(v)}">${es(v)}</option>`).join('')}
+          <option value="__new__">+ Nouvelle variété...</option>
+        </select>
+      </div>
+      <div class="form-field" id="new-var-field" class="hidden" style="display:none;flex:2">
+        <label>Nom de la variété</label>
+        <input type="text" id="ent-newvar" placeholder="Nom variété" style="min-width:140px">
+      </div>
+      <div class="form-field">
+        <label>Palox</label>
+        <input type="number" id="ent-palox" value="" min="0" step="0.5" placeholder="0" style="width:80px">
+      </div>
+      <div class="form-field">
+        <label>kg/palox</label>
+        <input type="number" id="ent-kg" value="${kgDef}" min="0" step="1" style="width:80px">
+      </div>
+      <div class="form-field" style="flex:2">
+        <label>Bâtiment</label>
+        <select id="ent-bat" style="min-width:130px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)" onchange="updFrigoSelect()">
+          <option value="">— aucun —</option>
+          ${S.bats.map(b=>`<option value="${es(b.id)}">${es(b.nom)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field" style="flex:2">
+        <label>Frigo</label>
+        <select id="ent-fri" style="min-width:130px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          <option value="">— aucun —</option>
+        </select>
+      </div>
+      <div class="form-field" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <button class="btn ok" onclick="addEntry()" style="padding:8px 18px;font-size:13px">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+  // Journal
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <span style="font-weight:600;font-size:13px">Journal des saisies (${S.entries.length})</span>
+    ${S.entries.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
+  </div>`;
+  if(!S.entries.length){
+    h+=`<div class="empty-journal">Aucune saisie pour le moment.<br>Utilisez le formulaire ci-dessus pour enregistrer vos récoltes.</div>`;
+  } else {
+    h+=`<div style="max-height:400px;overflow-y:auto">`;
+    S.entries.forEach(e=>{
+      const icon=e.cult==='pomme'?'🍎':'🍐';
+      const kg=e.palox*(e.kgPalox||0);
+      const tsStr=e.ts?new Date(e.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      const batObj=e.bat?S.bats.find(b=>b.id===e.bat):null;
+      const friObj=batObj&&e.fri?batObj.frigos.find(f=>f.id===e.fri):null;
+      const destStr=batObj?` · ${batObj.nom}${friObj?' / '+friObj.nom:''}` : '';
+      h+=`<div class="journal-row">
+        <span class="jicon">${icon}</span>
+        <div class="jinfo">
+          <strong>${es(e.date)} — ${es(e.variete)}</strong>
+          <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.palox} palox · ${kg>0?kg.toLocaleString('fr-FR')+' kg':e.kgPalox+' kg/palox'}${destStr}</span>
+          ${tsStr?`<div class="jdate">Saisi le ${tsStr}</div>`:''}
+        </div>
+        <button class="btn del" onclick="deleteEntry(${e.id})">🗑</button>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  return h;
+}
+function setEntCult(cult){S.entCult=cult;const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);}
+
+function updFrigoSelect(){
+  const batId=$('ent-bat')?$('ent-bat').value:'';
+  const sel=$('ent-fri');if(!sel)return;
+  const bat=S.bats.find(b=>b.id===batId);
+  sel.innerHTML='<option value="">— aucun —</option>';
+  if(bat)bat.frigos.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=f.nom;sel.appendChild(o);});
+}
+function addEntry(){
+  const dateEl=$('ent-date'),varEl=$('ent-var'),paloxEl=$('ent-palox'),kgEl=$('ent-kg'),newVarEl=$('ent-newvar');
+  const date=(dateEl?dateEl.value:'').trim();
+  const varSel=varEl?varEl.value:'';
+  const variete=varSel==='__new__'?(newVarEl?newVarEl.value.trim():''):varSel;
+  const palox=parseFloat(paloxEl?paloxEl.value:0)||0;
+  const kgPalox=parseFloat(kgEl?kgEl.value:0)||0;
+  const batId=$('ent-bat')?$('ent-bat').value:'';
+  const friId=$('ent-fri')?$('ent-fri').value:'';
+  if(!date||!variete||palox<=0){alert('Renseignez la date, la variété et le nombre de palox (> 0).');return;}
+  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
+
+  const cult=S.entCult;
+  const dates=cult==='pomme'?DATES_POM:DATES_POI;
+  const rows=cult==='pomme'?S.pomR:S.poiR;
+
+  let di=dates.indexOf(date);
+  if(di===-1){
+    dates.push(date);
+    dates.sort((a,b)=>{const pa=a.split('/'),pb=b.split('/');return(+pa[1]*100+ +pa[0])-(+pb[1]*100+ +pb[0]);});
+    di=dates.indexOf(date);
+    rows.forEach(r=>{r.d.splice(di,0,0);});
+  }
+
+  let ri=rows.findIndex(r=>r.v.toLowerCase()===variete.toLowerCase());
+  if(ri===-1){rows.push({v:variete,d:new Array(dates.length).fill(0)});ri=rows.length-1;}
+  while(rows[ri].d.length<dates.length)rows[ri].d.push(0);
+  rows[ri].d[di]=(rows[ri].d[di]||0)+palox;
+  rows.sort((a,b)=>a.v.localeCompare(b.v,'fr'));
+
+  const entry={id:Date.now(),cult,date,variete,palox,kgPalox,ts:new Date().toISOString()};
+  if(batId)entry.bat=batId;
+  if(friId)entry.fri=friId;
+  S.entries.unshift(entry);
+  saveLS();
+  updCeilStats();
+  const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
+}
+
+function deleteEntry(id){
+  const idx=S.entries.findIndex(e=>e.id===id);
+  if(idx===-1)return;
+  const entry=S.entries[idx];
+  const dates=entry.cult==='pomme'?DATES_POM:DATES_POI;
+  const rows=entry.cult==='pomme'?S.pomR:S.poiR;
+  const di=dates.indexOf(entry.date);
+  const ri=rows.findIndex(r=>r.v.toLowerCase()===entry.variete.toLowerCase());
+  if(di!==-1&&ri!==-1)rows[ri].d[di]=Math.max(0,(rows[ri].d[di]||0)-entry.palox);
+  S.entries.splice(idx,1);
+  saveLS();
+  updCeilStats();
+  const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
+}
+function clearEntries(){
+  // Subtract all entries from rows
+  S.entries.forEach(entry=>{
+    const dates=entry.cult==='pomme'?DATES_POM:DATES_POI;
+    const rows=entry.cult==='pomme'?S.pomR:S.poiR;
+    const di=dates.indexOf(entry.date);
+    const ri=rows.findIndex(r=>r.v.toLowerCase()===entry.variete.toLowerCase());
+    if(di!==-1&&ri!==-1)rows[ri].d[di]=Math.max(0,(rows[ri].d[di]||0)-entry.palox);
+  });
+  S.entries=[];saveLS();updCeilStats();
+  const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
+}
+
+// ─── COURBE ───────────────────────────────────
+function buildCourbe(){
+  const wins=[{v:1,l:'Jour/jour'},{v:5,l:'5 jours'},{v:10,l:'10 jours'},{v:15,l:'15 jours'},{v:0,l:'Toutes dates'}];
+  let h=`<div class="chart-wrap">
+    <div class="chart-ctrl">
+      <span style="font-size:12px;color:var(--mu);font-weight:500">Période :</span>
+      ${wins.map(w=>`<button class="wbtn${S.cwin===w.v?' act':''}" onclick="setWin(${w.v})">${w.l}</button>`).join('')}
+    </div>
+    <div id="chart-container"></div>
+    <div style="display:flex;gap:16px;font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--brd)">
+      <span><svg width="12" height="12" style="vertical-align:middle;margin-right:4px"><rect width="12" height="12" fill="#5a8a1a" rx="2"/></svg>Pommes</span>
+      <span><svg width="12" height="12" style="vertical-align:middle;margin-right:4px"><rect width="12" height="12" fill="#185FA5" rx="2"/></svg>Poires</span>
+    </div>
+  </div>`;
+  return h;
+}
+function setWin(v){S.cwin=v;const f=saveFocus();$('cvw').innerHTML=buildCourbe();setTimeout(drawChart,60);restFocus(f);}
+function drawChart(){
+  const c=$('chart-container');if(!c)return;
+  const allDates=[...new Set([...DATES_POM,...DATES_POI])].sort((a,b)=>{const pa=a.split('/');const pb=b.split('/');return(+pa[1]*100+ +pa[0])-(+pb[1]*100+ +pb[0]);});
+  const dateTotP={},dateTotQ={};
+  DATES_POM.forEach((d,i)=>dateTotP[d]=(dateTotP[d]||0)+S.pomR.reduce((s,r)=>s+(r.d[i]||0),0));
+  DATES_POI.forEach((d,i)=>dateTotQ[d]=(dateTotQ[d]||0)+S.poiR.reduce((s,r)=>s+(r.d[i]||0),0));
+  let data=[];
+  if(S.cwin===0){data=allDates.map(d=>({l:d,p:Math.round((dateTotP[d]||0)*10)/10,q:Math.round((dateTotQ[d]||0)*10)/10}));}
+  else{
+    for(let i=0;i<allDates.length;i+=S.cwin){
+      const chunk=allDates.slice(i,i+S.cwin);
+      const label=chunk.length>1?chunk[0]+'→'+chunk[chunk.length-1]:chunk[0];
+      data.push({l:label,p:Math.round(chunk.reduce((s,d)=>s+(dateTotP[d]||0),0)*10)/10,q:Math.round(chunk.reduce((s,d)=>s+(dateTotQ[d]||0),0)*10)/10});
+    }
+  }
+  const W=Math.max(c.clientWidth||700,data.length*26);
+  const H=260,pl=45,pr=20,pt=10,pb=65,cw=W-pl-pr,ch=H-pt-pb,n=data.length;
+  const bw=Math.max(5,Math.min(22,(cw/n)*0.38));
+  const maxV=Math.max(...data.map(d=>Math.max(d.p,d.q)),1);
+  const ys=v=>pt+ch-(v/maxV)*ch;const xs=i=>pl+(i+0.5)*(cw/n);
+  const tks=[0,.25,.5,.75,1].map(f=>Math.round(f*maxV*10)/10);
+  let svg=`<svg width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="transparent"/>`;
+  tks.forEach(v=>{const y=ys(v);svg+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#e0e0dc" stroke-width="1"/>`;svg+=`<text x="${pl-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#888">${v}</text>`;});
+  data.forEach((d,i)=>{
+    const x=xs(i);
+    const ph=Math.max((d.p/maxV)*ch,1);svg+=`<rect x="${x-bw}" y="${pt+ch-ph}" width="${bw}" height="${ph}" fill="#5a8a1a" rx="2" opacity=".85"><title>${d.l}: ${d.p} palox pomme</title></rect>`;
+    const qh=Math.max((d.q/maxV)*ch,1);svg+=`<rect x="${x}" y="${pt+ch-qh}" width="${bw}" height="${qh}" fill="#185FA5" rx="2" opacity=".85"><title>${d.l}: ${d.q} palox poire</title></rect>`;
+    svg+=`<text transform="rotate(-45,${x},${pt+ch+14})" x="${x}" y="${pt+ch+14}" text-anchor="end" font-size="9" fill="#888">${d.l}</text>`;
+  });
+  svg+=`</svg>`;c.innerHTML=`<div style="overflow-x:auto">${svg}</div>`;
+}
+
+// ─── TABLEAU SAISIE ───────────────────────────
+function buildTableau(){
+  let h=`<div class="info" style="margin-bottom:10px">Tableau complet. Vous pouvez modifier les cellules directement. Pour les nouvelles saisies en cours de saison, utilisez l'onglet <strong>📝 Saisie</strong>.</div>`;
+  h+=`<div class="leg"><div class="li"><div class="lb" style="background:var(--am);border-color:var(--amb)"></div><span>Total calculé automatiquement</span></div></div>`;
+  h+=buildCeilTable('pom');h+=buildCeilTable('poi');
+  return h;
+}
+function buildCeilTable(type){
+  const rows=type==='pom'?S.pomR:S.poiR;
+  const dates=type==='pom'?DATES_POM:DATES_POI;
+  const label=type==='pom'?'🍎 Pommes (palox)':'🍐 Poires (palox)';
+  const color=type==='pom'?'#3a6e11':'#185FA5';
+  let h=`<p style="font-weight:700;font-size:12px;margin-bottom:6px;color:${color}">${label}</p>`;
+  h+=`<div class="tw fh"><table><thead><tr><th style="min-width:110px">Variété</th>`;
+  dates.forEach(d=>h+=`<th style="min-width:40px;font-size:10px">${d}</th>`);
+  h+=`<th class="am" style="min-width:60px">Total</th>`;
+  if(type==='pom')h+=`<th class="am" style="min-width:72px">Poids (kg)</th>`;
+  h+=`</tr></thead><tbody>`;
+  rows.forEach((row,ri)=>{
+    const tot=sm(row.d);
+    h+=`<tr><td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
+    row.d.forEach((v,ci)=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${v||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
+    h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
+    if(type==='pom')h+=`<td class="f" id="${type}k-${ri}">${(Math.round(tot)*300).toLocaleString('fr-FR')}</td>`;
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addVar('${type}')">+ Ajouter variété</button></div><br>`;
+  return h;
+}
+function updVN(type,ri,v){(type==='pom'?S.pomR:S.poiR)[ri].v=v;saveLS();}
+function updC(type,ri,ci,val){
+  const rows=type==='pom'?S.pomR:S.poiR;
+  rows[ri].d[ci]=parseFloat(val)||0;
+  const tot=Math.round(sm(rows[ri].d));
+  const te=$(type+'t-'+ri);if(te)te.textContent=tot;
+  if(type==='pom'){const ke=$(type+'k-'+ri);if(ke)ke.textContent=(tot*300).toLocaleString('fr-FR');}
+  updCeilStats();saveLS();
+}
+function addVar(type){
+  const rows=type==='pom'?S.pomR:S.poiR;
+  rows.push({v:'Nouvelle variété',d:new Array((type==='pom'?DATES_POM:DATES_POI).length).fill(0)});
+  rows.sort((a,b)=>a.v.localeCompare(b.v,'fr'));
+  const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
+}
+
+// ─── FACTURATION ─────────────────────────────
+function buildFactu(){
+  let h=`<div class="info">Tableau de facturation interne. Saisissez les montants déjà facturés. Les totaux et le reste à facturer se calculent automatiquement.</div>`;
+  const mois=['Août','Sept.','Oct.','Nov.','Déc.','Janv.','Févr.','Mars','Avr.'];
+  const pxPomInit=[360,null,200,200,200,200,null,null,null];
+  const pxPoiInit=[430,null,150,150,150,150,null,null,null];
+  const pxAut=[null,null,43,43,43,43,25,25,25];
+  const pxJus=[null,null,100,null,null,null,null,null,null];
+  if(!S.facPrix){S.facPrix={pom:pxPomInit,poi:pxPoiInit,aut:pxAut,jus:pxJus};}
+  h+=`<div class="stitle">Tarifs par mois (€/palox)</div>`;
+  h+=`<div class="tw"><table><thead><tr><th>Vente</th>${mois.map(m=>`<th class="am">${m}</th>`).join('')}</tr></thead><tbody>`;
+  [['Pomme','pom'],['Poire','poi'],['Autre','aut'],['Jus','jus']].forEach(([label,key])=>{
+    h+=`<tr><td style="font-weight:500">${label}</td>`;
+    S.facPrix[key].forEach((v,i)=>h+=`<td class="${v?'f':''}">${v!==null&&v!==undefined?`<input class="w60" id="fpx-${key}-${i}" value="${v}" onchange="updFPx('${key}',${i},this.value)">`:''}</td>`);
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
+  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
+  const pxPomRef=200,pxPoiRef=150;
+  const totPom=tP*pxPomRef,totPoi=tQ*pxPoiRef;
+  h+=`<div class="stitle">Reste à facturer</div>`;
+  h+=`<div class="tw"><table><thead><tr><th>Produit</th><th class="am">Total palox</th><th class="am">Poids (kg)</th><th>Prix réf (€)</th><th class="am">Total estimé (€)</th><th>Déjà facturé (€)</th><th>Reste à facturer (€)</th></tr></thead><tbody>`;
+  [
+    {label:'🍎 Pomme',tot:tP,kg:tP*300,px:pxPomRef,total:totPom,key:'pomT',facStore:S.facPom},
+    {label:'🍐 Poire', tot:tQ,kg:tQ*440,px:pxPoiRef,total:totPoi,key:'poiT',facStore:S.facPoi},
+  ].forEach(row=>{
+    const fac=parseFloat(row.facStore[row.key])||0;
+    const rest=row.total-fac;
+    h+=`<tr>
+      <td style="font-weight:500">${row.label}</td>
+      <td class="f">${row.tot}</td>
+      <td class="f">${row.kg.toLocaleString('fr-FR')}</td>
+      <td><input class="w60" value="${row.px}"></td>
+      <td class="f">${row.total.toLocaleString('fr-FR')}</td>
+      <td><input class="w80" id="fac-${row.key}" value="${row.facStore[row.key]||''}" placeholder="0 €" onchange="updFac('${row.key}',this.value)"></td>
+      <td class="${rest>=0?'pos':'neg'}" id="rest-${row.key}">${rest.toLocaleString('fr-FR')}</td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="stitle">Palox restants (suivi)</div>`;
+  h+=`<div class="tw"><table><thead><tr><th>Type</th><th>Total récolté</th><th>Déjà facturé (palox)</th><th class="am">Reste à facturer (palox)</th></tr></thead><tbody>`;
+  h+=`<tr><td>Pomme</td><td class="f" id="rp-tot">${tP}</td><td><input class="w80" id="rp-fac" value="${S.facPom.palox||''}" placeholder="0" onchange="S.facPom.palox=this.value;saveLS();updRestePalox()"></td><td class="f" id="rp-rest">${tP-(parseFloat(S.facPom.palox)||0)}</td></tr>`;
+  h+=`<tr><td>Poire</td><td class="f" id="rq-tot">${tQ}</td><td><input class="w80" id="rq-fac" value="${S.facPoi.palox||''}" placeholder="0" onchange="S.facPoi.palox=this.value;saveLS();updRestePalox()"></td><td class="f" id="rq-rest">${tQ-(parseFloat(S.facPoi.palox)||0)}</td></tr>`;
+  const jus=S.pomR.find(r=>r.v==='Jus');
+  h+=`<tr><td>Jus</td><td class="f">${jus?Math.round(sm(jus.d)):0}</td><td><input class="w80" placeholder="0"></td><td class="f">—</td></tr>`;
+  h+=`</tbody></table></div>`;
+  return h;
+}
+function updFPx(key,i,val){if(S.facPrix){S.facPrix[key][i]=parseFloat(val)||0;saveLS();}}
+function updFac(key,val){
+  if(key.startsWith('pom'))S.facPom[key]=val;else S.facPoi[key]=val;
+  saveLS();
+  const rows=key.startsWith('pom')?S.pomR:S.poiR;
+  const tot=Math.round(sm(rows.map(r=>sm(r.d))));
+  const px=key.startsWith('pom')?200:150;
+  const total=tot*px;const fac=parseFloat(val)||0;const rest=total-fac;
+  const e=$('rest-'+key);if(e){e.textContent=rest.toLocaleString('fr-FR');e.className=rest>=0?'pos':'neg';}
+}
+function updRestePalox(){
+  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
+  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
+  setText('rp-rest',tP-(parseFloat(S.facPom.palox)||0));
+  setText('rq-rest',tQ-(parseFloat(S.facPoi.palox)||0));
+}
+
+// ── Datalist produits phyto ───────────────────
+function rebuildProdList(){
+  const dl=$('prod-list');if(!dl)return;
+  const sorted=[...S.tarif].sort((a,b)=>a.p.localeCompare(b.p,'fr'));
+  dl.innerHTML=sorted.map(t=>`<option value="${es(t.p)}">`).join('');
+}
+
+// ── Clôture de saison ─────────────────────────
+const DATES_POM_ORIG=["20/08","22/08","26/08","27/08","28/08","29/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
+const DATES_POI_ORIG=["20/08","21/08","22/08","23/08","25/08","26/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
+
+function cloturerAnnee(){
+  const saison=S.saison||'2026/2027';
+  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
+  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
+  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${(tP*300).toLocaleString('fr-FR')} kg\n• Poires : ${tQ} palox — ${(tQ*440).toLocaleString('fr-FR')} kg\n\nCette action va :\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
+  if(!ok)return;
+  const ok2=confirm(`Dernière confirmation : clôturer définitivement la saison ${saison} ?`);
+  if(!ok2)return;
+
+  // Générer CSV
+  let csv=`\uFEFFSaison ${saison} — Récapitulatif Cueillette Flipo\n\n`;
+  csv+=`Culture,Variété,Date,Palox,Poids estimé (kg)\n`;
+  DATES_POM.forEach((date,di)=>{S.pomR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Pomme,"${row.v}",${date},${row.d[di]},${row.d[di]*300}\n`;});});
+  DATES_POI.forEach((date,di)=>{S.poiR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Poire,"${row.v}",${date},${row.d[di]},${row.d[di]*440}\n`;});});
+  csv+=`\nTOTAL,Pomme,,${tP},${tP*300}\n`;
+  csv+=`TOTAL,Poire,,${tQ},${tQ*440}\n`;
+  csv+=`TOTAL,Général,,${tP+tQ},${tP*300+tQ*440}\n`;
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`Flipo_Verger_${saison.replace('/','_')}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+  // Calcul nouvelle saison
+  const parts=saison.split('/');
+  const newSaison=`${parseInt(parts[0])+1}/${parseInt(parts[1])+1}`;
+
+  // Réinitialiser les données (garder les variétés, remettre à zéro)
+  const varP=S.pomR.map(r=>r.v);const varQ=S.poiR.map(r=>r.v);
+  DATES_POM.length=0;DATES_POM_ORIG.forEach(d=>DATES_POM.push(d));
+  DATES_POI.length=0;DATES_POI_ORIG.forEach(d=>DATES_POI.push(d));
+  S.pomR=varP.map(v=>({v,d:new Array(44).fill(0)}));
+  S.poiR=varQ.map(v=>({v,d:new Array(44).fill(0)}));
+  S.entries=[];S.facPom={};S.facPoi={};S.facPrix=null;
+  S.saison=newSaison;
+  saveLS();
+
+  alert(`✅ Saison ${saison} clôturée !\nNouvelle saison : ${newSaison}\n\nLe fichier CSV a été téléchargé — sauvegardez-le sur votre Drive.`);
+  const ph=document.querySelector('.htxt p');if(ph)ph.textContent=`Saison ${newSaison}`;
+  initCueill();
+}
+
+// ── Dropdown variété change ───────────────────
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='ent-var'){
+    const nv=$('new-var-field');
+    if(nv)nv.style.display=e.target.value==='__new__'?'flex':'none';
+  }
+});
+
+// ══════════════════════════════════════════════
+// PHYTO / COÛTS (confidentiel)
+// ══════════════════════════════════════════════
+function initPhyto(){$('panel-phyto').innerHTML=buildPhyto();}
+function buildPhyto(){
+  let h=`<div style="margin-bottom:12px"><span class="badge">🔒 Confidentiel — Non inclus dans les PDF salariés</span></div>`;
+  h+=`<div class="leg"><div class="li"><div class="lb" style="background:var(--am);border-color:var(--amb)"></div><span>Total calculé (prix × dose)</span></div></div>`;
+  h+=`<div class="tw fh"><table><thead><tr><th>Produit</th><th>Prix (€/L ou kg)</th><th>Dose prescrite</th><th>Dose appliquée</th><th class="am">Total prescrit (€)</th><th class="am">Total appliqué (€)</th><th></th></tr></thead><tbody>`;
+  S.tarif.forEach((row,ri)=>{
+    h+=`<tr>
+      <td><input class="w120" id="tp-${ri}" value="${es(row.p)}" onchange="updTP(${ri},'p',this.value)"></td>
+      <td><input class="w60" id="tpx-${ri}" value="${row.px}" onchange="updTP(${ri},'px',this.value)"></td>
+      <td><input class="w60" id="td1-${ri}" value="${row.d1}" onchange="updTP(${ri},'d1',this.value)"></td>
+      <td><input class="w60" id="td2-${ri}" value="${row.d2}" onchange="updTP(${ri},'d2',this.value)"></td>
+      <td class="f" id="tt1-${ri}">${(row.t1||0).toFixed(2)}</td>
+      <td class="f" id="tt2-${ri}">${(row.t2||0).toFixed(2)}</td>
+      <td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteTarif(${ri})">🗑</button></td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="btns"><button class="btn add" onclick="addTarif()">+ Ajouter un produit</button></div>`;
+  return h;
+}
+function updTP(ri,field,val){
+  if(field!=='p')S.tarif[ri][field]=parseFloat(val)||0;else S.tarif[ri][field]=val;
+  S.tarif[ri].t1=R2((S.tarif[ri].px||0)*(S.tarif[ri].d1||0));
+  S.tarif[ri].t2=R2((S.tarif[ri].px||0)*(S.tarif[ri].d2||0));
+  const e1=$('tt1-'+ri);if(e1)e1.textContent=(S.tarif[ri].t1||0).toFixed(2);
+  const e2=$('tt2-'+ri);if(e2)e2.textContent=(S.tarif[ri].t2||0).toFixed(2);
+  const tT1=R2(S.tarif.reduce((s,r)=>s+(r.t1||0),0));
+  const tT2=R2(S.tarif.reduce((s,r)=>s+(r.t2||0),0));
+  setText('pht1',fr(tT1));setText('pht2',fr(tT2));
+  const ee=$('pheco');if(ee){ee.textContent=fr(R2(tT1-tT2));ee.style.color=tT1-tT2>0?'var(--gd)':'#a32d2d';}
+}
+function addTarif(){
+  S.tarif.push({p:'Nouveau produit',px:0,d1:0,d2:0,t1:0,t2:0});
+  S.tarif.sort((a,b)=>a.p.localeCompare(b.p,'fr'));
+  saveLS();rebuildProdList();
+  const f=saveFocus();initPhyto();restFocus(f);
+}
+function deleteTarif(ri){
+  S.tarif.splice(ri,1);
+  saveLS();rebuildProdList();
+  const f=saveFocus();initPhyto();restFocus(f);
+}
+
+// ══════════════════════════════════════════════
+// STOCK BÂTIMENT
+// ══════════════════════════════════════════════
+function initStock(){$('panel-stock').innerHTML=buildStockCfg();}
+function buildStockCfg(){
+  let h=`<div class="info">Gérez ici vos bâtiments et frigos. Ces destinations sont disponibles dans <strong>Cueillette → Saisie</strong>.</div>`;
+  S.bats.forEach((bat,bi)=>{
+    h+=`<div style="margin-bottom:16px;padding:14px;border:1px solid var(--brd);border-radius:10px;background:var(--wh)">`;
+    h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">`;
+    h+=`<input class="w120" style="font-weight:700;font-size:13px" value="${es(bat.nom)}" onchange="S.bats[${bi}].nom=this.value;saveLS()">`;
+    h+=`<button class="btn del" style="padding:2px 7px;font-size:12px" onclick="deleteBat(${bi})">🗑 Supprimer</button>`;
+    h+=`</div>`;
+    h+=`<div style="margin-left:16px">`;
+    bat.frigos.forEach((fri,fi)=>{
+      h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">`;
+      h+=`<span style="color:var(--mu);font-size:12px">❄️</span>`;
+      h+=`<input class="w120" value="${es(fri.nom)}" onchange="S.bats[${bi}].frigos[${fi}].nom=this.value;saveLS()">`;
+      h+=`<button class="btn del" style="padding:2px 7px;font-size:12px" onclick="deleteFrigo(${bi},${fi})">🗑</button>`;
+      h+=`</div>`;
+    });
+    h+=`<button class="btn add" style="font-size:11px;padding:3px 10px;margin-top:4px" onclick="addFrigo(${bi})">+ Ajouter un frigo</button>`;
+    h+=`</div></div>`;
+  });
+  h+=`<div class="btns"><button class="btn add" onclick="addBat()">+ Ajouter un bâtiment</button></div>`;
+  return h;
+}
+function addBat(){
+  const id='b'+Date.now();
+  S.bats.push({id,nom:'Nouveau bâtiment',frigos:[]});
+  saveLS();initStock();
+}
+function deleteBat(bi){
+  S.bats.splice(bi,1);
+  saveLS();initStock();
+}
+function addFrigo(bi){
+  const id='f'+Date.now();
+  S.bats[bi].frigos.push({id,nom:'Nouveau frigo'});
+  saveLS();initStock();
+}
+function deleteFrigo(bi,fi){
+  S.bats[bi].frigos.splice(fi,1);
+  saveLS();initStock();
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+var FLIPO_STABS={};
+// ─── Auth ────────────────────────────────────────────────
+(function(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['verger'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['trait','cueill','stock','phyto'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    var tp=tabs[tid];
+    if(!tp||!tp.enabled){
+      var b=document.getElementById('tab-'+tid);
+      if(b)b.style.display='none';
+      var p=document.getElementById('panel-'+tid);
+      if(p)p.classList.add('hidden');
+    }else{
+      if(!first)first=tid;
+      if(tp.stabs&&tp.stabs.length>0)FLIPO_STABS[tid]=tp.stabs;
+    }
+  });
+  window._vergFirst=first||'trait';
+})();
+loadLS();
+rebuildProdList();
+initTrait();
+initCueill();
+initPhyto();
+(function(){
+  var f=window._vergFirst||'trait';
+  var b=document.getElementById('tab-'+f);
+  if(b)setTab(f,b);
+  setSyncStatus('ok');
+})();
+</script>
+</body>
+</html>
