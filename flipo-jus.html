@@ -737,6 +737,11 @@ function buildStock(){
   }
   htmlD += '</div>';
 
+  // Mettre à jour S.stock avec les valeurs calculées pour shareNow()
+  STOCK_ITEMS.forEach(item => {
+    S.stock[item.type] = totalEntree(item.type) - calcConsomme(item.type);
+  });
+
   const stockEl = $('stock');
   if(stockEl) stockEl.innerHTML = htmlA + htmlB + htmlC + htmlD;
 }

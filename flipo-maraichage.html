@@ -757,6 +757,7 @@ initCueill();
 syncInitPull(function(){location.reload();});
 
 // ─── Auth ────────────────────────────────────────────────
+var FLIPO_STABS = {};
 (function(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
