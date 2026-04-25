@@ -427,6 +427,46 @@ function getPrix(productName){
   return found?found.px:0;
 }
 
+// Recherche de dose pré-remplie pour un produit
+function lookupDose(nom){
+  if(!nom||!nom.trim())return null;
+  var n=nom.trim().toLowerCase();
+  // Chercher dans les tableaux locaux
+  var sources=[].concat(S.pcPom||[],S.pcPoi||[],S.pcNoy||[]);
+  for(var i=0;i<sources.length;i++){
+    var p=sources[i];
+    var pNom=(p.p||'').toLowerCase();
+    var dose=p.d?p.d[2]:0;
+    if(pNom===n&&dose>0)return dose;
+  }
+  // Chercher dans les autres modules via localStorage
+  try {
+    var vergerData=JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
+    var all=[].concat(vergerData.pcPom||[],vergerData.pcPoi||[],vergerData.pcNoy||[]);
+    for(var j=0;j<all.length;j++){
+      if((all[j].p||'').toLowerCase()===n&&all[j].d&&all[j].d[2]>0)return all[j].d[2];
+    }
+    var marData=JSON.parse(localStorage.getItem('flipo-maraichage-v2')||'{}');
+    if(marData.traitements){
+      for(var c in marData.traitements){
+        var traits=marData.traitements[c];
+        if(Array.isArray(traits)){
+          for(var k=0;k<traits.length;k++){
+            if((traits[k].p||'').toLowerCase()===n&&traits[k].doseHa>0)return traits[k].doseHa;
+          }
+        }
+      }
+    }
+    var fraiData=JSON.parse(localStorage.getItem('flipo-fraise-v1')||'{}');
+    if(fraiData.traitements&&Array.isArray(fraiData.traitements)){
+      for(var m=0;m<fraiData.traitements.length;m++){
+        if((fraiData.traitements[m].produit||'').toLowerCase()===n&&fraiData.traitements[m].doseHa>0)return fraiData.traitements[m].doseHa;
+      }
+    }
+  } catch(e){}
+  return null;
+}
+
 // Coût total pour un bloc (somme produits × prix)
 function coutBloc(culture,bi){
   const pc=culture==='pomme'?S.pcPom:culture==='poire'?S.pcPoi:S.pcNoy;
@@ -736,7 +776,7 @@ function buildPC(){
   h+=`<p style="font-weight:700;color:#3a6e11;font-size:12px;margin-bottom:6px">🍎 Pomme — surface totale : 22,76 ha</p>`;
   h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
   S.pcPom.forEach((row,ri)=>{
-    h+=`<tr><td><input class="w120" id="pnp-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPom[${ri}].p=this.value;saveLS()"></td>`;
+    h+=`<tr><td><input class="w120" id="pnp-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPom[${ri}].p=this.value;saveLS()" oninput="var d=lookupDose(this.value);if(d){var e=$('dp-${ri}-2');if(e)e.value=d;updDose('pom',${ri},d)}"></td>`;
     CI.forEach(ci=>{
       if(ci===2) h+=`<td><input class="w60" id="dp-${ri}-2" value="${row.d[2]??''}" onchange="updDose('pom',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dp-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
@@ -749,7 +789,7 @@ function buildPC(){
   h+=`<p style="font-weight:700;color:#185FA5;font-size:12px;margin:14px 0 6px">🍐 Poire — surface totale : 10,54 ha</p>`;
   h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
   S.pcPoi.forEach((row,ri)=>{
-    h+=`<tr><td><input class="w120" id="pnq-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPoi[${ri}].p=this.value;saveLS()"></td>`;
+    h+=`<tr><td><input class="w120" id="pnq-${ri}" value="${es(row.p)}" placeholder="Nom produit" list="prod-list" onchange="S.pcPoi[${ri}].p=this.value;saveLS()" oninput="var d=lookupDose(this.value);if(d){var e=$('dq-${ri}-2');if(e)e.value=d;updDose('poi',${ri},d)}"></td>`;
     CI.forEach(ci=>{
       if(ci===2) h+=`<td><input class="w60" id="dq-${ri}-2" value="${row.d[2]??''}" onchange="updDose('poi',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dq-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
@@ -762,7 +802,7 @@ function buildPC(){
   h+=`<p style="font-weight:700;color:#8B4513;font-size:12px;margin:14px 0 6px">🍑 Noyaux — surface totale : 2 ha</p>`;
   h+=`<div class="tw"><table><thead><tr><th>Produit</th>${HDR.map((x,i)=>`<th class="${i>0?'am':''}">${x}</th>`).join('')}<th></th></tr></thead><tbody>`;
   S.pcNoy.forEach((row,ri)=>{
-    h+=`<tr><td><input class="w120" id="pnn-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcNoy[${ri}].p=this.value;saveLS()"></td>`;
+    h+=`<tr><td><input class="w120" id="pnn-${ri}" value="${es(row.p)}" list="prod-list" onchange="S.pcNoy[${ri}].p=this.value;saveLS()" oninput="var d=lookupDose(this.value);if(d){var e=$('dn-${ri}-2');if(e)e.value=d;updDose('noy',${ri},d)}"></td>`;
     CI.forEach(ci=>{
       if(ci===2) h+=`<td><input class="w60" id="dn-${ri}-2" value="${row.d[2]??''}" onchange="updDose('noy',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dn-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
@@ -838,7 +878,7 @@ function buildDist(culture){
   // Produits
   pc.forEach((row,ri)=>{
     const totRow=blocs.reduce((s,b,bi)=>{const k=`${ri}-${bi}`;return s+(dist[k]!==undefined?dist[k]:R2(row.d[2]*b.s));},0);
-    h+=`<tr><td><input class="w120" id="pname-${culture}-${ri}" value="${es(row.p)}" list="prod-list" onchange="getPcArr('${culture}')[${ri}].p=this.value;saveLS()"></td><td><input class="w60" id="base-${culture}-${ri}" value="${row.d[2]??''}" onchange="updBase('${culture}',${ri},this.value)"></td>`;
+    h+=`<tr><td><input class="w120" id="pname-${culture}-${ri}" value="${es(row.p)}" list="prod-list" onchange="getPcArr('${culture}')[${ri}].p=this.value;saveLS()" oninput="var d=lookupDose(this.value);if(d){var e=$('base-${culture}-${ri}');if(e)e.value=d;updBase('${culture}',${ri},d)}"></td><td><input class="w60" id="base-${culture}-${ri}" value="${row.d[2]??''}" onchange="updBase('${culture}',${ri},this.value)"></td>`;
     blocs.forEach((b,bi)=>{
       const k=`${ri}-${bi}`;const auto=R2(row.d[2]*b.s);
       const isMn=dist[k]!==undefined;const val=isMn?dist[k]:auto;

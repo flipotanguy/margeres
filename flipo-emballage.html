@@ -165,7 +165,7 @@ var S={
   stockSub:'bilan',stockFilter:'',
   batCulture:'',batVar:'',
   bilanVar:'',
-  sessions:[],transfers:[],
+  sessions:[],transfers:[],achatsExt:[],
   varList:{pomme:[],poire:[]}
 };
 
@@ -211,7 +211,7 @@ function setSyncStatus(s){
 }
 function syncSave(){
   setSyncStatus('syncing');
-  supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,varList:S.varList});
+  supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList});
   setTimeout(function(){setSyncStatus('ok');},600);
 }
 function syncPull(cb){
@@ -223,11 +223,12 @@ function syncPull(cb){
     if(data){
       if(Array.isArray(data.sessions))S.sessions=data.sessions;
       if(Array.isArray(data.transfers))S.transfers=data.transfers;
+      if(Array.isArray(data.achatsExt))S.achatsExt=data.achatsExt;
       if(data.varList){
         if(Array.isArray(data.varList.pomme))S.varList.pomme=data.varList.pomme;
         if(Array.isArray(data.varList.poire))S.varList.poire=data.varList.poire;
       }
-      localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,varList:S.varList}));
+      localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList}));
     }
     check();
   });
@@ -248,13 +249,14 @@ function syncPullManual(){
 
 // ─── Persistance ─────────────────────────────────────────
 function saveLS(){
-  localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,varList:S.varList}));
+  localStorage.setItem(LS_KEY,JSON.stringify({sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList}));
   syncSave();
 }
 function loadLS(){
   var d;try{d=JSON.parse(localStorage.getItem(LS_KEY)||'{}');}catch(e){d={};}
   if(Array.isArray(d.sessions))S.sessions=d.sessions;
   if(Array.isArray(d.transfers))S.transfers=d.transfers;
+  if(Array.isArray(d.achatsExt))S.achatsExt=d.achatsExt;
   if(d.varList){
     if(Array.isArray(d.varList.pomme))S.varList.pomme=d.varList.pomme;
     if(Array.isArray(d.varList.poire))S.varList.poire=d.varList.poire;
@@ -327,6 +329,13 @@ function getStockMap(){
     var tBat=t.toBat===MARG_ID?margKey:t.toBat;
     add(t.fromFri?fBat+'|'+t.fromFri:fBat,t.type,t.variete,-pal);
     add(t.toFri?tBat+'|'+t.toFri:tBat,t.type,t.variete,+pal);
+  });
+
+  // 2b. Achats extérieurs — ajoutés directement au bâtiment de destination
+  (S.achatsExt||[]).forEach(function(a){
+    var pal=+(a.palox||0);if(pal<=0)return;
+    var key=a.frigoId?a.batId+'|'+a.frigoId:a.batId;
+    add(key,a.cult,a.variete,pal);
   });
 
   // 3. Fusion Margères : MARG_ID + tous les frigos de Margères → margKey (après transferts)
@@ -557,7 +566,7 @@ function delSess(id,type){
 function initStock(){var p=$('panel-stock');if(p)p.innerHTML=buildStockShell();}
 
 function buildStockShell(){
-  var allSubs=[{id:'bilan',l:'📊 Bilan par variété'},{id:'bat',l:'🏗️ Bâtiment'}];
+  var allSubs=[{id:'bilan',l:'📊 Bilan par variété'},{id:'bat',l:'🏗️ Bâtiment'},{id:'achats',l:'🛒 Achats extérieurs'}];
   var ok=FLIPO_STABS['stock'];
   var subs=ok&&ok.length?allSubs.filter(function(t){return ok.indexOf(t.id)>=0;}):allSubs;
   if(!subs.length)subs=allSubs;
@@ -569,8 +578,84 @@ function buildStockShell(){
   var h='<div class="stabs" id="stock-stabs">';
   subs.forEach(function(t){h+='<button class="stab'+(sub===t.id?' act':'')+'" onclick="setStockSub(\''+t.id+'\')">'+t.l+'</button>';});
   h+='</div>';
-  h+='<div id="stock-content">'+(sub==='bat'?buildStockBat():buildStockBilan(map))+'</div>';
+  h+='<div id="stock-content">'+(sub==='achats'?buildStockAchats():sub==='bat'?buildStockBat():buildStockBilan(map))+'</div>';
   return h;
+}
+
+// ─── Stock : Achats extérieurs ───────────────────────────
+function buildStockAchats(){
+  var bats=getVergerBats();
+  var batOpts='<option value="">— Bâtiment —</option>';
+  bats.forEach(function(b){batOpts+='<option value="'+es(b.id)+'">'+es(b.nom)+'</option>';});
+
+  var h='<div class="form-hdr"><div class="form-row">';
+  h+='<div class="form-field"><label>Type</label><select id="achat-cult" onchange="achatFriOpts()"><option value="pomme">🍎 Pomme</option><option value="poire">🍐 Poire</option></select></div>';
+  h+='<div class="form-field wide"><label>Variété</label><input type="text" id="achat-var" placeholder="Variété (texte libre)"></div>';
+  h+='<div class="form-field"><label>Date</label><input type="date" id="achat-date" value="'+isoToday()+'"></div>';
+  h+='<div class="form-field"><label>Palox</label><input type="number" id="achat-palox" min="1" step="1" placeholder="0" style="width:80px"></div>';
+  h+='</div><div class="form-row">';
+  h+='<div class="form-field wide"><label>Bâtiment</label><select id="achat-bat" onchange="achatFriOpts()">'+batOpts+'</select></div>';
+  h+='<div class="form-field wide"><label>Frigo (optionnel)</label><select id="achat-fri"><option value="">—</option></select></div>';
+  h+='<div class="form-field"><label style="visibility:hidden">ok</label><button class="btn add" onclick="saveAchat()" style="white-space:nowrap">+ Ajouter achat</button></div>';
+  h+='</div></div>';
+
+  h+='<div class="stitle">Achats extérieurs enregistrés</div>';
+  if(!S.achatsExt.length){
+    h+='<div class="empty">Aucun achat extérieur enregistré.</div>';
+  } else {
+    h+='<div class="tw"><table><thead><tr>';
+    h+='<th>Date</th><th>Type</th><th>Variété</th><th class="r">Palox</th><th>Bâtiment</th><th>Frigo</th><th style="width:36px"></th>';
+    h+='</tr></thead><tbody>';
+    S.achatsExt.slice().sort(function(a,b){return b.id-a.id;}).forEach(function(a){
+      var batNom='—',friNom='—';
+      var bat=bats.find(function(b){return b.id===a.batId;});
+      if(bat){
+        batNom=bat.nom;
+        if(a.frigoId){
+          var fri=bat.frigos?bat.frigos.find(function(f){return f.id===a.frigoId;}):null;
+          if(fri)friNom=fri.nom;
+        }
+      }
+      h+='<tr>';
+      h+='<td>'+es(fmtD(a.date))+'</td>';
+      h+='<td><span class="badge '+(a.cult==='pomme'?'pom':'poi')+'">'+(a.cult==='pomme'?'🍎':'🍐')+'</span></td>';
+      h+='<td style="font-weight:600">'+es(a.variete)+'</td>';
+      h+='<td class="r" style="font-weight:700">'+numFr(a.palox||0)+'</td>';
+      h+='<td style="font-size:12px;color:var(--mu)">'+es(batNom)+'</td>';
+      h+='<td style="font-size:12px;color:var(--mu)">'+es(friNom)+'</td>';
+      h+='<td class="ctr"><button class="btn del sm" onclick="delAchat('+a.id+')" title="Supprimer">✕</button></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  return h;
+}
+function achatFriOpts(){
+  var batSel=$('achat-bat'),friSel=$('achat-fri');
+  if(!batSel||!friSel)return;
+  var bat=getVergerBats().find(function(b){return b.id===batSel.value;});
+  friSel.innerHTML='<option value="">—</option>';
+  if(bat&&bat.frigos)bat.frigos.forEach(function(f){var o=document.createElement('option');o.value=f.id;o.textContent=f.nom;friSel.appendChild(o);});
+}
+function saveAchat(){
+  var cult=($('achat-cult')||{}).value||'pomme';
+  var variete=(($('achat-var')||{}).value||'').trim();
+  var date=($('achat-date')||{}).value||isoToday();
+  var palox=+(($('achat-palox')||{}).value||0);
+  var batId=($('achat-bat')||{}).value||'';
+  var frigoId=($('achat-fri')||{}).value||'';
+  if(!variete){alert('Veuillez saisir la variété.');return;}
+  if(!batId){alert('Veuillez choisir un bâtiment.');return;}
+  if(palox<=0){alert('Saisissez un nombre de palox.');return;}
+  S.achatsExt.push({id:Date.now(),cult:cult,variete:variete,date:date,palox:palox,batId:batId,frigoId:frigoId});
+  saveLS();
+  showBanner(numFr(palox)+' palox '+es(variete)+' ajoutés au stock');
+  initStock();
+}
+function delAchat(id){
+  if(!confirm('Supprimer cet achat ?'))return;
+  S.achatsExt=S.achatsExt.filter(function(a){return a.id!==id;});
+  saveLS();initStock();
 }
 
 // Tableau bilan : cueillis / triés — sous-onglet
@@ -640,7 +725,7 @@ function setStockSub(v){
   S.stockSub=v;
   var c=$('stock-content');if(!c)return;
   var map=getStockMap();
-  c.innerHTML=(v==='bat'?buildStockBat():buildStockBilan(map));
+  c.innerHTML=(v==='achats'?buildStockAchats():v==='bat'?buildStockBat():buildStockBilan(map));
   document.querySelectorAll('#stock-stabs .stab').forEach(function(b){
     b.classList.toggle('act',b.getAttribute('onclick').indexOf("'"+v+"'")>=0);
   });
@@ -784,9 +869,11 @@ function buildStockVar(){
   var map=getStockMap();
   var bats=getVergerBats();
   var flt=S.stockFilter;
+  var margBat=bats.find(function(b){return b.nom&&b.nom.toLowerCase().indexOf('marg')>=0;});
+  var margKey=margBat?margBat.id:MARG_ID;
 
   // Construire la liste des emplacements
-  var locs=[{key:MARG_ID,nom:MARG_NOM,short:'Margères'}];
+  var locs=[{key:margKey,nom:MARG_NOM,short:'Margères'}];
   bats.forEach(function(bat){
     var inMap=Object.keys(map).some(function(k){return k===bat.id||k.indexOf(bat.id+'|')===0;});
     if(!inMap)return;

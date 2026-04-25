@@ -246,6 +246,40 @@ function getCultIcon(c){
   return m[c]||'🌿';
 }
 function doseBidon(doseHa){return R2((parseFloat(doseHa)||0)*VOL_BIDON/VOL_EAU_HA);}
+
+// Recherche de dose pré-remplie pour un produit
+function lookupDose(nom){
+  if(!nom||!nom.trim())return null;
+  var n=nom.trim().toLowerCase();
+  // Chercher dans les tableaux locaux (toutes les cultures)
+  for(var cult in S.traitements){
+    var traits=S.traitements[cult];
+    if(Array.isArray(traits)){
+      for(var i=0;i<traits.length;i++){
+        var p=traits[i];
+        var pNom=(p.p||'').toLowerCase();
+        var dose=p.doseHa||0;
+        if(pNom===n&&dose>0)return dose;
+      }
+    }
+  }
+  // Chercher dans les autres modules via localStorage
+  try {
+    var vergerData=JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
+    var all=[].concat(vergerData.pcPom||[],vergerData.pcPoi||[],vergerData.pcNoy||[]);
+    for(var j=0;j<all.length;j++){
+      if((all[j].p||'').toLowerCase()===n&&all[j].d&&all[j].d[2]>0)return all[j].d[2];
+    }
+    var fraiData=JSON.parse(localStorage.getItem('flipo-fraise-v1')||'{}');
+    if(fraiData.traitements&&Array.isArray(fraiData.traitements)){
+      for(var m=0;m<fraiData.traitements.length;m++){
+        if((fraiData.traitements[m].produit||'').toLowerCase()===n&&fraiData.traitements[m].doseHa>0)return fraiData.traitements[m].doseHa;
+      }
+    }
+  } catch(e){}
+  return null;
+}
+
 function getTrait(cult){return S.traitements[cult]||(S.traitements[cult]=[]),S.traitements[cult];}
 function rebuildProdList(){
   const dl=$('mar-prod-list');if(!dl)return;
@@ -522,7 +556,7 @@ function buildTrait(){
   } else {
     rows.forEach((row,ri)=>{
       h+=`<tr>
-        <td><input class="w140" id="tp-${ri}" value="${es(row.p)}" list="mar-prod-list" onchange="updTrait(${ri},'p',this.value)" placeholder="Produit..."></td>
+        <td><input class="w140" id="tp-${ri}" value="${es(row.p)}" list="mar-prod-list" onchange="updTrait(${ri},'p',this.value)" oninput="var d=lookupDose(this.value);if(d){var e=$('tdose-${ri}');if(e){e.value=d;updTrait(${ri},'doseHa',d.toString())}}" placeholder="Produit..."></td>
         <td><input class="w80" id="tdose-${ri}" value="${row.doseHa||''}" type="number" min="0" step="0.01" onchange="updTrait(${ri},'doseHa',this.value)" placeholder="0"></td>
         <td class="calc" id="tbidon-${ri}">${row.doseHa?doseBidon(row.doseHa)+' L':'-'}</td>
         <td><input class="w140" id="tnote-${ri}" value="${es(row.note||'')}" onchange="updTrait(${ri},'note',this.value)" placeholder="note..."></td>

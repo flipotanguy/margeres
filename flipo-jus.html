@@ -801,6 +801,9 @@ function buildStock(){
 
   const stockEl = $('stock');
   if(stockEl) stockEl.innerHTML = htmlA + htmlB + htmlC + htmlD;
+
+  // Appeler updateReaproFormVisibility pour afficher/masquer le groupe couleur
+  updateReaproFormVisibility();
 }
 
 

@@ -643,6 +643,8 @@
     </div>
   </div>
 
+  <datalist id="trait-prod-list"></datalist>
+
   <div class="share-fab">
     <div class="share-pill">
       <button class="share-pill-btn" onclick="shareNow('email')">Email</button>
@@ -753,6 +755,40 @@
 
     function R2(v) {
       return Math.round(v * 100) / 100;
+    }
+
+    // Recherche de dose pré-remplie pour un produit
+    function lookupDose(nom){
+      if(!nom||!nom.trim())return null;
+      var n=nom.trim().toLowerCase();
+      // Chercher dans les tableaux locaux
+      var sources=(S.traitements||[]);
+      for(var i=0;i<sources.length;i++){
+        var p=sources[i];
+        var pNom=(p.produit||'').toLowerCase();
+        var dose=p.doseHa||0;
+        if(pNom===n&&dose>0)return dose;
+      }
+      // Chercher dans les autres modules via localStorage
+      try {
+        var vergerData=JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
+        var all=[].concat(vergerData.pcPom||[],vergerData.pcPoi||[],vergerData.pcNoy||[]);
+        for(var j=0;j<all.length;j++){
+          if((all[j].p||'').toLowerCase()===n&&all[j].d&&all[j].d[2]>0)return all[j].d[2];
+        }
+        var marData=JSON.parse(localStorage.getItem('flipo-maraichage-v2')||'{}');
+        if(marData.traitements){
+          for(var c in marData.traitements){
+            var traits=marData.traitements[c];
+            if(Array.isArray(traits)){
+              for(var k=0;k<traits.length;k++){
+                if((traits[k].p||'').toLowerCase()===n&&traits[k].doseHa>0)return traits[k].doseHa;
+              }
+            }
+          }
+        }
+      } catch(e){}
+      return null;
     }
 
     function saveLS() {
@@ -1151,7 +1187,7 @@
           const doseCh = R2(doseHa * surf);
           const total = R2(doseHa * surf * nbCh);
           html += '<tr>';
-          html += '<td><input class="inline-edit" id="trait-prod-' + i + '" value="' + es(t.produit||'') + '" list="trait-prod-list" placeholder="Produit..." oninput="updTrait(' + i + ',\'produit\',this.value)"></td>';
+          html += '<td><input class="inline-edit" id="trait-prod-' + i + '" value="' + es(t.produit||'') + '" list="trait-prod-list" placeholder="Produit..." oninput="updTrait(' + i + ',\'produit\',this.value);var d=lookupDose(this.value);if(d){var e=$(\'trait-dose-' + i + '\');if(e){e.value=d;updTrait(' + i + ',\'doseHa\',parseFloat(d));buildTrait()}}"></td>';
           html += '<td style="text-align:right"><input class="inline-edit" type="number" step="0.01" min="0" id="trait-dose-' + i + '" value="' + doseHa + '" placeholder="0" style="text-align:right" oninput="updTrait(' + i + ',\'doseHa\',parseFloat(this.value));buildTrait()"></td>';
           html += '<td style="text-align:right;background:#e8f4d4;color:#2d6a00;font-weight:600" id="trait-calc-' + i + '">' + doseCh + '</td>';
           html += '<td style="text-align:right;background:#fff8dc;color:#7a5200;font-weight:600">' + total + '</td>';
@@ -1200,20 +1236,26 @@
         prodNamesVerg.forEach(name => produitSet.add(name));
       } catch(e) {}
 
+      // Ajouter les produits du Maraîchage depuis localStorage
+      try {
+        const marData = JSON.parse(localStorage.getItem('flipo-maraichage-v2')||'{}');
+        const traitements = marData.traitements || [];
+        traitements.forEach(t => {
+          if(t.produit && t.produit.trim()) produitSet.add(t.produit);
+        });
+      } catch(e) {}
+
       // Trier et ajouter à la datalist
       const sorted = [...produitSet].sort((a,b) => a.localeCompare(b, 'fr'));
       sorted.forEach(p => {
         html += '<option value="' + es(p) + '">';
       });
 
-      // Créer ou mettre à jour la datalist
+      // Mettre à jour la datalist du DOM
       let dl = $('trait-prod-list');
-      if(!dl) {
-        dl = document.createElement('datalist');
-        dl.id = 'trait-prod-list';
-        document.body.appendChild(dl);
+      if(dl) {
+        dl.innerHTML = html;
       }
-      dl.innerHTML = html;
     }
 
     function addTreatment(){
