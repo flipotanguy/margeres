@@ -347,7 +347,7 @@ function saveLS(){
     bp:S.bp,br:S.br,bn:S.bn,
     pd:S.pd,qd:S.qd,nd:S.nd,
     tarif:S.tarif,pxPom:S.pxPom,pxPoi:S.pxPoi,
-    bats:S.bats
+    bats:S.bats,achatsExt:S.achatsExt
   };
   try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
   syncSaveVerger(d);
@@ -376,6 +376,7 @@ function loadLS(){
     if(d.pxPom!==undefined)S.pxPom=d.pxPom;
     if(d.pxPoi!==undefined)S.pxPoi=d.pxPoi;
     if(Array.isArray(d.bats)&&d.bats.length)S.bats=d.bats;
+    if(Array.isArray(d.achatsExt))S.achatsExt=d.achatsExt;
   }catch(e){}
 }
 
@@ -399,7 +400,8 @@ const S = {
   tarif: TARIF_INIT.map(r=>({...r,t1:R2(r.px*r.d1),t2:R2(r.px*r.d2)})),
   entries:[],
   entCult:'pomme',
-  bats:[{id:'b1',nom:'Bâtiment 1',frigos:[{id:'f1',nom:'Frigo 1'}]}]
+  bats:[{id:'b1',nom:'Bâtiment 1',frigos:[{id:'f1',nom:'Frigo 1'}]}],
+  achatsExt:[]
 };
 
 // ══════════════════════════════════════════════
@@ -1223,18 +1225,17 @@ function buildCeilTable(type){
   const label=type==='pom'?'🍎 Pommes (palox)':'🍐 Poires (palox)';
   const color=type==='pom'?'#3a6e11':'#185FA5';
   let h=`<p style="font-weight:700;font-size:12px;margin-bottom:6px;color:${color}">${label}</p>`;
-  h+=`<div class="tw fh"><table><thead><tr><th style="min-width:110px">Variété</th>`;
-  dates.forEach(d=>h+=`<th style="min-width:40px;font-size:10px">${d}</th>`);
-  h+=`<th class="am" style="min-width:60px">Total</th>`;
+  h+=`<div class="tw fh"><table><thead><tr><th style="min-width:32px"></th><th style="min-width:110px">Variété</th><th class="am" style="min-width:60px">Total</th>`;
   if(type==='pom')h+=`<th class="am" style="min-width:72px">Poids (kg)</th>`;
+  dates.forEach(d=>h+=`<th style="min-width:40px;font-size:10px">${d}</th>`);
   h+=`</tr></thead><tbody>`;
   rows.forEach((row,ri)=>{
     const tot=sm(row.d);
-    h+=`<tr><td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
-    row.d.forEach((v,ci)=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${v||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
+    h+=`<tr><td><button class="btn del" style="padding:2px 5px;font-size:12px;min-height:28px" onclick="deleteVar('${type}',${ri})">🗑</button></td>`;
+    h+=`<td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
     h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
     if(type==='pom')h+=`<td class="f" id="${type}k-${ri}">${(Math.round(tot)*300).toLocaleString('fr-FR')}</td>`;
-    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:12px" onclick="deleteVar('${type}',${ri})">🗑</button></td>`;
+    row.d.forEach((v,ci)=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${v||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
     h+=`</tr>`;
   });
   h+=`</tbody></table></div>`;
@@ -1444,7 +1445,10 @@ function deleteTarif(ri){
 // ══════════════════════════════════════════════
 function initStock(){$('panel-stock').innerHTML=buildStockCfg();}
 function buildStockCfg(){
-  let h=`<div class="info">Gérez ici vos bâtiments et frigos. Ces destinations sont disponibles dans <strong>Cueillette → Saisie</strong>.</div>`;
+  let h=`<div class="info">Gérez ici vos bâtiments, frigos et achats extérieurs. Les bâtiments/frigos apparaissent dans <strong>Cueillette → Saisie</strong>.</div>`;
+
+  // Section Bâtiments et frigos
+  h+=`<div class="stitle">Bâtiments et frigos</div>`;
   S.bats.forEach((bat,bi)=>{
     h+=`<div style="margin-bottom:16px;padding:14px;border:1px solid var(--brd);border-radius:10px;background:var(--wh)">`;
     h+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">`;
@@ -1463,6 +1467,82 @@ function buildStockCfg(){
     h+=`</div></div>`;
   });
   h+=`<div class="btns"><button class="btn add" onclick="addBat()">+ Ajouter un bâtiment</button></div>`;
+
+  // Section Achats extérieurs
+  h+=`<div class="stitle">Achats extérieurs</div>`;
+  h+=`<div class="entry-form">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter des palox achetés</p>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Culture</label>
+        <select id="ae-cult" style="width:100px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          <option value="pomme">Pomme</option>
+          <option value="poire">Poire</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Variété</label>
+        <input type="text" id="ae-var" placeholder="Ex: Fuji" style="width:120px">
+      </div>
+      <div class="form-field">
+        <label>Date (JJ/MM)</label>
+        <input type="text" id="ae-date" placeholder="15/09" style="width:80px">
+      </div>
+      <div class="form-field">
+        <label>Palox</label>
+        <input type="number" id="ae-palox" min="0" step="0.5" placeholder="0" style="width:80px">
+      </div>
+      <div class="form-field">
+        <label>Bâtiment</label>
+        <select id="ae-bat" style="width:140px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)" onchange="updateFrigoSelectInStock()">
+          ${S.bats.map((b,i)=>`<option value="${i}">${es(b.nom)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Frigo (optionnel)</label>
+        <select id="ae-frigo" style="width:140px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          <option value="">Aucun</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button class="btn ok" onclick="addAchatExt()">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+
+  // Tableau des achats extérieurs
+  if(S.achatsExt.length>0){
+    h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-weight:600;font-size:13px">Achats enregistrés (${S.achatsExt.length})</span>
+    </div>`;
+    h+=`<div class="tw fh"><table><thead><tr>
+      <th>Culture</th>
+      <th>Variété</th>
+      <th>Date</th>
+      <th>Palox</th>
+      <th>Bâtiment</th>
+      <th>Frigo</th>
+      <th></th>
+    </tr></thead><tbody>`;
+    S.achatsExt.forEach((ae,ai)=>{
+      const bat=S.bats.find(b=>b.id===ae.batId);
+      const fri=bat&&ae.frigoId?bat.frigos.find(f=>f.id===ae.frigoId):null;
+      h+=`<tr>
+        <td>${es(ae.cult==='pomme'?'Pomme':'Poire')}</td>
+        <td>${es(ae.variete||'')}</td>
+        <td>${es(ae.date||'')}</td>
+        <td>${ae.palox||0}</td>
+        <td>${es(bat?bat.nom:'—')}</td>
+        <td>${es(fri?fri.nom:'—')}</td>
+        <td><button class="btn del" onclick="deleteAchatExt(${ai})" ${FLIPO_CAN_DELETE?'':'disabled'} title="${FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs'}">🗑</button></td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  } else {
+    h+=`<div class="empty-journal">Aucun achat extérieur pour le moment.</div>`;
+  }
+
   return h;
 }
 function addBat(){
@@ -1482,6 +1562,59 @@ function addFrigo(bi){
 function deleteFrigo(bi,fi){
   S.bats[bi].frigos.splice(fi,1);
   saveLS();initStock();
+}
+
+// ─── Achats extérieurs ──────────────────────────
+function addAchatExt(){
+  const cultEl=$('ae-cult'),varEl=$('ae-var'),dateEl=$('ae-date'),paloxEl=$('ae-palox'),batEl=$('ae-bat'),frigoEl=$('ae-frigo');
+  if(!cultEl||!varEl||!dateEl||!paloxEl||!batEl)return;
+  const cult=cultEl.value||'pomme';
+  const variete=(varEl.value||'').trim();
+  const date=(dateEl.value||'').trim();
+  const palox=parseFloat(paloxEl.value)||0;
+  const batIdx=parseInt(batEl.value)||0;
+  const friIdx=frigoEl.value?parseInt(frigoEl.value):null;
+
+  if(!variete||!date||palox<=0){alert('Renseignez la variété, la date et le nombre de palox (> 0).');return;}
+  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
+
+  const bat=S.bats[batIdx];
+  const batId=bat?bat.id:null;
+  let frigoId=null;
+  if(friIdx!==null&&bat&&bat.frigos[friIdx]){frigoId=bat.frigos[friIdx].id;}
+
+  const ae={id:Date.now(),cult,variete,date,palox,batId,frigoId};
+  S.achatsExt.push(ae);
+  saveLS();
+
+  // Reset form
+  varEl.value='';dateEl.value='';paloxEl.value='';
+  cultEl.focus();
+  const f=saveFocus();initStock();restFocus(f);
+}
+
+function deleteAchatExt(ai){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  S.achatsExt.splice(ai,1);
+  saveLS();
+  const f=saveFocus();initStock();restFocus(f);
+}
+
+// Mettre à jour le select des frigos quand on change de bâtiment
+function updateFrigoSelectInStock(){
+  const batEl=$('ae-bat'),frigoEl=$('ae-frigo');
+  if(!batEl||!frigoEl)return;
+  const batIdx=parseInt(batEl.value)||0;
+  const bat=S.bats[batIdx];
+  frigoEl.innerHTML='<option value="">Aucun</option>';
+  if(bat&&bat.frigos.length>0){
+    bat.frigos.forEach((f,fi)=>{
+      const opt=document.createElement('option');
+      opt.value=fi;
+      opt.textContent=f.nom;
+      frigoEl.appendChild(opt);
+    });
+  }
 }
 
 // ══════════════════════════════════════════════

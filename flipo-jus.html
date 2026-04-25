@@ -247,10 +247,10 @@ th,td{padding:8px 6px}
 
     <div class="params-section">
       <div class="section-title">Couleurs de bouchon</div>
-      <div class="params-list" id="couleurs-list"></div>
+      <div class="params-list" id="couleurs-bouchon-list"></div>
       <div class="params-add">
-        <input type="text" id="add-couleur" placeholder="Nouvelle couleur">
-        <button class="btn btn-add" onclick="addParam('couleur')">+</button>
+        <input type="text" id="add-couleur-bouchon" placeholder="Nouvelle couleur">
+        <button class="btn btn-add" onclick="addParam('couleur-bouchon')">+</button>
       </div>
     </div>
   </div>
@@ -314,7 +314,7 @@ function syncManualPull(){
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
 const CLIENTS_INIT = ['VDP','PRESTA BEAURAINVILLE','PRESTA BENARDERIE','PRESTA MARTINE','PRESTA MOISMONT'];
-const COULEURS_INIT = ['Doré','Rouge','Vert','Neutre'];
+const COULEURS_INIT = ['Blanc','Noir','Rouge'];
 
 const S = {
   tab: 'resume',
@@ -323,8 +323,9 @@ const S = {
   formats: [...FORMATS_INIT],
   saveurs: [...SAVEURS_INIT],
   couleurs: [...COULEURS_INIT],
+  couleursBouchon: ['Blanc','Noir','Rouge'],
   entries: [],
-  reappro: [], // {id, type, date, qte} — arrivées de stock
+  reappro: [], // {id, type, date, qte, couleur} — arrivées de stock
   stock: {
     carton33: 0, carton1L: 0,
     gnr: 0, gnrDate: null,
@@ -354,6 +355,7 @@ function loadLS(){
   S.formats = d.formats || [...FORMATS_INIT];
   S.saveurs = d.saveurs || [...SAVEURS_INIT];
   S.couleurs = d.couleurs || [...COULEURS_INIT];
+  S.couleursBouchon = d.couleursBouchon || ['Blanc','Noir','Rouge'];
   S.entries = d.entries || [];
   S.stock = d.stock || S.stock;
   S.reappro = d.reappro || [];
@@ -536,7 +538,7 @@ function buildSaisie(){
   const couleurEl = $('entry-couleur');
   if(couleurEl){
     couleurEl.innerHTML = '';
-    S.couleurs.forEach(c => {
+    S.couleursBouchon.forEach(c => {
       const opt = document.createElement('option');
       opt.textContent = c;
       opt.value = c;
@@ -598,7 +600,7 @@ function deleteEntry(id){
 }
 
 function buildParams(){
-  const renderList = (key, list, listId) => {
+  const renderList = (key, list, listId, checkUsage = true) => {
     const el = $(listId);
     if(!el) return;
     let html = '';
@@ -609,13 +611,17 @@ function buildParams(){
       return a.localeCompare(b);
     });
     sorted.forEach(item => {
-      const used = S.entries.some(e => {
-        if(key === 'clients') return e.client === item;
-        if(key === 'formats') return e.format === item;
-        if(key === 'saveurs') return e.saveur === item;
-        if(key === 'couleurs') return e.couleur === item;
-        return false;
-      });
+      let used = false;
+      if(checkUsage) {
+        used = S.entries.some(e => {
+          if(key === 'clients') return e.client === item;
+          if(key === 'formats') return e.format === item;
+          if(key === 'saveurs') return e.saveur === item;
+          if(key === 'couleurs') return e.couleur === item;
+          if(key === 'couleursBouchon') return e.couleur === item;
+          return false;
+        });
+      }
       const warn = used ? ' <div class="params-warn">Utilisé dans les entrées</div>' : '';
       html += '<div class="params-item"><span>' + es(item) + '</span>' +
         '<button class="btn btn-del" onclick="delParam(\'' + key + '\',\'' + es(item) + '\')" ' + (used ? 'disabled' : '') + '>✕</button></div>' +
@@ -628,6 +634,7 @@ function buildParams(){
   renderList('formats', S.formats, 'formats-list');
   renderList('saveurs', S.saveurs, 'saveurs-list');
   renderList('couleurs', S.couleurs, 'couleurs-list');
+  renderList('couleursBouchon', S.couleursBouchon, 'couleurs-bouchon-list');
 }
 
 function addParam(type){
@@ -637,7 +644,14 @@ function addParam(type){
   const val = inputEl.value.trim();
   if(!val) { alert('Veuillez entrer une valeur'); return; }
 
-  const key = (type === 'client' ? 'clients' : (type === 'format' ? 'formats' : (type === 'saveur' ? 'saveurs' : 'couleurs')));
+  let key;
+  if(type === 'client') key = 'clients';
+  else if(type === 'format') key = 'formats';
+  else if(type === 'saveur') key = 'saveurs';
+  else if(type === 'couleur') key = 'couleurs';
+  else if(type === 'couleur-bouchon') key = 'couleursBouchon';
+  else return;
+
   if(!S[key].includes(val)) {
     S[key].push(val);
     saveLS();
@@ -646,38 +660,55 @@ function addParam(type){
 }
 
 function delParam(key, val){
-  const k = (key === 'clients' ? 'clients' : (key === 'formats' ? 'formats' : (key === 'saveurs' ? 'saveurs' : 'couleurs')));
+  let k;
+  if(key === 'clients') k = 'clients';
+  else if(key === 'formats') k = 'formats';
+  else if(key === 'saveurs') k = 'saveurs';
+  else if(key === 'couleurs') k = 'couleurs';
+  else if(key === 'couleursBouchon') k = 'couleursBouchon';
+  else return;
+
   S[k] = S[k].filter(x => x !== val);
   saveLS();
 }
 
 function buildStock(){
-  // Calcul des arrivées par type
-  function totalEntree(type){
+  // Calcul des arrivées par type (et couleur pour bouchons)
+  function totalEntree(type, couleur){
+    if(couleur) {
+      return S.reappro.filter(r => r.type === type && r.couleur === couleur).reduce((a, r) => a + r.qte, 0);
+    }
     return S.reappro.filter(r => r.type === type).reduce((a, r) => a + r.qte, 0);
   }
-  // Calcul de la consommation par type
-  function calcConsomme(type){
+
+  // Calcul de la consommation par type (pour les formats de bouteilles, ou par couleur pour bouchons)
+  function calcConsomme(type, format){
     if(type === 'b33') return S.entries.filter(e => e.format === '33cl').reduce((a, e) => a + e.qte, 0);
-    if(type === 'b1L') return S.entries.filter(e => ['1L','1L Rhum','1L Soft'].includes(e.format)).reduce((a, e) => a + e.qte, 0);
-    if(type === 'bouchon') return S.entries.filter(e => !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
+    if(type === 'b1L') return S.entries.filter(e => e.format === '1L').reduce((a, e) => a + e.qte, 0);
+    if(type === 'b1Lrhum') return S.entries.filter(e => e.format === '1L Rhum').reduce((a, e) => a + e.qte, 0);
+    if(type === 'b1Lsoft') return S.entries.filter(e => e.format === '1L Soft').reduce((a, e) => a + e.qte, 0);
     if(type === 'bib') return S.entries.filter(e => e.format === 'BIB 3L').reduce((a, e) => a + e.qte, 0);
     if(type === 'bibGen') return S.entries.filter(e => e.format === 'BIB générique 3L').reduce((a, e) => a + e.qte, 0);
+    if(type === 'bouchon' && format) return S.entries.filter(e => e.couleur === format && !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
+    if(type === 'bouchon') return S.entries.filter(e => !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
     return 0;
   }
 
-  const STOCK_ITEMS = [
+  const STOCK_BOTTLES = [
     {type:'b33', label:'Bouteilles 33cl'},
     {type:'b1L', label:'Bouteilles 1L'},
-    {type:'bouchon', label:'Bouchons'},
+    {type:'b1Lrhum', label:'Bouteilles 1L Rhum'},
+    {type:'b1Lsoft', label:'Bouteilles 1L Soft'},
     {type:'bib', label:'BIBs 3L'},
     {type:'bibGen', label:'BIBs générique 3L'}
   ];
 
   // Render section A
   let htmlA = '<div class="stock-section"><div class="stock-section-title">A — Stock emballages (calculé)</div>';
-  htmlA += '<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--brd)">Article</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Entré</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Consommé</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Restant</th></tr></thead><tbody>';
-  STOCK_ITEMS.forEach(item => {
+  htmlA += '<div style="margin-bottom:16px"><strong>Bouteilles</strong></div>';
+  htmlA += '<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--brd)">Format</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Entré</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Consommé</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Restant</th></tr></thead><tbody>';
+
+  STOCK_BOTTLES.forEach(item => {
     const entree = totalEntree(item.type);
     const conso = calcConsomme(item.type);
     const rest = entree - conso;
@@ -687,6 +718,24 @@ function buildStock(){
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
   });
+
+  htmlA += '</tbody></table>';
+
+  // Bouchons par couleur
+  htmlA += '<div style="margin-top:16px;margin-bottom:12px"><strong>Bouchons par couleur</strong></div>';
+  htmlA += '<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--brd)">Couleur</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Entré</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Consommé</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Restant</th></tr></thead><tbody>';
+
+  S.couleursBouchon.forEach(couleur => {
+    const entree = totalEntree('bouchon_' + couleur, couleur);
+    const conso = calcConsomme('bouchon', couleur);
+    const rest = entree - conso;
+    const cls = rest < 0 ? 'color:var(--gr);font-weight:700' : (entree > 0 && rest / entree > 0.2 ? 'color:#27ae60;font-weight:700' : '');
+    htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + couleur + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
+  });
+
   htmlA += '</tbody></table></div>';
 
   // Render section B — cartons (manuel)
@@ -710,16 +759,19 @@ function buildStock(){
   htmlC += '<div class="stock-date" id="ibcPoire-date">' + ibcPoireDate + '</div></div>';
 
   // Render section D — réapprovisionnements
-  const LABELS = {b33:'Bouteilles 33cl',b1L:'Bouteilles 1L',bouchon:'Bouchons',bib:'BIBs 3L',bibGen:'BIBs générique 3L'};
+  const LABELS = {b33:'Bouteilles 33cl',b1L:'Bouteilles 1L',b1Lrhum:'Bouteilles 1L Rhum',b1Lsoft:'Bouteilles 1L Soft',bib:'BIBs 3L',bibGen:'BIBs générique 3L',bouchon:'Bouchons'};
   const today = new Date().toISOString().split('T')[0];
   let htmlD = '<div class="stock-section"><div class="stock-section-title">D — Arrivées de stock</div>';
   htmlD += '<div class="form-row" style="margin-bottom:12px">';
-  htmlD += '<div class="form-group"><label>Article</label><select id="reappro-type">';
+  htmlD += '<div class="form-group"><label>Article</label><select id="reappro-type" onchange="updateReaproFormVisibility()">';
   Object.entries(LABELS).forEach(([k,l]) => { htmlD += '<option value="' + k + '">' + l + '</option>'; });
+  htmlD += '</select></div>';
+  htmlD += '<div class="form-group" id="reappro-couleur-group" style="display:none"><label>Couleur</label><select id="reappro-couleur">';
+  S.couleursBouchon.forEach(c => { htmlD += '<option value="' + c + '">' + c + '</option>'; });
   htmlD += '</select></div>';
   htmlD += '<div class="form-group"><label>Date</label><input type="date" id="reappro-date" value="' + today + '"></div>';
   htmlD += '<div class="form-group"><label>Quantité</label><input type="number" min="1" id="reappro-qte" value="1"></div>';
-  htmlD += '<div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn" onclick="addReappro()">➕ Ajouter</button></div>';
+  htmlD += '<div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-add" onclick="addReappro()">➕ Ajouter</button></div>';
   htmlD += '</div>';
 
   const sorted = [...S.reappro].sort((a,b) => new Date(b.date)-new Date(a.date));
@@ -728,8 +780,12 @@ function buildStock(){
   } else {
     htmlD += '<div class="journal" style="max-height:220px;overflow-y:auto">';
     sorted.forEach(r => {
+      let label = LABELS[r.type] || r.type;
+      if(r.couleur && r.type.startsWith('bouchon')) {
+        label += ' (' + r.couleur + ')';
+      }
       htmlD += '<div class="journal-entry"><div class="journal-entry-main"><span style="font-size:18px">📦</span>';
-      htmlD += '<div class="journal-entry-txt"><strong>' + LABELS[r.type] + ' × ' + r.qte + '</strong>';
+      htmlD += '<div class="journal-entry-txt"><strong>' + label + ' × ' + r.qte + '</strong>';
       htmlD += '<span style="color:var(--mu);font-size:12px">' + r.date + '</span></div></div>';
       htmlD += '<button class="btn btn-del" onclick="deleteReappro(\'' + r.id + '\')">✕</button></div>';
     });
@@ -738,9 +794,10 @@ function buildStock(){
   htmlD += '</div>';
 
   // Mettre à jour S.stock avec les valeurs calculées pour shareNow()
-  STOCK_ITEMS.forEach(item => {
+  STOCK_BOTTLES.forEach(item => {
     S.stock[item.type] = totalEntree(item.type) - calcConsomme(item.type);
   });
+  S.stock.bouchon = totalEntree('bouchon') - calcConsomme('bouchon');
 
   const stockEl = $('stock');
   if(stockEl) stockEl.innerHTML = htmlA + htmlB + htmlC + htmlD;
@@ -881,13 +938,28 @@ function shareNow(type){
   openSharePreview(title, '#185FA5', html, subject, plain + '\n— Flipo');
 }
 
+function updateReaproFormVisibility(){
+  const typeEl = $('reappro-type');
+  const couleurGroup = $('reappro-couleur-group');
+  if(!typeEl || !couleurGroup) return;
+  const type = typeEl.value;
+  couleurGroup.style.display = (type === 'bouchon') ? 'flex' : 'none';
+}
+
 function addReappro(){
   const type = $('reappro-type').value;
   const date = $('reappro-date').value;
   const qte = parseInt($('reappro-qte').value) || 0;
+  const couleurEl = $('reappro-couleur');
+  const couleur = couleurEl ? couleurEl.value : null;
+
   if(!date || qte <= 0){ alert('Veuillez remplir tous les champs'); return; }
+  if(type === 'bouchon' && !couleur){ alert('Veuillez sélectionner une couleur'); return; }
+
   const id = 'r-' + Date.now() + '-' + Math.random().toString(36).substr(2,6);
-  S.reappro.push({id, type, date, qte});
+  const reappro = {id, type, date, qte};
+  if(couleur) reappro.couleur = couleur;
+  S.reappro.push(reappro);
   saveLS();
 }
 

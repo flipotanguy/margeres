@@ -539,7 +539,7 @@ function buildHistorique(type){
     h+='<td style="font-weight:600">'+es(s.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(pal)+'</td>';
     h+='<td style="color:var(--mu);font-size:12px">'+es(dest||'—')+'</td>';
-    h+='<td class="ctr"><button class="btn del sm" onclick="delSess('+s.id+',\''+type+'\')">✕</button></td>';
+    h+='<td class="ctr"><button class="btn del sm" onclick="delSess('+s.id+',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
   h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
@@ -547,6 +547,7 @@ function buildHistorique(type){
   return h;
 }
 function delSess(id,type){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer cette session ?'))return;
   S.sessions=S.sessions.filter(function(s){return s.id!==id;});
   saveLS();rebuildTab(type||S.tab);
@@ -884,7 +885,7 @@ function buildXfrPanel(){
       h+='<td style="font-size:12px;color:var(--mu)">'+from+'</td>';
       h+='<td style="text-align:center;color:var(--gr);font-weight:700">→</td>';
       h+='<td style="font-size:12px;color:var(--mu)">'+to+'</td>';
-      h+='<td class="ctr"><button class="btn del sm" onclick="delXfr('+t.id+')">✕</button></td>';
+      h+='<td class="ctr"><button class="btn del sm" onclick="delXfr('+t.id+')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
       h+='</tr>';
     });
     h+='</tbody></table></div>';
@@ -921,6 +922,7 @@ function saveXfr(){
   saveLS();showBanner('Transfert enregistré');initTransfert();
 }
 function delXfr(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer ce transfert ?'))return;
   S.transfers=S.transfers.filter(function(t){return t.id!==id;});
   saveLS();initTransfert();
@@ -1038,12 +1040,14 @@ function shareNow(mode){
 
 // ─── Auth + Init ─────────────────────────────────────────
 var FLIPO_STABS={};
+var FLIPO_CAN_DELETE=false;
 (function(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
   if(!sess){location.href='flipo-login.html';return;}
   var mp=sess.perms&&sess.perms['emballage'];
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
   if(sess.isAdmin)return;
   var tabs=mp.tabs||{};
   var tabIds=['pomme','poire','stock','transfert','stats'];

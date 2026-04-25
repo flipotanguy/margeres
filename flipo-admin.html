@@ -231,6 +231,7 @@ function editUser(id){S.editId=id;renderList();var u=getUsers().find(function(x)
 function renderForm(u){
   var isNew=!u;
   var perms=(u&&u.perms)||{};
+  var canDelete=(u&&u.canDelete)||false;
   var h='<div class="form-card">';
   if(!isNew&&u&&u.isAdmin)h+='<div class="info-box">⚠️ Compte administrateur — accès total automatique, non supprimable.</div>';
   h+='<div class="section-title">Identité</div>';
@@ -242,6 +243,11 @@ function renderForm(u){
   h+='<div style="max-width:240px"><div class="form-field">';
   h+='<label>'+(isNew?'Code':'Nouveau code (laisser vide = inchangé)')+'</label>';
   h+='<input type="password" id="f-code" class="code-input" maxlength="8" placeholder="••••••••" autocomplete="off" inputmode="numeric"></div></div>';
+  h+='<div class="section-title">Permissions</div>';
+  h+='<div style="padding:12px 14px;background:var(--gl);border-radius:7px;margin-bottom:12px">';
+  h+='<label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none"><input type="checkbox" id="f-candel" '+(canDelete?'checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:var(--gr)"><span style="font-size:12px;font-weight:600;color:var(--gd)">Peut supprimer des données</span></label>';
+  h+='<p style="font-size:11px;color:var(--mu);margin-top:6px;margin-bottom:0">Les administrateurs peuvent toujours supprimer.</p>';
+  h+='</div>';
   h+='<div class="section-title">Accès aux modules &amp; onglets</div>';
   h+='<div class="modules-grid">';
   MODULE_DEF.forEach(function(mod){
@@ -347,6 +353,7 @@ function saveUser(){
   var prenom=(document.getElementById('f-prenom')?document.getElementById('f-prenom').value:'').trim();
   var nom=(document.getElementById('f-nom')?document.getElementById('f-nom').value:'').trim();
   var codeRaw=(document.getElementById('f-code')?document.getElementById('f-code').value:'').trim();
+  var canDel=(document.getElementById('f-candel')?document.getElementById('f-candel').checked:false);
   if(!prenom||!nom){alert('Prénom et nom obligatoires');return;}
   if(S.editId===-1&&codeRaw.length!==8){alert('Le code doit contenir exactement 8 chiffres');return;}
   if(codeRaw.length>0&&codeRaw.length!==8){alert('Le code doit contenir exactement 8 chiffres');return;}
@@ -377,7 +384,7 @@ function saveUser(){
     var h=hashCode(codeRaw);
     var dup=users.find(function(u){return u.codeHash===h;});
     if(dup){alert('Ce code est déjà utilisé par '+dup.prenom+' '+dup.nom);return;}
-    var newU={id:Date.now(),nom:nom,prenom:prenom,codeHash:h,isAdmin:false,perms:perms};
+    var newU={id:Date.now(),nom:nom,prenom:prenom,codeHash:h,isAdmin:false,perms:perms,canDelete:canDel};
     users.push(newU);
     S.editId=newU.id;
   } else {
@@ -390,7 +397,7 @@ function saveUser(){
       if(dup2){alert('Ce code est déjà utilisé par '+dup2.prenom+' '+dup2.nom);return;}
       users[idx].codeHash=h2;
     }
-    if(!users[idx].isAdmin)users[idx].perms=perms;
+    if(!users[idx].isAdmin){users[idx].perms=perms;users[idx].canDelete=canDel;}
   }
   saveUsers(users);
   renderList();

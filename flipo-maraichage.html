@@ -242,14 +242,41 @@ function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveFocus(){const e=document.activeElement;return e?{id:e.id,s:e.selectionStart,en:e.selectionEnd}:null;}
 function restFocus(f){if(!f||!f.id)return;const e=$(f.id);if(e){e.focus();try{e.setSelectionRange(f.s,f.en);}catch(_){}}}
 function getCultIcon(c){
-  const m={'Tomate':'🍅','Poivron':'🫑','Salade':'🥬','Courgette':'🥒','Courge':'🎃','Aubergine':'🍆','Chou de Bruxelles':'🥦','Poireau':'🧅'};
+  const m={'Tomate':'🍅','Poivron':'🫑','Salade':'🥬','Courgette':'🥒','Courge':'🎃','Aubergine':'🍆','Chou de Bruxelles':'🥦','Poireau':'🌿'};
   return m[c]||'🌿';
 }
 function doseBidon(doseHa){return R2((parseFloat(doseHa)||0)*VOL_BIDON/VOL_EAU_HA);}
 function getTrait(cult){return S.traitements[cult]||(S.traitements[cult]=[]),S.traitements[cult];}
 function rebuildProdList(){
   const dl=$('mar-prod-list');if(!dl)return;
-  const sorted=[...TARIF_MAR].sort((a,b)=>a.p.localeCompare(b.p,'fr'));
+  let products=[...TARIF_MAR];
+
+  // Lire les produits du Verger depuis localStorage
+  try{
+    const vergerData=JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
+    const prodNames=new Set();
+
+    // Extraire les noms uniques des produits Verger (pcPom et pcPoi)
+    if(Array.isArray(vergerData.pcPom)){
+      vergerData.pcPom.forEach(row=>{
+        if(row.p&&row.p.trim()){prodNames.add(row.p);}
+      });
+    }
+    if(Array.isArray(vergerData.pcPoi)){
+      vergerData.pcPoi.forEach(row=>{
+        if(row.p&&row.p.trim()){prodNames.add(row.p);}
+      });
+    }
+
+    // Ajouter les produits Verger (s'ils ne sont pas déjà dans TARIF_MAR)
+    prodNames.forEach(name=>{
+      if(!products.find(p=>p.p===name)){
+        products.push({p:name});
+      }
+    });
+  }catch(e){}
+
+  const sorted=[...products].sort((a,b)=>a.p.localeCompare(b.p,'fr'));
   dl.innerHTML=sorted.map(t=>`<option value="${es(t.p)}">`).join('');
 }
 
