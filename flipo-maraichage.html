@@ -556,7 +556,7 @@ function buildTrait(){
   } else {
     rows.forEach((row,ri)=>{
       h+=`<tr>
-        <td><input class="w140" id="tp-${ri}" value="${es(row.p)}" list="mar-prod-list" onchange="updTrait(${ri},'p',this.value)" oninput="var d=lookupDose(this.value);if(d){var e=$('tdose-${ri}');if(e){e.value=d;updTrait(${ri},'doseHa',d.toString())}}" placeholder="Produit..."></td>
+        <td><input class="w140" id="tp-${ri}" value="${es(row.p)}" list="mar-prod-list" oninput="updTrait(${ri},'p',this.value)" onchange="updTrait(${ri},'p',this.value);var d=lookupDose(this.value);if(d!==null){var e=document.getElementById('tdose-${ri}');if(e){e.value=d;updTrait(${ri},'doseHa',d.toString());}}" placeholder="Produit..."></td>
         <td><input class="w80" id="tdose-${ri}" value="${row.doseHa||''}" type="number" min="0" step="0.01" onchange="updTrait(${ri},'doseHa',this.value)" placeholder="0"></td>
         <td class="calc" id="tbidon-${ri}">${row.doseHa?doseBidon(row.doseHa)+' L':'-'}</td>
         <td><input class="w140" id="tnote-${ri}" value="${es(row.note||'')}" onchange="updTrait(${ri},'note',this.value)" placeholder="note..."></td>

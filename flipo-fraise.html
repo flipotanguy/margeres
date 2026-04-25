@@ -1187,7 +1187,7 @@
           const doseCh = R2(doseHa * surf);
           const total = R2(doseHa * surf * nbCh);
           html += '<tr>';
-          html += '<td><input class="inline-edit" id="trait-prod-' + i + '" value="' + es(t.produit||'') + '" list="trait-prod-list" placeholder="Produit..." oninput="updTrait(' + i + ',\'produit\',this.value);var d=lookupDose(this.value);if(d){var e=$(\'trait-dose-' + i + '\');if(e){e.value=d;updTrait(' + i + ',\'doseHa\',parseFloat(d));buildTrait()}}"></td>';
+          html += '<td><input class="inline-edit" id="trait-prod-' + i + '" value="' + es(t.produit||'') + '" list="trait-prod-list" placeholder="Produit..." oninput="updTrait(' + i + ',\'produit\',this.value)" onchange="updTrait(' + i + ',\'produit\',this.value);var d=lookupDose(this.value);if(d!==null){var e=$(\'trait-dose-' + i + '\');if(e){e.value=d;updTrait(' + i + ',\'doseHa\',parseFloat(d));buildTrait();}}"></td>';
           html += '<td style="text-align:right"><input class="inline-edit" type="number" step="0.01" min="0" id="trait-dose-' + i + '" value="' + doseHa + '" placeholder="0" style="text-align:right" oninput="updTrait(' + i + ',\'doseHa\',parseFloat(this.value));buildTrait()"></td>';
           html += '<td style="text-align:right;background:#e8f4d4;color:#2d6a00;font-weight:600" id="trait-calc-' + i + '">' + doseCh + '</td>';
           html += '<td style="text-align:right;background:#fff8dc;color:#7a5200;font-weight:600">' + total + '</td>';
@@ -1205,56 +1205,36 @@
       rebuildTraitProdList();
     }
 
-    function rebuildTraitProdList(){
-      // Créer une datalist pour les produits Fraise avec autocomplete
-      let html = '<option value="">';
+    function rebuildTraitProdList(extraSet){
+      const produitSet = new Set(extraSet||[]);
 
-      // Ajouter les produits existants de Fraise
-      const produitSet = new Set();
-      S.traitements.forEach(t => {
-        if(t.produit && t.produit.trim()){
-          produitSet.add(t.produit);
-        }
-      });
+      // 1. Produits existants dans Fraise
+      S.traitements.forEach(t => { if(t.produit&&t.produit.trim()) produitSet.add(t.produit); });
 
-      // Ajouter les produits du Verger depuis localStorage
+      // 2. Verger depuis localStorage
       try {
-        const vergerData = JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
-        const prodNamesVerg = new Set();
+        const vd = JSON.parse(localStorage.getItem('flipo-verger-v2')||'{}');
+        ['pcPom','pcPoi','pcNoy'].forEach(k => { (vd[k]||[]).forEach(r => { if(r.p&&r.p.trim()) produitSet.add(r.p); }); });
+      } catch(e){}
 
-        // Extraire les noms uniques des produits Verger (pcPom et pcPoi)
-        if(Array.isArray(vergerData.pcPom)){
-          vergerData.pcPom.forEach(row => {
-            if(row.p && row.p.trim()) prodNamesVerg.add(row.p);
-          });
-        }
-        if(Array.isArray(vergerData.pcPoi)){
-          vergerData.pcPoi.forEach(row => {
-            if(row.p && row.p.trim()) prodNamesVerg.add(row.p);
-          });
-        }
-        prodNamesVerg.forEach(name => produitSet.add(name));
-      } catch(e) {}
-
-      // Ajouter les produits du Maraîchage depuis localStorage
+      // 3. Maraîchage depuis localStorage
       try {
-        const marData = JSON.parse(localStorage.getItem('flipo-maraichage-v2')||'{}');
-        const traitements = marData.traitements || [];
-        traitements.forEach(t => {
-          if(t.produit && t.produit.trim()) produitSet.add(t.produit);
+        const md = JSON.parse(localStorage.getItem('flipo-maraichage-v2')||'{}');
+        (md.traitements||[]).forEach(t => { if(t.produit&&t.produit.trim()) produitSet.add(t.produit); });
+      } catch(e){}
+
+      // Mise à jour datalist
+      const dl = $('trait-prod-list');
+      if(dl) dl.innerHTML = [...produitSet].sort((a,b)=>a.localeCompare(b,'fr')).map(p=>'<option value="'+es(p)+'">').join('');
+
+      // Si liste vide → essayer Supabase directement
+      if(produitSet.size === 0){
+        supaGet('flipo-verger-v2', function(d){
+          if(!d) return;
+          const set2 = new Set();
+          ['pcPom','pcPoi','pcNoy'].forEach(k => { (d[k]||[]).forEach(r => { if(r.p&&r.p.trim()) set2.add(r.p); }); });
+          if(set2.size > 0) rebuildTraitProdList(set2);
         });
-      } catch(e) {}
-
-      // Trier et ajouter à la datalist
-      const sorted = [...produitSet].sort((a,b) => a.localeCompare(b, 'fr'));
-      sorted.forEach(p => {
-        html += '<option value="' + es(p) + '">';
-      });
-
-      // Mettre à jour la datalist du DOM
-      let dl = $('trait-prod-list');
-      if(dl) {
-        dl.innerHTML = html;
       }
     }
 

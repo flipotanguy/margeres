@@ -338,19 +338,23 @@ function getStockMap(){
     add(key,a.cult,a.variete,pal);
   });
 
-  // 3. Fusion Margères : MARG_ID + tous les frigos de Margères → margKey (après transferts)
+  // 3. Fusion Margères : MARG_ID → margKey (garder le détail par frigo)
   if(map[MARG_ID]){
     Object.keys(map[MARG_ID]).forEach(function(tp){
       Object.keys(map[MARG_ID][tp]).forEach(function(v){add(margKey,tp,v,map[MARG_ID][tp][v]);});
     });
     delete map[MARG_ID];
   }
-  Object.keys(map).filter(function(k){return k.indexOf(margKey+'|')===0;}).forEach(function(fk){
+  // Reconvertir MARG_ID|friId → margKey|friId sans merger dans margKey
+  Object.keys(map).filter(function(k){return k.split('|')[0]===MARG_ID;}).forEach(function(fk){
+    var friId=fk.split('|').slice(1).join('|');
+    var newKey=margKey+'|'+friId;
     Object.keys(map[fk]).forEach(function(tp){
-      Object.keys(map[fk][tp]).forEach(function(v){add(margKey,tp,v,map[fk][tp][v]);});
+      Object.keys(map[fk][tp]).forEach(function(v){add(newKey,tp,v,map[fk][tp][v]);});
     });
     delete map[fk];
   });
+  // NE PAS fusionner margKey|friId dans margKey — conserver le détail par frigo
 
   // 4. Tri → déduit de margKey (toujours, même si négatif)
   S.sessions.forEach(function(s){
