@@ -674,13 +674,31 @@
     function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
     function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
     function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
-    function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
+    var _lastKnownCloudEntries = 0;
+    function syncPush(data){
+      // Protection : ne pas écraser le cloud si on a moins d'entrées que lui
+      var localNb = data.entries ? data.entries.length : 0;
+      if(localNb < _lastKnownCloudEntries && _lastKnownCloudEntries > 0){
+        setSyncSt('ok'); return; // Silencieux — données locales incomplètes
+      }
+      setSyncSt('syncing');
+      supaSet(LS_KEY,data);
+      _lastKnownCloudEntries = localNb;
+      setTimeout(function(){setSyncSt('ok');},600);
+    }
     function syncInitPull(afterCb){
       var local=localStorage.getItem(LS_KEY);
-      if(local){setSyncSt('ok');return;}
+      if(local){
+        try{var ld=JSON.parse(local);_lastKnownCloudEntries=ld.entries?ld.entries.length:0;}catch(e){}
+        setSyncSt('ok');return;
+      }
       setSyncSt('syncing');
       supaGet(LS_KEY,function(d){
-        if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
+        if(d){
+          _lastKnownCloudEntries = d.entries ? d.entries.length : 0;
+          try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+          if(afterCb)afterCb(d);
+        }
         setSyncSt('ok');
       });
     }
