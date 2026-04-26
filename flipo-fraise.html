@@ -690,10 +690,14 @@
       supaGet(LS_KEY,function(d){
         if(d){
           try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-          location.reload();
+          // Recharger les données directement sans reload (évite le problème de session)
+          loadLS();
+          switchTab(S.tab||'saisie');
+          setSyncSt('ok');
+          alert('✅ Données récupérées ! (' + (d.entries ? d.entries.length : 0) + ' entrée(s))');
         } else {
           setSyncSt('ok');
-          alert('Aucune donnée cloud disponible.');
+          alert('Aucune donnée cloud disponible. Vérifiez que des données ont été sauvegardées depuis un autre appareil.');
         }
       });
     }

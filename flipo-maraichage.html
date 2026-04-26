@@ -195,10 +195,14 @@ function syncManualPull(){
   supaGet(LS_KEY,function(d){
     if(d){
       try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-      location.reload();
+      loadLS();
+      rebuildProdList();
+      initCultures();initTrait();initCueill();
+      setSyncSt('ok');
+      alert('✅ Données récupérées ! (' + (d.cultures ? d.cultures.length : 0) + ' culture(s))');
     } else {
       setSyncSt('ok');
-      alert('Aucune donnée cloud disponible.');
+      alert('Aucune donnée cloud disponible. Vérifiez que des données ont été sauvegardées depuis un autre appareil.');
     }
   });
 }
