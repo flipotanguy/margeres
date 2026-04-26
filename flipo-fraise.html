@@ -706,16 +706,17 @@
       if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
       setSyncSt('syncing');
       supaGet(LS_KEY,function(d){
-        if(d){
-          var n = d.entries ? d.entries.length : 0;
-          try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-          // Informer puis recharger — le localStorage est déjà à jour
-          alert('✅ ' + n + ' entrée(s) récupérée(s). La page va se recharger.');
-          location.reload();
-        } else {
+        if(!d){
           setSyncSt('ok');
           alert('Aucune donnée cloud disponible.\nVérifiez que des données ont été sauvegardées depuis un autre appareil.');
+          return;
         }
+        try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+        var n = d.entries ? d.entries.length : 0;
+        // Stocker le message dans sessionStorage AVANT de naviguer
+        sessionStorage.setItem('_flipo_pull_msg','✅ ' + n + ' entrée(s) récupérée(s) !');
+        // Navigation fraîche — plus fiable que location.reload() sur mobile
+        window.location.href = 'flipo-fraise.html';
       });
     }
 
@@ -1487,6 +1488,9 @@
       rebuildTraitProdList();
       switchTab(S.tab);
       restFocus();
+      // Afficher le message de pull si on vient de récupérer
+      var msg = sessionStorage.getItem('_flipo_pull_msg');
+      if(msg){ sessionStorage.removeItem('_flipo_pull_msg'); setTimeout(function(){alert(msg);},400); }
     }
 
     document.addEventListener('DOMContentLoaded', initUI);
