@@ -687,15 +687,13 @@
     function syncManualPull(){
       if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
       setSyncSt('syncing');
-      var prevTab = S.tab || 'saisie';
       supaGet(LS_KEY,function(d){
         if(d){
+          var n = d.entries ? d.entries.length : 0;
           try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-          // Réinitialiser l'UI complètement puis rester sur l'onglet courant
-          initUI();
-          switchTab(prevTab);
-          setSyncSt('ok');
-          alert('✅ Données récupérées ! (' + (d.entries ? d.entries.length : 0) + ' entrée(s))');
+          // Informer puis recharger — le localStorage est déjà à jour
+          alert('✅ ' + n + ' entrée(s) récupérée(s). La page va se recharger.');
+          location.reload();
         } else {
           setSyncSt('ok');
           alert('Aucune donnée cloud disponible.\nVérifiez que des données ont été sauvegardées depuis un autre appareil.');
