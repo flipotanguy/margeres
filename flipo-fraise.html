@@ -687,17 +687,18 @@
     function syncManualPull(){
       if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
       setSyncSt('syncing');
+      var prevTab = S.tab || 'saisie';
       supaGet(LS_KEY,function(d){
         if(d){
           try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-          // Recharger les données directement sans reload (évite le problème de session)
-          loadLS();
-          switchTab(S.tab||'saisie');
+          // Réinitialiser l'UI complètement puis rester sur l'onglet courant
+          initUI();
+          switchTab(prevTab);
           setSyncSt('ok');
           alert('✅ Données récupérées ! (' + (d.entries ? d.entries.length : 0) + ' entrée(s))');
         } else {
           setSyncSt('ok');
-          alert('Aucune donnée cloud disponible. Vérifiez que des données ont été sauvegardées depuis un autre appareil.');
+          alert('Aucune donnée cloud disponible.\nVérifiez que des données ont été sauvegardées depuis un autre appareil.');
         }
       });
     }
