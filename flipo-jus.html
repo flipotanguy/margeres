@@ -144,7 +144,7 @@ th,td{padding:8px 6px}
     <p id="saison-label">Saison 2026/2027</p>
   </div>
   <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
-  <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+  <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Forcer sync maintenant</button>
 </div>
 
 <div class="tabs">
@@ -288,28 +288,63 @@ function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
 function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
 function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
-function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
-function syncInitPull(afterCb){
-  var local=localStorage.getItem(LS_KEY);
-  if(local){setSyncSt('ok');return;}
+
+// Auto-sync par polling
+var _supaAt = null;
+function _checkCloudTs(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:_supaH()})
+  .then(function(r){return r.json();})
+  .then(function(rows){
+    if(!rows||!rows.length)return;
+    var at=rows[0].updated_at;
+    if(_supaAt && at > _supaAt){ _forcePull(); }
+    _supaAt = at;
+  }).catch(function(){});
+}
+function _forcePull(){
   setSyncSt('syncing');
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
+  supaGet(LS_KEY, function(d){
+    if(!d){ setSyncSt('ok'); return; }
+    try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+    _applyData(d);
+    _supaAt = null;
     setSyncSt('ok');
   });
 }
-function syncManualPull(){
-  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
+function _applyData(d){
+  // Mettre à jour S avec les données distantes
+  S.saison = d.saison || '2026/2027';
+  S.clients = d.clients || [...CLIENTS_INIT];
+  S.formats = d.formats || [...FORMATS_INIT];
+  S.saveurs = d.saveurs || [...SAVEURS_INIT];
+  S.couleurs = d.couleurs || [...COULEURS_INIT];
+  S.couleursBouchon = d.couleursBouchon || ['Blanc','Noir','Rouge'];
+  S.entries = d.entries || [];
+  S.stock = d.stock || S.stock;
+  S.reappro = d.reappro || [];
+
+  // Rebuild le tab actif sans appeler switchTab
+  const labelEl = $('saison-label');
+  if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
+  if(S.tab === 'resume') buildResume();
+  else if(S.tab === 'saisie') buildSaisie();
+  else if(S.tab === 'params') buildParams();
+  else if(S.tab === 'stock') buildStock();
+}
+function initAutoSync(){
+  if(!localStorage.getItem(LS_KEY)){ _forcePull(); }
+  _checkCloudTs();
+  setInterval(_checkCloudTs, 30000);
+}
+function syncPush(data){
   setSyncSt('syncing');
-  supaGet(LS_KEY,function(d){
-    if(d){
-      try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-      location.reload();
-    } else {
-      setSyncSt('ok');
-      alert('Aucune donnée cloud disponible.');
-    }
-  });
+  supaSet(LS_KEY,data);
+  _supaAt = null;
+  setTimeout(function(){setSyncSt('ok');},600);
+}
+function syncManualPull(){
+  _forcePull();
 }
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
@@ -980,7 +1015,7 @@ function updCarton(key, val){
 
 loadLS();
 render();
-syncInitPull(function(){location.reload();});
+initAutoSync();
 
 // ─── Auth ────────────────────────────────────────────────
 (function(){

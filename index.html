@@ -174,6 +174,14 @@ function logout(){
 }
 
 function syncAllModules(){
+  syncAllModulesInternal(true);
+}
+
+function syncAllModulesSilent(){
+  syncAllModulesInternal(false);
+}
+
+function syncAllModulesInternal(showAlert){
   var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
   var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
   var modules=[
@@ -185,7 +193,7 @@ function syncAllModules(){
     {key:'flipo-users-v1',    label:'👥 Utilisateurs'}
   ];
   var btn=document.querySelector('[onclick="syncAllModules()"]');
-  if(btn){btn.textContent='⏳ Sync…';btn.disabled=true;}
+  if(btn&&showAlert){btn.textContent='⏳ Sync…';btn.disabled=true;}
   var done=0,results=[];
   modules.forEach(function(m){
     fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+m.key+'&select=data',{
@@ -204,11 +212,15 @@ function syncAllModules(){
     .finally(function(){
       done++;
       if(done===modules.length){
-        if(btn){btn.textContent='🔄 Sync';btn.disabled=false;}
-        alert('Synchronisation terminée !\n\n'+results.join('\n'));
+        if(btn&&showAlert){btn.textContent='🔄 Sync';btn.disabled=false;}
+        if(showAlert){alert('Synchronisation terminée !\n\n'+results.join('\n'));}
       }
     });
   });
+}
+
+function startAutoSyncPolling(){
+  setInterval(syncAllModulesSilent,60000);
 }
 
 function renderModules(sess){
@@ -246,6 +258,8 @@ if(!sess){location.href='flipo-login.html';}else{
   if(nameEl){nameEl.textContent=sess.prenom+' '+sess.nom;}
   if(adminBtn&&sess.isAdmin){adminBtn.style.display='inline-flex';}
   renderModules(sess);
+  // Démarrer le polling automatique
+  startAutoSyncPolling();
 }
 </script>
 

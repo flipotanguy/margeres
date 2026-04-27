@@ -530,7 +530,7 @@
       <p id="saison-hdr">Saison 2026/2027</p>
     </div>
     <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
-    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
+    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Forcer sync maintenant</button>
   </div>
 
   <div class="tabs">
@@ -674,50 +674,72 @@
     function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
     function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
     function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
-    var _lastKnownCloudEntries = 0;
-    function syncPush(data){
-      // Protection : ne pas écraser le cloud si on a moins d'entrées que lui
-      var localNb = data.entries ? data.entries.length : 0;
-      if(localNb < _lastKnownCloudEntries && _lastKnownCloudEntries > 0){
-        setSyncSt('ok'); return; // Silencieux — données locales incomplètes
-      }
-      setSyncSt('syncing');
-      supaSet(LS_KEY,data);
-      _lastKnownCloudEntries = localNb;
-      setTimeout(function(){setSyncSt('ok');},600);
+
+    // Auto-sync par polling
+    var _supaAt = null;
+    function _checkCloudTs(){
+      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+        {headers:_supaH()})
+      .then(function(r){return r.json();})
+      .then(function(rows){
+        if(!rows||!rows.length)return;
+        var at=rows[0].updated_at;
+        if(_supaAt && at > _supaAt){ _forcePull(); }
+        _supaAt = at;
+      }).catch(function(){});
     }
-    function syncInitPull(afterCb){
-      var local=localStorage.getItem(LS_KEY);
-      if(local){
-        try{var ld=JSON.parse(local);_lastKnownCloudEntries=ld.entries?ld.entries.length:0;}catch(e){}
-        setSyncSt('ok');return;
-      }
+    function _forcePull(){
       setSyncSt('syncing');
-      supaGet(LS_KEY,function(d){
-        if(d){
-          _lastKnownCloudEntries = d.entries ? d.entries.length : 0;
-          try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-          if(afterCb)afterCb(d);
-        }
+      supaGet(LS_KEY, function(d){
+        if(!d){ setSyncSt('ok'); return; }
+        try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+        _applyData(d);
+        _supaAt = null;
         setSyncSt('ok');
       });
     }
-    function syncManualPull(){
-      if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
-      setSyncSt('syncing');
-      supaGet(LS_KEY,function(d){
-        if(!d){
-          setSyncSt('ok');
-          alert('Aucune donnée cloud disponible.\nVérifiez que des données ont été sauvegardées depuis un autre appareil.');
-          return;
+    function _applyData(d){
+      // Mettre à jour S avec les données distantes
+      S.entries = (d.entries || []).map(e => {
+        if (e.barquettes === undefined && e.kg !== undefined) {
+          e.barquettes = Math.round(e.kg * 2);
         }
-        try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-        var n = d.entries ? d.entries.length : 0;
-        // Stocker le message dans sessionStorage AVANT de naviguer
-        sessionStorage.setItem('_flipo_pull_msg','✅ ' + n + ' entrée(s) récupérée(s) !');
-        // Navigation fraîche — plus fiable que location.reload() sur mobile
-        window.location.href = 'flipo-fraise.html';
+        if (e.variete === undefined) {
+          const ch = CHAPELLES_INIT.find(c => c.n === e.chapelle);
+          e.variete = ch ? ch.v : '';
+        }
+        return e;
       });
+      S.chapelles = d.chapelles || CHAPELLES_INIT.map(c => ({...c}));
+      S.saison = d.saison || '2026/2027';
+      S.drainage = d.drainage || DRAINAGE_INIT.map(d => ({...d}));
+      S.traitements = d.traitements || [];
+      S.surfaceChapelle = d.surfaceChapelle || 0.04;
+      S.nbChapellesTrait = d.nbChapellesTrait || 10;
+      S.rendement = d.rendement || {fraisesParPlant: 22, fraisesParBarquette: 29, poidsBarquette: 500, poidsFraise: 8};
+      if(S.rendement.poidsFraise === undefined) S.rendement.poidsFraise = 8;
+
+      // Rebuild le tab actif sans appeler switchTab
+      $('saison-hdr').textContent = 'Saison ' + S.saison;
+      if(S.tab === 'resume') buildResume();
+      else if(S.tab === 'saisie') buildSaisie();
+      else if(S.tab === 'saison') buildSaison();
+      else if(S.tab === 'drainage') buildDrainage();
+      else if(S.tab === 'trait') buildTrait();
+    }
+    function initAutoSync(){
+      if(!localStorage.getItem(LS_KEY)){ _forcePull(); }
+      _checkCloudTs();
+      setInterval(_checkCloudTs, 30000);
+    }
+    function syncPush(data){
+      setSyncSt('syncing');
+      supaSet(LS_KEY,data);
+      _supaAt = null;
+      setTimeout(function(){setSyncSt('ok');},600);
+    }
+    function syncManualPull(){
+      _forcePull();
     }
 
     const CHAPELLES_INIT = [
@@ -1488,13 +1510,10 @@
       rebuildTraitProdList();
       switchTab(S.tab);
       restFocus();
-      // Afficher le message de pull si on vient de récupérer
-      var msg = sessionStorage.getItem('_flipo_pull_msg');
-      if(msg){ sessionStorage.removeItem('_flipo_pull_msg'); setTimeout(function(){alert(msg);},400); }
+      initAutoSync();
     }
 
     document.addEventListener('DOMContentLoaded', initUI);
-    syncInitPull(function(){location.reload();});
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_CAN_DELETE=false;
