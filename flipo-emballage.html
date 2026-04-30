@@ -1163,13 +1163,17 @@ var FLIPO_CAN_DELETE=false;
   });
   window._embFirst=first||'pomme';
 })();
-loadLS();
-_startAutoSync();
-(function(){
-  var f=window._embFirst||'pomme';
-  var b=document.getElementById('tab-'+f);
-  if(b)setTab(f,b);else rebuildTab('pomme');
-})();
+function _doInit(){
+  loadLS();
+  _startAutoSync();
+  (function(){var f=window._embFirst||'pomme';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);else rebuildTab('pomme');})();
+}
+if(!localStorage.getItem(LS_KEY)){
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+    _doInit();
+  });
+}else{_doInit();}
 </script>
 </body>
 </html>

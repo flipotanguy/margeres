@@ -1734,17 +1734,21 @@ var FLIPO_STABS={};
   });
   window._vergFirst=first||'trait';
 })();
-loadLS();
-_startAutoSync();
-rebuildProdList();
-initTrait();
-initCueill();
-initPhyto();
-(function(){
-  var f=window._vergFirst||'trait';
-  var b=document.getElementById('tab-'+f);
-  if(b)setTab(f,b);
-})();
+function _doInit(){
+  loadLS();
+  _startAutoSync();
+  rebuildProdList();
+  initTrait();
+  initCueill();
+  initPhyto();
+  (function(){var f=window._vergFirst||'trait';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);})();
+}
+if(!localStorage.getItem(LS_KEY)){
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+    _doInit();
+  });
+}else{_doInit();}
 </script>
 </body>
 </html>

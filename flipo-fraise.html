@@ -1502,7 +1502,20 @@
       _startAutoSync();
     }
 
-    document.addEventListener('DOMContentLoaded', initUI);
+    document.addEventListener('DOMContentLoaded', function(){
+      // Si localStorage vide → tirer Supabase AVANT d'initialiser l'UI
+      if(!localStorage.getItem(LS_KEY)){
+        supaGet(LS_KEY, function(d){
+          if(d){
+            try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
+            localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+          }
+          initUI();
+        });
+      } else {
+        initUI();
+      }
+    });
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_CAN_DELETE=false;

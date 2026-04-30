@@ -829,13 +829,18 @@ function cloturerAnnee(){
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
-loadLS();
-if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
-rebuildProdList();
-initCultures();
-initTrait();
-initCueill();
-_startAutoSync();
+function _doInit(){
+  loadLS();
+  if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
+  rebuildProdList();initCultures();initTrait();initCueill();
+  _startAutoSync();
+}
+if(!localStorage.getItem(LS_KEY)){
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+    _doInit();
+  });
+}else{_doInit();}
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_STABS = {};
