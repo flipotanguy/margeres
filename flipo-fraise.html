@@ -530,7 +530,6 @@
       <p id="saison-hdr">Saison 2026/2027</p>
     </div>
     <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
-    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Forcer sync maintenant</button>
   </div>
 
   <div class="tabs">
@@ -675,71 +674,10 @@
     function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
     function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
 
-    // Auto-sync par polling
-    var _supaAt = null;
-    function _checkCloudTs(){
-      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-        {headers:_supaH()})
-      .then(function(r){return r.json();})
-      .then(function(rows){
-        if(!rows||!rows.length)return;
-        var at=rows[0].updated_at;
-        if(_supaAt && at > _supaAt){ _forcePull(); }
-        _supaAt = at;
-      }).catch(function(){});
-    }
-    function _forcePull(){
-      setSyncSt('syncing');
-      supaGet(LS_KEY, function(d){
-        if(!d){ setSyncSt('ok'); return; }
-        try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-        _applyData(d);
-        _supaAt = null;
-        setSyncSt('ok');
-      });
-    }
-    function _applyData(d){
-      // Mettre à jour S avec les données distantes
-      S.entries = (d.entries || []).map(e => {
-        if (e.barquettes === undefined && e.kg !== undefined) {
-          e.barquettes = Math.round(e.kg * 2);
-        }
-        if (e.variete === undefined) {
-          const ch = CHAPELLES_INIT.find(c => c.n === e.chapelle);
-          e.variete = ch ? ch.v : '';
-        }
-        return e;
-      });
-      S.chapelles = d.chapelles || CHAPELLES_INIT.map(c => ({...c}));
-      S.saison = d.saison || '2026/2027';
-      S.drainage = d.drainage || DRAINAGE_INIT.map(d => ({...d}));
-      S.traitements = d.traitements || [];
-      S.surfaceChapelle = d.surfaceChapelle || 0.04;
-      S.nbChapellesTrait = d.nbChapellesTrait || 10;
-      S.rendement = d.rendement || {fraisesParPlant: 22, fraisesParBarquette: 29, poidsBarquette: 500, poidsFraise: 8};
-      if(S.rendement.poidsFraise === undefined) S.rendement.poidsFraise = 8;
-
-      // Rebuild le tab actif sans appeler switchTab
-      $('saison-hdr').textContent = 'Saison ' + S.saison;
-      if(S.tab === 'resume') buildResume();
-      else if(S.tab === 'saisie') buildSaisie();
-      else if(S.tab === 'saison') buildSaison();
-      else if(S.tab === 'drainage') buildDrainage();
-      else if(S.tab === 'trait') buildTrait();
-    }
-    function initAutoSync(){
-      if(!localStorage.getItem(LS_KEY)){ _forcePull(); }
-      _checkCloudTs();
-      setInterval(_checkCloudTs, 30000);
-    }
     function syncPush(data){
       setSyncSt('syncing');
       supaSet(LS_KEY,data);
-      _supaAt = null;
       setTimeout(function(){setSyncSt('ok');},600);
-    }
-    function syncManualPull(){
-      _forcePull();
     }
 
     const CHAPELLES_INIT = [
@@ -1510,7 +1448,6 @@
       rebuildTraitProdList();
       switchTab(S.tab);
       restFocus();
-      initAutoSync();
     }
 
     document.addEventListener('DOMContentLoaded', initUI);

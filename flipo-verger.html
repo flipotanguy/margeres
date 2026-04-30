@@ -101,7 +101,6 @@ select.wsel{border:none;background:transparent;font-size:12px;color:inherit;outl
   .htxt h1{font-size:14px}
   .htxt p{font-size:10px}
   #saison-hdr{font-size:9px}
-  button[onclick*="syncPullVerger"]{font-size:10px;padding:3px 8px}
   .tabs{padding:0 12px;overflow-x:auto;flex-wrap:nowrap;gap:0}
   .tab{font-size:11px;padding:9px 12px;min-width:auto;white-space:nowrap}
   .tab.sec{font-size:11px}
@@ -155,7 +154,6 @@ select.wsel{border:none;background:transparent;font-size:12px;color:inherit;outl
   <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
   <div class="htxt"><h1>Verger</h1><p id="saison-hdr">Saison 2026/2027</p></div>
   <span id="sync-status" style="margin-left:auto;font-size:11px;color:#bbb;white-space:nowrap">☁️</span>
-  <button onclick="_forcePull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Forcer sync</button>
 </div>
 <div class="tabs">
   <button id="tab-trait" class="tab act" onclick="setTab('trait',this)">Traitements</button>
@@ -310,84 +308,11 @@ function setSyncStatus(s){
   else if(s==='offline'){el.textContent='⚠️ Hors ligne';el.style.color='#d9534f';}
   else{el.textContent='☁️';el.style.color='#bbb';}
 }
-// Auto-sync polling
-var _supaAt = null;
-
-function initAutoSync(){
-  if(!localStorage.getItem(LS_KEY)){ _forcePull(); }
-  _checkCloudTs();
-  setInterval(_checkCloudTs, 30000);
-}
-
-function _checkCloudTs(){
-  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-    {headers:_supaHdr()})
-  .then(function(r){return r.json();})
-  .then(function(rows){
-    if(!rows||!rows.length)return;
-    var at=rows[0].updated_at;
-    if(_supaAt&&at>_supaAt){_forcePull();}
-    _supaAt=at;
-  }).catch(function(){});
-}
-
-function _forcePull(){
-  supaGet(LS_KEY,function(d){
-    if(!d)return;
-    try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-    _applyData(d);
-    _supaAt=null;
-  });
-}
-
-function _applyData(d){
-  // Mets à jour l'état local sans recharger la page
-  if(d.pomR&&d.pomR.length)S.pomR=d.pomR;
-  if(d.poiR&&d.poiR.length)S.poiR=d.poiR;
-  if(d.datesPom&&d.datesPom.length)DATES_POM=d.datesPom;
-  if(d.datesPoi&&d.datesPoi.length)DATES_POI=d.datesPoi;
-  if(d.entries)S.entries=d.entries;
-  if(d.facPom)S.facPom=d.facPom;
-  if(d.facPoi)S.facPoi=d.facPoi;
-  if(d.facPrix)S.facPrix=d.facPrix;
-  if(Array.isArray(d.pcPom))S.pcPom=d.pcPom;
-  if(Array.isArray(d.pcPoi))S.pcPoi=d.pcPoi;
-  if(Array.isArray(d.pcNoy))S.pcNoy=d.pcNoy;
-  if(Array.isArray(d.bp)&&d.bp.length)S.bp=d.bp;
-  if(Array.isArray(d.br)&&d.br.length)S.br=d.br;
-  if(Array.isArray(d.bn)&&d.bn.length)S.bn=d.bn;
-  if(d.pd)S.pd=d.pd;
-  if(d.qd)S.qd=d.qd;
-  if(d.nd)S.nd=d.nd;
-  if(Array.isArray(d.tarif))S.tarif=d.tarif;
-  if(d.pxPom!==undefined)S.pxPom=d.pxPom;
-  if(d.pxPoi!==undefined)S.pxPoi=d.pxPoi;
-  if(Array.isArray(d.bats)&&d.bats.length)S.bats=d.bats;
-  if(Array.isArray(d.achatsExt))S.achatsExt=d.achatsExt;
-
-  // Rebuild interface
-  rebuildProdList();
-  const t=S.tab||'trait';
-  const pt=$('panel-'+t);
-  if(pt){
-    if(t==='trait')pt.innerHTML=buildTrait();
-    else if(t==='cueill')pt.innerHTML=buildCueill();
-    else if(t==='stock')initStock();
-    else if(t==='phyto')pt.innerHTML=buildPhyto();
-  }
-  setSyncStatus('ok');
-}
-
 function syncSaveVerger(data){
   // Push local → Supabase (ne touche jamais au localStorage)
   setSyncStatus('syncing');
   supaSet(LS_KEY,data);
-  _supaAt=null;
   setTimeout(()=>setSyncStatus('ok'),600);
-}
-function syncPullVerger(){
-  // Forcer un pull immédiat (bouton "Forcer sync maintenant")
-  _forcePull();
 }
 
 // ══════════════════════════════════════════════
@@ -948,10 +873,11 @@ function buildDist(culture){
   h+=`</tbody></table></div>`;
   // Blocs table (avec coût)
   h+=`<div class="stitle">Blocs — surfaces</div>`;
-  h+=`<div class="tw"><table><thead><tr><th>Bloc</th><th>Surface (ha)</th><th>Note</th><th class="am">Eau calculée</th><th class="cost">Coût estimé (€)</th></tr></thead><tbody>`;
+  h+=`<div class="tw"><table><thead><tr><th></th><th>Bloc</th><th>Surface (ha)</th><th>Note</th><th class="am">Eau calculée</th><th class="cost">Coût estimé (€)</th></tr></thead><tbody>`;
   blocs.forEach((b,i)=>{
     const cout=coutBloc(culture,i);
     h+=`<tr>
+      <td><button class="btn del" style="padding:2px 6px;font-size:12px;min-height:28px" onclick="deleteBloc('${culture}',${i})">🗑</button></td>
       <td><input class="w120" id="bn-${culture}-${i}" value="${es(b.n)}" onchange="updBN('${culture}',${i},this.value)"></td>
       <td><input class="w60" id="bs-${culture}-${i}" value="${b.s}" onchange="updBS('${culture}',${i},this.value)"></td>
       <td><input class="w120" id="bnote-${culture}-${i}" value="${es(b.note||'')}" placeholder="note..." onchange="getBlocArr('${culture}')[${i}].note=this.value;saveLS()"></td>
@@ -1023,6 +949,7 @@ function updBS(culture,i,val){
   updBlocCouts(culture);saveLS();
 }
 function addBloc(culture){getBlocArr(culture).push({n:'Nouveau bloc',s:0,note:''});saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
+function deleteBloc(culture,i){if(!confirm('Supprimer ce bloc ?'))return;getBlocArr(culture).splice(i,1);saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
 function addProdDist(culture){
   getPcArr(culture).push({p:'',d:[0,0,0,0,0,0,0]});
   saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
@@ -1429,8 +1356,12 @@ function updRestePalox(){
 // ── Datalist produits phyto ───────────────────
 function rebuildProdList(){
   const dl=$('prod-list');if(!dl)return;
-  const sorted=[...S.tarif].sort((a,b)=>a.p.localeCompare(b.p,'fr'));
-  dl.innerHTML=sorted.map(t=>`<option value="${es(t.p)}">`).join('');
+  // Fusionner tarif + produits phyto (pcPom, pcPoi, pcNoy) sans doublons
+  const set=new Set();
+  [...S.tarif].forEach(t=>{if(t.p&&t.p.trim())set.add(t.p.trim());});
+  [...(S.pcPom||[]),...(S.pcPoi||[]),...(S.pcNoy||[])].forEach(r=>{if(r.p&&r.p.trim())set.add(r.p.trim());});
+  const sorted=[...set].sort((a,b)=>a.localeCompare(b,'fr'));
+  dl.innerHTML=sorted.map(p=>`<option value="${es(p)}">`).join('');
 }
 
 // ── Clôture de saison ─────────────────────────
@@ -1742,7 +1673,6 @@ var FLIPO_STABS={};
   window._vergFirst=first||'trait';
 })();
 loadLS();
-initAutoSync();
 rebuildProdList();
 initTrait();
 initCueill();

@@ -76,7 +76,6 @@
       .htxt h1{font-size:14px}
       .htxt p{font-size:10px}
       #sync-status{display:none}
-      button[onclick*="syncPullManual"]{font-size:10px;padding:3px 8px}
       .tabs{padding:0 12px;overflow-x:auto;flex-wrap:nowrap;gap:0}
       .tab{font-size:11px;padding:9px 12px;min-width:auto;white-space:nowrap}
       .content{padding:12px}
@@ -127,7 +126,6 @@
     <div style="width:1px;height:28px;background:var(--brd);margin:0 4px"></div>
     <div class="htxt"><h1>Tri / Emballage</h1><p>Saison 2026/2027</p></div>
     <span id="sync-status" style="margin-left:auto;font-size:11px;color:#bbb;white-space:nowrap">☁️</span>
-    <button onclick="_forcePull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;white-space:nowrap">🔄 Forcer sync</button>
   </div>
   <div class="tabs" id="main-tabs">
     <button class="tab act" id="tab-pomme" onclick="setTab('pomme',this)">🍎 Pomme</button>
@@ -209,84 +207,10 @@ function setSyncStatus(s){
   else if(s==='offline'){el.textContent='⚠️ Hors ligne';el.style.color='#d9534f';}
   else{el.textContent='☁️';el.style.color='#bbb';}
 }
-// Auto-sync polling
-var _supaAt = null;
-var _supaVergerAt = null;
-
-function initAutoSync(){
-  if(!localStorage.getItem(LS_KEY)){ _forcePull(); }
-  _checkCloudTs();
-  setInterval(_checkCloudTs, 30000);
-}
-
-function _checkCloudTs(){
-  // Vérifier LS_KEY
-  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-    {headers:_supaHdr()})
-  .then(function(r){return r.json();})
-  .then(function(rows){
-    if(!rows||!rows.length)return;
-    var at=rows[0].updated_at;
-    if(_supaAt&&at>_supaAt){_forcePull();}
-    _supaAt=at;
-  }).catch(function(){});
-
-  // Vérifier VERGER_KEY
-  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(VERGER_KEY)+'&select=updated_at',
-    {headers:_supaHdr()})
-  .then(function(r){return r.json();})
-  .then(function(rows){
-    if(!rows||!rows.length)return;
-    var at=rows[0].updated_at;
-    if(_supaVergerAt&&at>_supaVergerAt){_forcePullVerger();}
-    _supaVergerAt=at;
-  }).catch(function(){});
-}
-
-function _forcePull(){
-  supaGet(LS_KEY,function(d){
-    if(!d)return;
-    try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-    _applyData(d);
-    _supaAt=null;
-  });
-}
-
-function _forcePullVerger(){
-  supaGet(VERGER_KEY,function(d){
-    if(!d)return;
-    try{localStorage.setItem(VERGER_KEY,JSON.stringify(d));}catch(e){}
-    _supaVergerAt=null;
-  });
-}
-
-function _applyData(d){
-  // Mets à jour l'état local sans localStorage direct ni rebuildTab
-  if(Array.isArray(d.sessions))S.sessions=d.sessions;
-  if(Array.isArray(d.transfers))S.transfers=d.transfers;
-  if(Array.isArray(d.achatsExt))S.achatsExt=d.achatsExt;
-  if(d.varList){
-    if(Array.isArray(d.varList.pomme))S.varList.pomme=d.varList.pomme;
-    if(Array.isArray(d.varList.poire))S.varList.poire=d.varList.poire;
-  }
-
-  // Rebuild l'onglet actif uniquement
-  var t=S.tab||'pomme';
-  if(t==='pomme'||t==='poire')rebuildTab(t);
-  else if(t==='stock')initStock();
-  else if(t==='transfert')initTransfert();
-  else if(t==='stats')buildStats();
-  setSyncStatus('ok');
-}
-
 function syncSave(){
   setSyncStatus('syncing');
   supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList});
-  _supaAt=null;
   setTimeout(function(){setSyncStatus('ok');},600);
-}
-function syncPullManual(){
-  _forcePull();
 }
 
 // ─── Persistance ─────────────────────────────────────────
@@ -1198,7 +1122,6 @@ var FLIPO_CAN_DELETE=false;
   window._embFirst=first||'pomme';
 })();
 loadLS();
-initAutoSync();
 (function(){
   var f=window._embFirst||'pomme';
   var b=document.getElementById('tab-'+f);
