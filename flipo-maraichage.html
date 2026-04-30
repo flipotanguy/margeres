@@ -121,7 +121,6 @@ th,td{padding:6px 8px}
   </a>
   <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
   <div class="htxt"><h1>Maraîchage</h1><p id="saison-label">Saison 2026/2027</p></div>
-  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
 </div>
 <div class="tabs">
   <button id="tab-cultures" class="tab act" onclick="setTab('cultures',this)">🌱 Cultures</button>
@@ -178,7 +177,51 @@ function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
 function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
 function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
-function syncPush(data){setSyncSt('syncing');supaSet(LS_KEY,data);setTimeout(function(){setSyncSt('ok');},600);}
+var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
+
+function syncPush(data){
+  localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+  setSyncSt('syncing');
+  supaSet(LS_KEY, data);
+  setTimeout(function(){setSyncSt('ok');}, 600);
+}
+
+function _startAutoSync(){
+  _pollCloud();
+  setInterval(_pollCloud, 30000);
+}
+
+function _pollCloud(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+  .then(function(r){return r.json();})
+  .then(function(rows){
+    if(!rows||!rows.length) return;
+    var cloudAt = new Date(rows[0].updated_at).getTime();
+    var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
+    if(cloudAt > pushAt + 10000){ _autoPull(); }
+  }).catch(function(){});
+}
+
+function _autoPull(){
+  supaGet(LS_KEY, function(d){
+    if(!d) return;
+    localStorage.setItem(LS_KEY, JSON.stringify(d));
+    localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+    _applyAndRebuild(d);
+  });
+}
+
+function _applyAndRebuild(d){
+  if(d.cultures) S.cultures = d.cultures;
+  if(d.traitements) S.traitements = d.traitements;
+  if(d.entries) S.entries = d.entries;
+  if(d.saison) S.saison = d.saison;
+  rebuildProdList();
+  initCultures();
+  initTrait();
+  initCueill();
+}
 function saveLS(){
   try{
     var d={cultures:S.cultures,traitements:S.traitements,entries:S.entries,saison:S.saison};
@@ -792,6 +835,7 @@ rebuildProdList();
 initCultures();
 initTrait();
 initCueill();
+_startAutoSync();
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_STABS = {};

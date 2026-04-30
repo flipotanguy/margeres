@@ -394,9 +394,6 @@
       .htxt p {
         display: none;
       }
-      #sync-st {
-        margin-left: auto;
-      }
       .tabs {
         overflow-x: auto;
         padding: 0 12px;
@@ -529,7 +526,6 @@
       <h1>Fraise</h1>
       <p id="saison-hdr">Saison 2026/2027</p>
     </div>
-    <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
   </div>
 
   <div class="tabs">
@@ -674,10 +670,65 @@
     function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
     function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
 
+    var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
+
     function syncPush(data){
+      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
       setSyncSt('syncing');
-      supaSet(LS_KEY,data);
-      setTimeout(function(){setSyncSt('ok');},600);
+      supaSet(LS_KEY, data);
+      setTimeout(function(){setSyncSt('ok');}, 600);
+    }
+
+    function _startAutoSync(){
+      _pollCloud();
+      setInterval(_pollCloud, 30000);
+    }
+
+    function _pollCloud(){
+      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+        {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+      .then(function(r){return r.json();})
+      .then(function(rows){
+        if(!rows||!rows.length) return;
+        var cloudAt = new Date(rows[0].updated_at).getTime();
+        var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
+        // Pull seulement si le cloud est plus récent que notre dernier push de plus de 10 secondes
+        if(cloudAt > pushAt + 10000){ _autoPull(); }
+      }).catch(function(){});
+    }
+
+    function _autoPull(){
+      supaGet(LS_KEY, function(d){
+        if(!d) return;
+        // Sécurité : ne pas écraser si données locales plus nombreuses
+        var localEntries = S.entries ? S.entries.length : 0;
+        var cloudEntries = d.entries ? d.entries.length : 0;
+        if(cloudEntries < localEntries) return;
+        localStorage.setItem(LS_KEY, JSON.stringify(d));
+        localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString()); // éviter re-pull immédiat
+        _applyAndRebuild(d);
+        setSyncSt('ok');
+      });
+    }
+
+    function _applyAndRebuild(d){
+      S.entries = (d.entries||[]).map(function(e){
+        if(!e.variete){ var ch=S.chapelles.find(function(c){return c.n===e.chapelle;}); e.variete=ch?ch.v:''; }
+        return e;
+      });
+      if(d.chapelles) S.chapelles = d.chapelles;
+      if(d.saison) S.saison = d.saison;
+      if(d.drainage) S.drainage = d.drainage;
+      if(d.traitements) S.traitements = d.traitements;
+      if(d.surfaceChapelle) S.surfaceChapelle = d.surfaceChapelle;
+      if(d.rendement) S.rendement = d.rendement;
+      var h = document.getElementById('saison-hdr'); if(h) h.textContent = 'Saison ' + S.saison;
+      // Rebuild tab actif sans saveLS
+      if(S.tab==='saisie') { buildBatchTable(); buildJournal(); }
+      else if(S.tab==='resume') buildResume();
+      else if(S.tab==='saison') buildSaison();
+      else if(S.tab==='drainage') buildDrainage();
+      else if(S.tab==='trait') buildTrait();
     }
 
     const CHAPELLES_INIT = [
@@ -1448,6 +1499,7 @@
       rebuildTraitProdList();
       switchTab(S.tab);
       restFocus();
+      _startAutoSync();
     }
 
     document.addEventListener('DOMContentLoaded', initUI);

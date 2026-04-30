@@ -143,7 +143,7 @@ th,td{padding:8px 6px}
     <h1>Jus</h1>
     <p id="saison-label">Saison 2026/2027</p>
   </div>
-  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
+  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb;display:none">☁️</span>
 </div>
 
 <div class="tabs">
@@ -288,10 +288,58 @@ function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURICom
 function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
 function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
 
+var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
+
 function syncPush(data){
+  localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncSt('syncing');
-  supaSet(LS_KEY,data);
-  setTimeout(function(){setSyncSt('ok');},600);
+  supaSet(LS_KEY, data);
+  setTimeout(function(){setSyncSt('ok');}, 600);
+}
+
+function _startAutoSync(){
+  _pollCloud();
+  setInterval(_pollCloud, 30000);
+}
+
+function _pollCloud(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+  .then(function(r){return r.json();})
+  .then(function(rows){
+    if(!rows||!rows.length) return;
+    var cloudAt = new Date(rows[0].updated_at).getTime();
+    var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
+    // Pull seulement si le cloud est plus récent que notre dernier push de plus de 10 secondes
+    if(cloudAt > pushAt + 10000){ _autoPull(); }
+  }).catch(function(){});
+}
+
+function _autoPull(){
+  supaGet(LS_KEY, function(d){
+    if(!d) return;
+    // Sécurité : ne pas écraser si données locales plus nombreuses
+    var localEntries = S.entries ? S.entries.length : 0;
+    var cloudEntries = d.entries ? d.entries.length : 0;
+    if(cloudEntries < localEntries) return;
+    localStorage.setItem(LS_KEY, JSON.stringify(d));
+    localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString()); // éviter re-pull immédiat
+    _applyAndRebuild(d);
+    setSyncSt('ok');
+  });
+}
+
+function _applyAndRebuild(d){
+  if(d.entries) S.entries = d.entries;
+  if(d.stock) S.stock = d.stock;
+  if(d.reappro) S.reappro = d.reappro;
+  if(d.couleurs) S.couleurs = d.couleurs;
+  if(d.couleursBouchon) S.couleursBouchon = d.couleursBouchon;
+  // Rebuild selon tab actif sans saveLS
+  if(S.tab==='resume') buildResume();
+  else if(S.tab==='saisie') buildSaisie();
+  else if(S.tab==='stock') buildStock();
+  else if(S.tab==='params') buildParams();
 }
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
@@ -962,6 +1010,7 @@ function updCarton(key, val){
 
 loadLS();
 render();
+_startAutoSync();
 
 // ─── Auth ────────────────────────────────────────────────
 (function(){
