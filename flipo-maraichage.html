@@ -217,6 +217,12 @@ function _applyAndRebuild(d){
   if(d.traitements) S.traitements = d.traitements;
   if(d.entries) S.entries = d.entries;
   if(d.saison) S.saison = d.saison;
+  if(d.tab) S.tab = d.tab;
+  if(d.selCult) S.selCult = d.selCult;
+  if(d.cvw) S.cvw = d.cvw;
+  // Mettre à jour label saison
+  var labelEl = document.getElementById('saison-label');
+  if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
   rebuildProdList();
   initCultures();
   initTrait();
@@ -224,7 +230,7 @@ function _applyAndRebuild(d){
 }
 function saveLS(){
   try{
-    var d={cultures:S.cultures,traitements:S.traitements,entries:S.entries,saison:S.saison};
+    var d={cultures:S.cultures,traitements:S.traitements,entries:S.entries,saison:S.saison,tab:S.tab,selCult:S.selCult,cvw:S.cvw};
     localStorage.setItem(LS_KEY,JSON.stringify(d));
     syncPush(d);
   }catch(e){}
@@ -236,6 +242,9 @@ function loadLS(){
     if(d.traitements)S.traitements=d.traitements;
     if(d.entries)S.entries=d.entries;
     if(d.saison)S.saison=d.saison;
+    if(d.tab)S.tab=d.tab;
+    if(d.selCult)S.selCult=d.selCult;
+    if(d.cvw)S.cvw=d.cvw;
   }catch(e){}
 }
 
@@ -826,22 +835,6 @@ function cloturerAnnee(){
   initCueill();
 }
 
-// ══════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════
-function _doInit(){
-  loadLS();
-  if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
-  rebuildProdList();initCultures();initTrait();initCueill();
-  _startAutoSync();
-}
-if(!localStorage.getItem(LS_KEY)){
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-    _doInit();
-  });
-}else{_doInit();}
-
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_STABS = {};
 (function(){
@@ -868,6 +861,22 @@ var FLIPO_STABS = {};
   });
   if(first){setTab(first,document.getElementById('tab-'+first));}
 })();
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function _doInit(){
+  loadLS();
+  if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
+  rebuildProdList();initCultures();initTrait();initCueill();
+  _startAutoSync();
+}
+if(!localStorage.getItem(LS_KEY)){
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+    _doInit();
+  });
+}else{_doInit();}
 </script>
 </body>
 </html>

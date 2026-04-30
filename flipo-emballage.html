@@ -241,6 +241,8 @@ function _autoPull(){
     localStorage.setItem(LS_KEY, JSON.stringify(d));
     localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
     _applyAndRebuild(d);
+    // Déclenche l'init si elle est en attente
+    if(window._initPending) { window._initPending = false; _doInit(); }
   });
 }
 
@@ -253,6 +255,7 @@ function _applyAndRebuild(d){
   if(t==='pomme'||t==='poire') rebuildTab(t);
   else if(t==='stock') { var p=document.getElementById('panel-stock'); if(p && typeof buildStockShell==='function') p.innerHTML=buildStockShell(); }
   else if(t==='transfert') { var p=document.getElementById('panel-transfert'); if(p && typeof buildXfrPanel==='function') p.innerHTML=buildXfrPanel(); }
+  else if(t==='stats') { var p=document.getElementById('panel-stats'); if(p && typeof buildStats==='function') p.innerHTML=buildStats(); }
 }
 
 // ─── Persistance ─────────────────────────────────────────
@@ -1168,12 +1171,22 @@ function _doInit(){
   _startAutoSync();
   (function(){var f=window._embFirst||'pomme';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);else rebuildTab('pomme');})();
 }
+
+// Init : si LS vide, pull depuis Supabase d'abord, puis lancer _doInit
+window._initPending = false;
 if(!localStorage.getItem(LS_KEY)){
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-    _doInit();
-  });
-}else{_doInit();}
+  window._initPending = true;
+  _autoPull();
+  // Fallback : si après 2s LS est toujours vide, initialiser quand même
+  setTimeout(function(){
+    if(window._initPending && !localStorage.getItem(LS_KEY)) {
+      window._initPending = false;
+      _doInit();
+    }
+  }, 2000);
+} else {
+  _doInit();
+}
 </script>
 </body>
 </html>

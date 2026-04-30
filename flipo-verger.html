@@ -303,10 +303,7 @@ function supaSet(key,data){
 }
 function setSyncStatus(s){
   const el=document.getElementById('sync-status');if(!el)return;
-  if(s==='ok'){el.textContent='☁️ Sync';el.style.color='#2d7a4a';}
-  else if(s==='syncing'){el.textContent='🔄...';el.style.color='#e07020';}
-  else if(s==='offline'){el.textContent='⚠️ Hors ligne';el.style.color='#d9534f';}
-  else{el.textContent='☁️';el.style.color='#bbb';}
+  el.style.display='none';
 }
 
 // Auto sync variables
@@ -372,7 +369,7 @@ function _applyAndRebuild(d){
 
   var t = S.tab || 'trait';
   if(t==='trait') initTrait();
-  else if(t==='cueill') {var p=document.getElementById('panel-cueill');if(p) p.innerHTML=buildCueill();}
+  else if(t==='cueill') initCueill();
   else if(t==='stock') initStock();
   else if(t==='phyto') initPhyto();
 }
@@ -426,6 +423,7 @@ function loadLS(){
 // STATE
 // ══════════════════════════════════════════════
 const S = {
+  tab:'trait',
   tSub:'pc',
   pcPom: PC_POM_INIT.map(r=>({p:r.p,d:[...r.d]})),
   pcPoi: PC_POI_INIT.map(r=>({p:r.p,d:[...r.d]})),
@@ -1740,13 +1738,19 @@ function _doInit(){
   rebuildProdList();
   initTrait();
   initCueill();
+  initStock();
   initPhyto();
   (function(){var f=window._vergFirst||'trait';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);})();
 }
 if(!localStorage.getItem(LS_KEY)){
+  var initDone=false;
+  function doInitSafe(){if(!initDone){initDone=true;_doInit();}}
+  setTimeout(doInitSafe,8000);
   supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-    _doInit();
+    if(!initDone){
+      if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+      doInitSafe();
+    }
   });
 }else{_doInit();}
 </script>

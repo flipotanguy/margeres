@@ -165,8 +165,6 @@
     </a>
     <div style="width:1px;height:24px;background:var(--brd);margin:0 4px"></div>
     <div><div class="hdr-title">Finance</div><div class="hdr-sub">Structures &amp; Emprunts</div></div>
-    <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb">☁️</span>
-    <button onclick="syncManualPull()" style="margin-left:8px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #ccc;background:#0f172a;color:#f1f5f9;cursor:pointer;white-space:nowrap">🔄 Récupérer</button>
     <button class="hdr-lock" onclick="lockApp()">🔒 Verrouiller</button>
   </div>
 
@@ -191,24 +189,10 @@
 // ══════════════════════════════════════════════════════════
 var LS_KEY='flipo-finance-v1';
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
-var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjY2OH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
 function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
-function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
-function syncManualPull(){
-  if(!confirm('Récupérer les données depuis le cloud ? Vos données locales seront remplacées.'))return;
-  setSyncSt('syncing');
-  supaGet(LS_KEY,function(d){
-    if(d){
-      try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
-      location.reload();
-    } else {
-      setSyncSt('ok');
-      alert('Aucune donnée cloud disponible.');
-    }
-  });
-}
 
 // ══════════════════════════════════════════════════════════
 // DONNÉES

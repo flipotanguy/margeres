@@ -143,7 +143,6 @@ th,td{padding:8px 6px}
     <h1>Jus</h1>
     <p id="saison-label">Saison 2026/2027</p>
   </div>
-  <span id="sync-st" style="margin-left:auto;font-size:11px;color:#bbb;display:none">☁️</span>
 </div>
 
 <div class="tabs">
@@ -335,11 +334,17 @@ function _applyAndRebuild(d){
   if(d.reappro) S.reappro = d.reappro;
   if(d.couleurs) S.couleurs = d.couleurs;
   if(d.couleursBouchon) S.couleursBouchon = d.couleursBouchon;
+  if(d.clients) S.clients = d.clients;
+  if(d.formats) S.formats = d.formats;
+  if(d.saveurs) S.saveurs = d.saveurs;
+  if(d.saison) S.saison = d.saison;
+  if(d.params) S.params = d.params;
   // Rebuild selon tab actif sans saveLS
   if(S.tab==='resume') buildResume();
   else if(S.tab==='saisie') buildSaisie();
   else if(S.tab==='stock') buildStock();
   else if(S.tab==='params') buildParams();
+  renderFilters();
 }
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
@@ -1008,14 +1013,6 @@ function updCarton(key, val){
 }
 
 
-function _doInit(){loadLS();render();_startAutoSync();}
-if(!localStorage.getItem(LS_KEY)){
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-    _doInit();
-  });
-}else{_doInit();}
-
 // ─── Auth ────────────────────────────────────────────────
 (function(){
   var sess=null;
@@ -1037,6 +1034,14 @@ if(!localStorage.getItem(LS_KEY)){
   });
   if(first&&typeof switchTab==='function'){switchTab(first);}
 })();
+
+function _doInit(){loadLS();render();_startAutoSync();}
+if(!localStorage.getItem(LS_KEY)){
+  supaGet(LS_KEY,function(d){
+    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
+    _doInit();
+  });
+}else{_doInit();}
 </script>
 
 </body>
