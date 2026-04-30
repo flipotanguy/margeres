@@ -180,6 +180,8 @@ function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncPush(data){
+  // Protection : ne pas pousser si cultures vides
+  if(!data || !data.cultures || data.cultures.length===0) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncSt('syncing');
   supaSet(LS_KEY, data);

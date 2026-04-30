@@ -290,6 +290,8 @@ function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncPush(data){
+  // Protection : ne pas pousser si données vides
+  if(!data || (!data.entries||data.entries.length===0) && (!data.reappro||data.reappro.length===0)) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncSt('syncing');
   supaSet(LS_KEY, data);

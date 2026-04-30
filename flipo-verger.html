@@ -310,7 +310,10 @@ function setSyncStatus(s){
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncSaveVerger(data){
-  // Push local → Supabase (ne touche jamais au localStorage)
+  // Protection : ne pas pousser si les données essentielles sont vides
+  const hasBats = data.bats && data.bats.length > 0;
+  const hasPomR = data.pomR && data.pomR.length > 0;
+  if(!hasBats && !hasPomR) return; // Refuse d'écraser le cloud avec des données vides
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncStatus('syncing');
   supaSet(LS_KEY,data);

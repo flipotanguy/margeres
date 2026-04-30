@@ -674,6 +674,8 @@
     var _syncPushTimeout = null;
 
     function syncPush(data){
+      // Protection : ne pas écraser le cloud si données locales complètement vides
+      if(!data || (!data.entries || data.entries.length===0) && (!data.chapelles || data.chapelles.length===0)) return;
       // Debounce : ne pas envoyer plus d'une fois par 1 seconde
       if(_syncPushTimeout) return;
 

@@ -212,6 +212,8 @@ function setSyncStatus(s){
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncSave(){
+  // Protection : ne pas pousser si aucune session ni transfert
+  if((!S.sessions||S.sessions.length===0) && (!S.transfers||S.transfers.length===0) && (!S.achatsExt||S.achatsExt.length===0)) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncStatus('syncing');
   supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList});
