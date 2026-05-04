@@ -661,6 +661,8 @@
 
   <script>
     const LS_KEY = 'flipo-fraise-v1';
+    var _deviceId = localStorage.getItem('flipo_device_id') ||
+      (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
 
     // ─── Supabase Sync ───────────────────────────────────────
     var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
@@ -671,36 +673,41 @@
     function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
 
     var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
-    var _syncPushTimeout = null;
 
-    function syncPush(data){
-      // Protection : ne pas écraser le cloud si données locales complètement vides
-      if(!data || (!data.entries || data.entries.length===0) && (!data.chapelles || data.chapelles.length===0)) return;
-      // Debounce : ne pas envoyer plus d'une fois par 1 seconde
-      if(_syncPushTimeout) return;
-
-      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      setSyncSt('syncing');
-      supaSet(LS_KEY, data);
-
-      _syncPushTimeout = setTimeout(function(){
-        setSyncSt('ok');
-        _syncPushTimeout = null;
-      }, 600);
+    // Merge par ID pour entries, par longueur pour autres tableaux
+    function _mergeData(cloud, local){
+      if(!cloud) return local || {};
+      if(!local) return cloud;
+      var result = JSON.parse(JSON.stringify(cloud));
+      // Fusionner les entries par ID (union - on garde tout)
+      if(cloud.entries || local.entries){
+        var m = {};
+        (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts)] = e; });
+        (local.entries||[]).forEach(function(e){
+          var k = String(e.id||e.ts);
+          if(!m[k]) m[k] = e;
+        });
+        result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
+      }
+      // Pour les autres tableaux, garder le plus grand
+      ['chapelles','traitements','drainage','sessions','transfers','achatsExt','reappro'].forEach(function(k){
+        var loc = local[k]||[];
+        var cld = cloud[k]||[];
+        if(loc.length > cld.length) result[k] = loc;
+      });
+      return result;
     }
-
-    var _pollInProgress = false;
 
     function _startAutoSync(){
       _pollCloud();
       setInterval(_pollCloud, 30000);
     }
 
+    var _pollInProgress = false;
+
     function _pollCloud(){
-      // Éviter les appels concurrents
       if(_pollInProgress) return;
       _pollInProgress = true;
-
       fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
         {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
       .then(function(r){
@@ -711,7 +718,6 @@
         if(!rows||!rows.length) return;
         var cloudAt = new Date(rows[0].updated_at).getTime();
         var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
-        // Pull seulement si le cloud est plus récent que notre dernier push de plus de 10 secondes
         if(cloudAt > pushAt + 10000){ _autoPull(); }
       }).catch(function(){
         _pollInProgress = false;
@@ -719,17 +725,14 @@
     }
 
     function _autoPull(){
-      supaGet(LS_KEY, function(d){
-        if(!d) return;
-        // Sécurité : ne pas écraser si données locales plus nombreuses (collision détection)
-        var localEntries = S.entries ? S.entries.length : 0;
-        var cloudEntries = d.entries ? d.entries.length : 0;
-        // Cloud doit avoir au moins autant d'entrées que local (ou plus récent)
-        if(cloudEntries < localEntries) return;
-        // Appliquer les données cloud à S ET localStorage
-        _applyAndRebuild(d);
-        localStorage.setItem(LS_KEY, JSON.stringify(S));
-        localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString()); // éviter re-pull immédiat
+      supaGet(LS_KEY, function(cloud){
+        if(!cloud) return;
+        var local = null;
+        try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+        var merged = _mergeData(cloud, local);
+        localStorage.setItem(LS_KEY, JSON.stringify(merged));
+        localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+        _applyAndRebuild(merged);
         setSyncSt('ok');
       });
     }
@@ -858,8 +861,12 @@
     }
 
     function saveLS() {
+      // Sauvegarder en local immédiatement
       localStorage.setItem(LS_KEY, JSON.stringify(S));
-      syncPush(S);
+      // Pusher vers Supabase
+      if(!S || (!S.entries || S.entries.length===0)) return;
+      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      supaSet(LS_KEY, S);
     }
 
     function loadLS() {
@@ -1527,40 +1534,30 @@
       $('confirm-modal').classList.remove('active');
     }
 
-    function initUI() {
-      loadLS();
-      $('saison-hdr').textContent = 'Saison ' + S.saison;
-      rebuildTraitProdList();
-      switchTab(S.tab);
-      restFocus();
-      _startAutoSync();
-    }
-
     document.addEventListener('DOMContentLoaded', function(){
-      // Si localStorage vide → tirer Supabase AVANT d'initialiser l'UI
-      if(!localStorage.getItem(LS_KEY)){
-        supaGet(LS_KEY, function(cloudData){
-          if(cloudData){
-            // Appliquer les données cloud à S directement
-            _applyAndRebuild(cloudData);
-            // Sauvegarder dans localStorage
-            try{localStorage.setItem(LS_KEY, JSON.stringify(S));}catch(e){}
-            localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-          } else {
-            // Pas de données cloud, utiliser les defaults
-            loadLS();
-          }
-          // Finir l'initialisation
+      var cached = localStorage.getItem(LS_KEY);
+      // 1. Afficher les données en cache immédiatement (rapidité)
+      if(cached){ try{ loadLS(); $('saison-hdr').textContent = 'Saison ' + S.saison; rebuildTraitProdList(); switchTab(S.tab); restFocus(); }catch(e){} }
+
+      // 2. TOUJOURS charger depuis Supabase (source de vérité)
+      supaGet(LS_KEY, function(cloud){
+        if(cloud){
+          var local = null;
+          try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+          var merged = _mergeData(cloud, local);
+          localStorage.setItem(LS_KEY, JSON.stringify(merged));
+          localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+          _applyAndRebuild(merged);
+        } else if(!cached){
+          // Pas de cloud, pas de cache → init avec défauts
           $('saison-hdr').textContent = 'Saison ' + S.saison;
           rebuildTraitProdList();
           switchTab(S.tab);
           restFocus();
-          _startAutoSync();
-        });
-      } else {
-        // localStorage a des données, utiliser initUI()
-        initUI();
-      }
+        }
+        // Démarrer le polling
+        if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
+      });
     });
 
 // ─── Auth ────────────────────────────────────────────────

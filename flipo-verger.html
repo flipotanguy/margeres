@@ -381,6 +381,29 @@ function _applyAndRebuild(d){
 // LOCAL STORAGE
 // ══════════════════════════════════════════════
 const LS_KEY = 'flipo-verger-v2';
+var _deviceId = localStorage.getItem('flipo_device_id') ||
+  (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
+
+function _mergeData(cloud, local){
+  if(!cloud) return local || {};
+  if(!local) return cloud;
+  var result = JSON.parse(JSON.stringify(cloud));
+  // Merge entries par ID
+  if(cloud.entries || local.entries){
+    var m = {};
+    (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts||Math.random())] = e; });
+    (local.entries||[]).forEach(function(e){
+      var k = String(e.id||e.ts);
+      if(!m[k]) m[k] = e;
+    });
+    result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date||0)-new Date(a.date||0); });
+  }
+  // Pour tableaux sans ID (pomR, poiR, bats, pcPom...) → garder le plus grand
+  ['pomR','poiR','bats','pcPom','pcPoi','pcNoy','bp','br','bn','tarif'].forEach(function(k){
+    if(local[k] && local[k].length > (result[k]||[]).length) result[k] = local[k];
+  });
+  return result;
+}
 function saveLS(){
   const d={
     pomR:S.pomR,poiR:S.poiR,datesPom:DATES_POM,datesPoi:DATES_POI,
@@ -1745,17 +1768,26 @@ function _doInit(){
   initPhyto();
   (function(){var f=window._vergFirst||'trait';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);})();
 }
-if(!localStorage.getItem(LS_KEY)){
-  var initDone=false;
-  function doInitSafe(){if(!initDone){initDone=true;_doInit();}}
-  setTimeout(doInitSafe,8000);
-  supaGet(LS_KEY,function(d){
-    if(!initDone){
-      if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-      doInitSafe();
+// Au lieu du _doInit conditionnel, toujours charger depuis Supabase
+(function(){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+  // Afficher le cache immédiatement si disponible
+  if(cached){ _doInit(); }
+
+  // TOUJOURS charger depuis Supabase
+  supaGet(LS_KEY, function(cloud){
+    if(cloud){
+      var merged = _mergeData(cloud, cached);
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
+      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      // Appliquer les données mergées
+      _applyAndRebuild(merged);
     }
+    if(!cached){ _doInit(); } // Premier chargement sans cache
+    if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
   });
-}else{_doInit();}
+})();
 </script>
 </body>
 </html>

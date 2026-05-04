@@ -156,6 +156,38 @@ var LS_KEY='flipo-emballage-v1';
 var VERGER_KEY='flipo-verger-v2';
 var MARG_ID='__margeres__';
 var MARG_NOM='Margères (tri)';
+var _deviceId = localStorage.getItem('flipo_device_id') ||
+  (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
+
+function _mergeData(cloud, local){
+  if(!cloud) return local || {};
+  if(!local) return cloud;
+  var result = JSON.parse(JSON.stringify(cloud));
+  // Merge entries par ID
+  if(cloud.entries || local.entries){
+    var m = {};
+    (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts||Math.random())] = e; });
+    (local.entries||[]).forEach(function(e){
+      var k = String(e.id||e.ts);
+      if(!m[k]) m[k] = e;
+    });
+    result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date||0)-new Date(a.date||0); });
+  }
+  // Merge sessions/transfers/achatsExt par ID (emballage)
+  ['sessions','transfers','achatsExt'].forEach(function(k){
+    if(cloud[k] || local[k]){
+      var m2 = {};
+      (cloud[k]||[]).forEach(function(e){ m2[String(e.id||Math.random())] = e; });
+      (local[k]||[]).forEach(function(e){ var k2=String(e.id); if(!m2[k2]) m2[k2]=e; });
+      result[k] = Object.values(m2);
+    }
+  });
+  // Pour tableaux sans ID (pomR, poiR, bats, pcPom...) → garder le plus grand
+  ['pomR','poiR','bats','pcPom','pcPoi','pcNoy','bp','br','bn','tarif'].forEach(function(k){
+    if(local[k] && local[k].length > (result[k]||[]).length) result[k] = local[k];
+  });
+  return result;
+}
 
 var S={
   tab:'pomme',
@@ -1174,21 +1206,26 @@ function _doInit(){
   (function(){var f=window._embFirst||'pomme';var b=document.getElementById('tab-'+f);if(b)setTab(f,b);else rebuildTab('pomme');})();
 }
 
-// Init : si LS vide, pull depuis Supabase d'abord, puis lancer _doInit
-window._initPending = false;
-if(!localStorage.getItem(LS_KEY)){
-  window._initPending = true;
-  _autoPull();
-  // Fallback : si après 2s LS est toujours vide, initialiser quand même
-  setTimeout(function(){
-    if(window._initPending && !localStorage.getItem(LS_KEY)) {
-      window._initPending = false;
-      _doInit();
+// Au lieu du _doInit conditionnel, toujours charger depuis Supabase
+(function(){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+  // Afficher le cache immédiatement si disponible
+  if(cached){ _doInit(); }
+
+  // TOUJOURS charger depuis Supabase
+  supaGet(LS_KEY, function(cloud){
+    if(cloud){
+      var merged = _mergeData(cloud, cached);
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
+      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      // Appliquer les données mergées
+      _applyAndRebuild(merged);
     }
-  }, 2000);
-} else {
-  _doInit();
-}
+    if(!cached){ _doInit(); } // Premier chargement sans cache
+    if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
+  });
+})();
 </script>
 </body>
 </html>

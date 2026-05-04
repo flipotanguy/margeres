@@ -103,6 +103,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 <script>
 var USERS_KEY='flipo-users-v1';
 
+// ─── Device ID ──────────────────────────────────────────
+var _deviceId = localStorage.getItem('flipo_device_id') ||
+  (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
+
+// ─── Merge Data (pour users) ────────────────────────────
+function _mergeData(cloud, local){
+  if(!cloud) return local || {};
+  if(!local) return cloud;
+  var result = JSON.parse(JSON.stringify(cloud));
+  // Merge users par id
+  if(cloud.users || local.users){
+    var mu = {};
+    (cloud.users||[]).forEach(function(u){ mu[String(u.id)] = u; });
+    (local.users||[]).forEach(function(u){ if(!mu[String(u.id)]) mu[String(u.id)] = u; });
+    result.users = Object.values(mu);
+  }
+  return result;
+}
+
 // ─── Supabase Sync ───────────────────────────────────────
 var LS_KEY=USERS_KEY;
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
@@ -110,13 +129,10 @@ var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
 function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
-function syncPush(data){supaSet(LS_KEY,data);}
-function syncInitPull(afterCb){
-  var local=localStorage.getItem(LS_KEY);
-  if(local){return;}
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}if(afterCb)afterCb(d);}
-  });
+function syncPush(data){
+  // Protection : ne pas pousser si users vides
+  if(!data || !data.users || data.users.length===0) return;
+  supaSet(LS_KEY,data);
 }
 var SESSION_KEY='flipo-session';
 
@@ -188,7 +204,11 @@ function initials(u){return((u.prenom||'?').charAt(0)+(u.nom||'?').charAt(0)).to
 function hashCode(s){var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h|=0;}return(h>>>0).toString(16).padStart(8,'0');}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function getUsers(){try{var d=JSON.parse(localStorage.getItem(USERS_KEY)||'{}');return d.users||[];}catch(e){return [];}}
-function saveUsers(users){var data={users:users};localStorage.setItem(USERS_KEY,JSON.stringify(data));syncPush(data);}
+function saveUsers(users){
+  var data={users:users};
+  try{localStorage.setItem(USERS_KEY,JSON.stringify(data));}catch(e){}
+  syncPush(data);
+}
 
 var S={editId:null};
 
@@ -397,8 +417,26 @@ function cancelForm(){
   document.getElementById('form-zone').innerHTML='<div class="form-card"><div class="empty-form">👈 Sélectionnez un utilisateur ou cliquez "+ Ajouter"</div></div>';
 }
 
-renderList();
-syncInitPull(function(){location.reload();});
+// ══════════════════════════════════════════════
+// INIT — New sync flow
+// ══════════════════════════════════════════════
+(function(){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+
+  // Toujours récupérer depuis Supabase (source de vérité)
+  supaGet(LS_KEY, function(cloud){
+    if(cloud){
+      var merged = _mergeData(cloud, cached);
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
+      // Recharger la liste avec les données merged
+      renderList();
+    } else if(cached) {
+      // Pas de cloud, mais cache existe
+      renderList();
+    }
+  });
+})();
 </script>
 </body>
 </html>

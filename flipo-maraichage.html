@@ -170,6 +170,29 @@ const VOL_EAU_HA = 800;
 // ══════════════════════════════════════════════
 const LS_KEY = 'flipo-maraichage-v2';
 
+// ─── Device ID ──────────────────────────────────────────
+var _deviceId = localStorage.getItem('flipo_device_id') ||
+  (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
+
+// ─── Merge Data ─────────────────────────────────────────
+function _mergeData(cloud, local){
+  if(!cloud) return local || {};
+  if(!local) return cloud;
+  var result = JSON.parse(JSON.stringify(cloud));
+  // Merge entries par ID si présents
+  if(cloud.entries || local.entries){
+    var m = {};
+    (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts||Math.random())] = e; });
+    (local.entries||[]).forEach(function(e){ var k=String(e.id||e.ts); if(!m[k]) m[k]=e; });
+    result.entries = Object.values(m);
+  }
+  // Pour cultures et traitements (pas d'IDs uniques) → garder le plus grand
+  ['cultures','traitements'].forEach(function(k){
+    if(local[k] && local[k].length > (result[k]||[]).length) result[k] = local[k];
+  });
+  return result;
+}
+
 // ─── Supabase Sync ───────────────────────────────────────
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
@@ -229,6 +252,7 @@ function _applyAndRebuild(d){
   initCultures();
   initTrait();
   initCueill();
+  // NE PAS appeler saveLS() ici (éviter boucle infinie)
 }
 function saveLS(){
   try{
@@ -868,17 +892,26 @@ var FLIPO_STABS = {};
 // INIT
 // ══════════════════════════════════════════════
 function _doInit(){
-  loadLS();
   if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
   rebuildProdList();initCultures();initTrait();initCueill();
-  _startAutoSync();
 }
-if(!localStorage.getItem(LS_KEY)){
-  supaGet(LS_KEY,function(d){
-    if(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}localStorage.setItem(_PUSH_TS_KEY,new Date().toISOString());}
-    _doInit();
+
+(function(){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+  if(cached){ _doInit(); } // Affichage rapide depuis cache
+
+  supaGet(LS_KEY, function(cloud){
+    if(cloud){
+      var merged = _mergeData(cloud, cached);
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
+      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      _applyAndRebuild(merged);
+    }
+    if(!cached){ _doInit(); }
+    if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
   });
-}else{_doInit();}
+})();
 </script>
 </body>
 </html>
