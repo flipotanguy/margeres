@@ -281,6 +281,7 @@ const TARIF_INIT = [
 // ══════════════════════════════════════════════
 // SUPABASE SYNC
 // ══════════════════════════════════════════════
+const LS_KEY = 'flipo-verger-v2'; // Déclaré ici en premier pour que _PUSH_TS_KEY puisse l'utiliser
 const SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaHdr(extra){
@@ -380,7 +381,7 @@ function _applyAndRebuild(d){
 // ══════════════════════════════════════════════
 // LOCAL STORAGE
 // ══════════════════════════════════════════════
-const LS_KEY = 'flipo-verger-v2';
+// LS_KEY déjà déclaré en haut de la section SUPABASE SYNC
 var _deviceId = localStorage.getItem('flipo_device_id') ||
   (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
 
