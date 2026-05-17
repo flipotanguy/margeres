@@ -523,7 +523,8 @@ function buildStruct(){
       <th>#</th><th>Capital initial</th><th class="tar">Charge/mois</th><th class="tar">Charge/an</th><th class="tar">Échéance</th><th class="tar">Mois restants</th><th class="tar">Statut</th>
     </tr></thead><tbody>`;
     let totM=0,totA=0;
-    st.emprunts.forEach(e=>{
+    const empSorted=[...st.emprunts].sort((a,b)=>new Date(a.fin)-new Date(b.fin));
+    empSorted.forEach(e=>{
       const ml=monthsLeft(e.fin);
       const cm=chargeM(e);totM+=cm;totA+=cm*12;
       const finDate=new Date(e.fin).toLocaleDateString('fr-FR',{month:'2-digit',year:'numeric'});
