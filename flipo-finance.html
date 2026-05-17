@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Finance — Flipo</title>
   <style>
@@ -96,16 +99,20 @@
     .ech-amt{font-size:13px;font-weight:700;color:var(--tx)}
     .ech-monthly{font-size:11px;color:var(--mu)}
     /* ── SETTINGS ── */
-    .set-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:20px;max-width:380px;margin-bottom:16px}
+    .set-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:20px;margin-bottom:16px}
+    .set-card.narrow{max-width:460px}
     .set-title{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--tx)}
-    .set-row{display:flex;gap:10px;align-items:flex-end}
-    .set-field{display:flex;flex-direction:column;gap:4px;flex:1}
+    .set-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+    .set-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px}
     .set-field label{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.3px}
-    .set-field input{background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:14px;letter-spacing:2px;width:100%}
-    .set-field input:focus{outline:none;border-color:var(--acc)}
+    .set-field input,.set-field select{background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:13px;width:100%}
+    .set-field input.pin-input{letter-spacing:2px;font-size:14px}
+    .set-field input:focus,.set-field select:focus{outline:none;border-color:var(--acc)}
     .set-btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600}
     .set-btn.ok{background:var(--acc);color:#000}
     .set-btn.ok:hover{background:#d97706}
+    .set-msg{font-size:12px;height:18px;margin-top:8px}
+    .set-msg.ok{color:var(--green)}.set-msg.err{color:var(--red)}
     .info-note{background:#1e293b;border-left:3px solid var(--orange);border-radius:6px;padding:12px;font-size:12px;color:var(--mu);line-height:1.6;margin-top:6px}
     .info-note strong{color:var(--orange)}
     .set-msg{font-size:12px;height:16px;margin-top:8px}
@@ -653,7 +660,7 @@ function addEmprunt(){
   saveStructures();
   msg.className='set-msg ok';msg.textContent='Emprunt ajouté ✓';
   buildListEmprunts();
-  buildDash();
+  _rebuildAllTabs();
   document.getElementById('new-montant').value='';
   document.getElementById('new-paiement').value='';
   document.getElementById('new-fin').value='';
@@ -671,7 +678,7 @@ function addCreditBail(){
   saveStructures();
   msg.className='set-msg ok';msg.textContent='Crédit-bail ajouté ✓';
   buildListEmprunts();
-  buildDash();
+  _rebuildAllTabs();
   document.getElementById('new-cb-nom').value='';
   document.getElementById('new-cb-mensualite').value='';
 }
@@ -680,14 +687,22 @@ function deleteEmprunt(structId,n){
   if(!confirm('Supprimer cet emprunt ?'))return;
   const st=STRUCTURES.find(s=>s.id===structId);
   st.emprunts=st.emprunts.filter(e=>e.n!==n);
-  saveStructures();buildListEmprunts();buildDash();
+  saveStructures();buildListEmprunts();_rebuildAllTabs();
 }
 
 function deleteCreditBail(structId,nom){
   if(!confirm('Supprimer ce crédit-bail ?'))return;
   const st=STRUCTURES.find(s=>s.id===structId);
   st.creditBails=(st.creditBails||[]).filter(cb=>cb.nom!==nom);
-  saveStructures();buildListEmprunts();buildDash();
+  saveStructures();buildListEmprunts();_rebuildAllTabs();
+}
+
+function _rebuildAllTabs(){
+  // Reconstruire tous les onglets déjà affichés pour refléter les changements
+  tabBuilt={};
+  buildDash();tabBuilt.dash=true;
+  buildStruct();tabBuilt.struct=true;
+  buildEch();tabBuilt.ech=true;
 }
 
 function buildListEmprunts(){
@@ -789,12 +804,12 @@ function buildSet(){
     <div id="list-emprunts"></div>
   </div>
 
-  <div class="set-card">
+  <div class="set-card narrow">
     <div class="set-title">🔑 Modifier le code PIN</div>
     <div class="set-row">
-      <div class="set-field"><label>PIN actuel</label><input type="password" id="pin-cur" maxlength="4" placeholder="••••" inputmode="numeric"></div>
-      <div class="set-field"><label>Nouveau PIN (4 chiffres)</label><input type="password" id="pin-new" maxlength="4" placeholder="••••" inputmode="numeric"></div>
-      <div class="set-field"><label>Confirmer</label><input type="password" id="pin-conf" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+      <div class="set-field"><label>PIN actuel</label><input type="password" class="pin-input" id="pin-cur" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+      <div class="set-field"><label>Nouveau PIN (4 chiffres)</label><input type="password" class="pin-input" id="pin-new" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+      <div class="set-field"><label>Confirmer</label><input type="password" class="pin-input" id="pin-conf" maxlength="4" placeholder="••••" inputmode="numeric"></div>
     </div>
     <div class="btns" style="margin-top:12px"><button class="set-btn ok" onclick="changePIN()">Enregistrer</button></div>
     <div class="set-msg" id="pin-msg"></div>
