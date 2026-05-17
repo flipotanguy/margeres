@@ -568,9 +568,6 @@ function doPDF(title,rows,blocs){
   const w=window.open('','_blank');if(!w)return;
   const dt=new Date().toLocaleDateString('fr-FR');
   let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0"><title>${title}</title>
   <style>
     @media print{body{margin:0}}
     body{font-family:Arial,sans-serif;font-size:11px;padding:24px;max-width:900px;margin:0 auto;color:#1a1a1a}
@@ -666,10 +663,7 @@ function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,email
   if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
   const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
   const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0"><title>'+moduleTitle+'</title>'
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
     +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
     +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
     +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
@@ -821,9 +815,6 @@ function printParCulture(){
   const w=window.open('','_blank');if(!w)return;
   const dt=new Date().toLocaleDateString('fr-FR');
   let h=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0"><title>Par Culture</title>
   <style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}h2{color:#0F6E56;margin-bottom:4px}h3{color:#555;margin:14px 0 5px;font-size:12px}table{border-collapse:collapse;width:auto;margin-bottom:12px}th{background:#e8f5ee;padding:6px 12px;border:1px solid #ccc;font-size:11px}td{padding:5px 12px;border:1px solid #ddd;font-size:11px}td.f{background:#fffae8;font-weight:600}.footer{font-size:9px;color:#aaa;margin-top:20px;border-top:1px solid #eee;padding-top:6px}@media print{.np{display:none}}</style></head><body>
   <h2>🌿 Flipo — Par Culture · ${dt}</h2>`;
   [['🍎 Pomme','22,76 ha',S.pcPom,'dp'],['🍐 Poire','10,54 ha',S.pcPoi,'dq'],['🍑 Noyaux','2 ha',S.pcNoy,'dn']].forEach(([label,surf,pc,pf])=>{

@@ -1364,10 +1364,7 @@
       const w = window.open('','_blank');
       if(!w) return;
       const dt = new Date().toLocaleDateString('fr-FR');
-      let h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0"><title>Traitements Fraise</title>';
+      let h = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">';
       h += '<style>body{font-family:Arial,sans-serif;font-size:11px;padding:24px;max-width:900px;margin:0 auto}';
       h += '.logo-bar{display:flex;align-items:center;gap:10px;border-bottom:3px solid #e84a5f;padding-bottom:10px;margin-bottom:16px}';
       h += 'h1{color:#c0203a;font-size:16px;margin:0}.subtitle{color:#666;font-size:11px;margin:0}';
@@ -1415,10 +1412,7 @@
       if(!w){alert('Popup bloqué — autorisez les popups pour ce site');return;}
       const emailHref='mailto:?subject='+encodeURIComponent(emailSubject)+'&body='+encodeURIComponent(emailPlain);
       const dt=new Date().toLocaleDateString('fr-FR')+' à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0"><title>'+moduleTitle+'</title>'
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
         +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5}'
         +'.page{max-width:780px;margin:0 auto;background:#fff;padding:28px 32px;min-height:100vh}'
         +'.toolbar{display:flex;gap:8px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #ddd;flex-wrap:wrap}'
