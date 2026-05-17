@@ -199,7 +199,7 @@ function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',header
 // ══════════════════════════════════════════════════════════
 const STRUCT_COLORS={scea:'#3b82f6',vdp:'#10b981',f2t:'#f59e0b',pv:'#8b5cf6',sci:'#ec4899',thitan:'#06b6d4'};
 
-const STRUCTURES=[
+const DEFAULT_STRUCTURES=[
   {id:'scea',nom:'SCEA',totalAnnuel:262437.13,
    emprunts:[
     {n:1,montant:10200,annuite:10200,mensualite:null,fin:'2026-03-20'},
@@ -252,8 +252,32 @@ const STRUCTURES=[
    ],creditBails:[]}
 ];
 
-const TOTAL_ANNUEL=721514.58;
-const TOTAL_EMPRUNTS=5278407.27;
+function loadStructures(){
+  const raw=localStorage.getItem('flipo-finance-structs');
+  if(raw){try{return JSON.parse(raw);}catch(e){}}
+  return DEFAULT_STRUCTURES;
+}
+function saveStructures(){
+  localStorage.setItem('flipo-finance-structs',JSON.stringify(STRUCTURES));
+  supaSet('flipo-finance-structs',{structures:STRUCTURES});
+}
+function calcTotaux(){
+  var annuel=0,emprunts=0;
+  STRUCTURES.forEach(function(st){
+    st.emprunts.forEach(function(e){
+      emprunts+=e.montant||0;
+      annuel+=e.annuite||((e.mensualite||0)*12);
+    });
+    (st.creditBails||[]).forEach(function(cb){
+      annuel+=(cb.mensualite||0)*12;
+    });
+  });
+  return {annuel:annuel,emprunts:emprunts};
+}
+var STRUCTURES=loadStructures();
+var TOTAUX=calcTotaux();
+var TOTAL_ANNUEL=TOTAUX.annuel;
+var TOTAL_EMPRUNTS=TOTAUX.emprunts;
 
 // ══════════════════════════════════════════════════════════
 // PIN
@@ -341,6 +365,9 @@ function buildTab(name){
 // DASHBOARD
 // ══════════════════════════════════════════════════════════
 function buildDash(){
+  TOTAUX=calcTotaux();
+  TOTAL_ANNUEL=TOTAUX.annuel;
+  TOTAL_EMPRUNTS=TOTAUX.emprunts;
   const nbEmp=STRUCTURES.reduce((s,st)=>s+st.emprunts.filter(e=>monthsLeft(e.fin)>0).length,0);
   const mensM=TOTAL_ANNUEL/12;
   // Prochaine et dernière échéance
@@ -593,10 +620,176 @@ function buildEch(){
 }
 
 // ══════════════════════════════════════════════════════════
+// GESTION DES EMPRUNTS & CRÉDITS-BAILS
+// ══════════════════════════════════════════════════════════
+function togglePayType(){
+  const type=document.getElementById('new-type').value;
+  const label=document.querySelector('label[for="new-paiement"]')||document.querySelectorAll('.set-field label')[3];
+  if(type==='mensualite'){
+    if(label)label.textContent='Mensualité (€)';
+  }else{
+    if(label)label.textContent='Annuité (€)';
+  }
+}
+
+function addEmprunt(){
+  const structId=document.getElementById('new-struct').value;
+  const montant=parseFloat(document.getElementById('new-montant').value)||0;
+  const type=document.getElementById('new-type').value;
+  const paiement=parseFloat(document.getElementById('new-paiement').value)||0;
+  const fin=document.getElementById('new-fin').value;
+  const msg=document.getElementById('emprunt-msg');
+
+  if(!montant||!paiement||!fin){msg.className='set-msg err';msg.textContent='Remplissez tous les champs';return;}
+
+  const st=STRUCTURES.find(s=>s.id===structId);
+  if(!st){msg.className='set-msg err';msg.textContent='Structure introuvable';return;}
+
+  const n=(st.emprunts.length>0?Math.max(...st.emprunts.map(e=>e.n||0)):0)+1;
+  const emprunt={n:n,montant:montant,fin:fin};
+  if(type==='mensualite')emprunt.mensualite=paiement;else emprunt.annuite=paiement;
+
+  st.emprunts.push(emprunt);
+  saveStructures();
+  msg.className='set-msg ok';msg.textContent='Emprunt ajouté ✓';
+  buildListEmprunts();
+  buildDash();
+  document.getElementById('new-montant').value='';
+  document.getElementById('new-paiement').value='';
+  document.getElementById('new-fin').value='';
+}
+
+function addCreditBail(){
+  const structId=document.getElementById('new-cb-struct').value;
+  const nom=document.getElementById('new-cb-nom').value.trim();
+  const mensualite=parseFloat(document.getElementById('new-cb-mensualite').value)||0;
+  const msg=document.getElementById('cb-msg');
+  if(!nom||!mensualite){msg.className='set-msg err';msg.textContent='Remplissez tous les champs';return;}
+  const st=STRUCTURES.find(s=>s.id===structId);
+  if(!st.creditBails)st.creditBails=[];
+  st.creditBails.push({nom,mensualite});
+  saveStructures();
+  msg.className='set-msg ok';msg.textContent='Crédit-bail ajouté ✓';
+  buildListEmprunts();
+  buildDash();
+  document.getElementById('new-cb-nom').value='';
+  document.getElementById('new-cb-mensualite').value='';
+}
+
+function deleteEmprunt(structId,n){
+  if(!confirm('Supprimer cet emprunt ?'))return;
+  const st=STRUCTURES.find(s=>s.id===structId);
+  st.emprunts=st.emprunts.filter(e=>e.n!==n);
+  saveStructures();buildListEmprunts();buildDash();
+}
+
+function deleteCreditBail(structId,nom){
+  if(!confirm('Supprimer ce crédit-bail ?'))return;
+  const st=STRUCTURES.find(s=>s.id===structId);
+  st.creditBails=(st.creditBails||[]).filter(cb=>cb.nom!==nom);
+  saveStructures();buildListEmprunts();buildDash();
+}
+
+function buildListEmprunts(){
+  let h='';
+  STRUCTURES.forEach(st=>{
+    if(st.emprunts.length===0&&(!st.creditBails||st.creditBails.length===0))return;
+    h+=`<div style="margin-bottom:16px"><strong style="color:${STRUCT_COLORS[st.id]}">${st.nom}</strong>`;
+    st.emprunts.forEach(e=>{
+      const pay=e.mensualite?e.mensualite+'€/mois':e.annuite+'€/an';
+      h+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">
+        <span>Emprunt ${e.n} — ${e.montant.toLocaleString('fr-FR')}€ — ${pay} — fin ${e.fin}</span>
+        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteEmprunt('${st.id}',${e.n})">🗑</button>
+      </div>`;
+    });
+    (st.creditBails||[]).forEach(cb=>{
+      h+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">
+        <span>CB: ${cb.nom} — ${cb.mensualite}€/mois</span>
+        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteCreditBail('${st.id}','${cb.nom.replace(/'/g,"\\'")}')">🗑</button>
+      </div>`;
+    });
+    h+='</div>';
+  });
+  const el=document.getElementById('list-emprunts');
+  if(el)el.innerHTML=h||'<div style="color:var(--mu)">Aucun emprunt</div>';
+}
+
+// ══════════════════════════════════════════════════════════
 // RÉGLAGES
 // ══════════════════════════════════════════════════════════
 function buildSet(){
   let h=`<div class="set-card">
+    <div class="set-title">🏦 Ajouter un emprunt</div>
+
+    <div class="set-row">
+      <div class="set-field">
+        <label>Structure</label>
+        <select id="new-struct" style="background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:14px;width:100%">
+          <option value="scea">SCEA</option>
+          <option value="vdp">VDP</option>
+          <option value="f2t">F2T</option>
+          <option value="pv">PV</option>
+          <option value="sci">SCI</option>
+          <option value="thitan">THITAN</option>
+        </select>
+      </div>
+      <div class="set-field">
+        <label>Montant (€)</label>
+        <input type="number" id="new-montant" placeholder="100000" min="0">
+      </div>
+      <div class="set-field">
+        <label>Type de paiement</label>
+        <select id="new-type" style="background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:14px;width:100%" onchange="togglePayType()">
+          <option value="mensualite">Mensualité</option>
+          <option value="annuite">Annuité</option>
+        </select>
+      </div>
+      <div class="set-field">
+        <label for="new-paiement">Mensualité (€)</label>
+        <input type="number" id="new-paiement" placeholder="500" min="0" step="0.01">
+      </div>
+      <div class="set-field">
+        <label>Date de fin</label>
+        <input type="date" id="new-fin">
+      </div>
+    </div>
+    <div class="btns" style="margin-top:12px"><button class="set-btn ok" onclick="addEmprunt()">+ Ajouter l'emprunt</button></div>
+    <div class="set-msg" id="emprunt-msg"></div>
+  </div>
+
+  <div class="set-card">
+    <div class="set-title">🚗 Ajouter un crédit-bail</div>
+    <div class="set-row">
+      <div class="set-field">
+        <label>Structure</label>
+        <select id="new-cb-struct" style="background:#0f172a;border:1px solid var(--brd);color:var(--tx);padding:8px 12px;border-radius:8px;font-size:14px;width:100%">
+          <option value="scea">SCEA</option>
+          <option value="vdp">VDP</option>
+          <option value="f2t">F2T</option>
+          <option value="pv">PV</option>
+          <option value="sci">SCI</option>
+          <option value="thitan">THITAN</option>
+        </select>
+      </div>
+      <div class="set-field">
+        <label>Nom du bien</label>
+        <input type="text" id="new-cb-nom" placeholder="Tesla, Tracteur...">
+      </div>
+      <div class="set-field">
+        <label>Mensualité (€)</label>
+        <input type="number" id="new-cb-mensualite" placeholder="500" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="btns" style="margin-top:12px"><button class="set-btn ok" onclick="addCreditBail()">+ Ajouter le crédit-bail</button></div>
+    <div class="set-msg" id="cb-msg"></div>
+  </div>
+
+  <div class="set-card">
+    <div class="set-title">📋 Emprunts existants</div>
+    <div id="list-emprunts"></div>
+  </div>
+
+  <div class="set-card">
     <div class="set-title">🔑 Modifier le code PIN</div>
     <div class="set-row">
       <div class="set-field"><label>PIN actuel</label><input type="password" id="pin-cur" maxlength="4" placeholder="••••" inputmode="numeric"></div>
@@ -612,6 +805,7 @@ function buildSet(){
     <strong>Recommandations :</strong> conserver ce fichier dans un dossier chiffré (ex. : coffre FileVault/BitLocker) et ne pas le partager par email ou stockage cloud non sécurisé.
   </div>`;
   $('panel-set').innerHTML=h;
+  buildListEmprunts();
 }
 
 function changePIN(){
