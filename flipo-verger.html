@@ -1336,10 +1336,17 @@ function buildCeilTable(type){
   const dates=type==='pom'?DATES_POM:DATES_POI;
   const label=type==='pom'?'🍎 Pommes (palox)':'🍐 Poires (palox)';
   const color=type==='pom'?'#3a6e11':'#185FA5';
+  // N'afficher que les colonnes qui ont au moins une valeur non nulle
+  const activeCols = dates.reduce((acc, d, ci) => {
+    if(rows.some(row => (row.d[ci] || 0) > 0)) acc.push(ci);
+    return acc;
+  }, []);
+  const visibleDates = activeCols.length > 0 ? activeCols : dates.map((_,i)=>i); // si aucune donnée, tout afficher quand même
+
   let h=`<p style="font-weight:700;font-size:12px;margin-bottom:6px;color:${color}">${label}</p>`;
   h+=`<div class="tw fh"><table><thead><tr><th style="min-width:32px"></th><th style="min-width:110px">Variété</th><th class="am" style="min-width:60px">Total</th>`;
   if(type==='pom')h+=`<th class="am" style="min-width:72px">Poids (kg)</th>`;
-  dates.forEach(d=>h+=`<th style="min-width:40px;font-size:10px">${d}</th>`);
+  visibleDates.forEach(ci=>h+=`<th style="min-width:40px;font-size:10px">${dates[ci]}</th>`);
   h+=`</tr></thead><tbody>`;
   rows.forEach((row,ri)=>{
     const tot=sm(row.d);
@@ -1347,7 +1354,7 @@ function buildCeilTable(type){
     h+=`<td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
     h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
     if(type==='pom')h+=`<td class="f" id="${type}k-${ri}">${(Math.round(tot)*300).toLocaleString('fr-FR')}</td>`;
-    row.d.forEach((v,ci)=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${v||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
+    visibleDates.forEach(ci=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${row.d[ci]||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
     h+=`</tr>`;
   });
   h+=`</tbody></table></div>`;
