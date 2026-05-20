@@ -895,6 +895,7 @@ var FLIPO_STABS = {};
 // INIT
 // ══════════════════════════════════════════════
 function _doInit(){
+  loadLS();
   if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
   rebuildProdList();initCultures();initTrait();initCueill();
 }
@@ -911,7 +912,7 @@ function _doInit(){
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
       _applyAndRebuild(merged);
     }
-    if(!cached){ _doInit(); }
+    if(!cached){ _doInit(); } // Premier chargement sans cache (ex: GitHub Pages vierge)
     if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
   });
 })();

@@ -368,6 +368,7 @@ function _autoPull(){
 }
 
 function _applyAndRebuild(d){
+  // Appliquer les données mergées (pas overwriter les locales plus récentes)
   if(d.entries) S.entries = d.entries;
   if(d.stock) S.stock = d.stock;
   if(d.reappro) S.reappro = d.reappro;
@@ -440,8 +441,8 @@ function loadLS(){
 
 function saveLS(){
   localStorage.setItem(LS_KEY, JSON.stringify(S));
-  // Pusher vers Supabase
-  if(!S || (!S.entries || S.entries.length===0)) return;
+  // Pusher vers Supabase (TOUJOURS si on a des données)
+  if(!S || ((!S.entries || S.entries.length===0) && (!S.clients || S.clients.length===0) && (!S.formats || S.formats.length===0))) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   supaSet(LS_KEY, S);
   render();
