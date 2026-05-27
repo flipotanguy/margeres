@@ -157,7 +157,7 @@ function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if
   </a>
   <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
   <div class="htxt"><h1>Verger</h1><p id="saison-hdr">Saison 2026/2027</p></div>
-  <span id="sync-st" title="État sync cloud" onclick="forcePush()" style="cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto">☁️</span>
+  <span id="sync-st" style="margin-left:auto;cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto"title="État sync cloud">☁️</span>
 </div>
 <div class="tabs">
   <button id="tab-trait" class="tab act" onclick="setTab('trait',this)">Traitements</button>
@@ -327,19 +327,9 @@ function syncSaveVerger(data){
   const hasPomR = data.pomR && data.pomR.length > 0;
   if(!hasBats && !hasPomR) return; // Refuse d'écraser le cloud avec des données vides
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-  setSyncSt('syncing');
+  setSyncStatus('syncing');
   supaSet(LS_KEY,data);
-}
-
-function forcePush(){
-  var hasData = S && (
-    (S.cueillettes && S.cueillettes.length > 0) ||
-    (S.bats && S.bats.length > 0) ||
-    (S.pomR && S.pomR.length > 0)
-  );
-  if(!hasData){alert('Aucune donnée locale à pousser.');return;}
-  setSyncSt('syncing');
-  supaSet(LS_KEY, S);
+  setTimeout(()=>setSyncStatus('ok'),600);
 }
 
 function _startAutoSync(){
@@ -360,18 +350,11 @@ function _pollCloud(){
 }
 
 function _autoPull(){
-  supaGet(LS_KEY, function(cloud){
-    if(!cloud) return;
-    var local = null;
-    try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-    var cloudLen = (cloud.entries||[]).length;
-    var merged = _mergeData(cloud, local);
-    var mergedLen = (merged.entries||[]).length;
-    localStorage.setItem(LS_KEY, JSON.stringify(merged));
+  supaGet(LS_KEY, function(d){
+    if(!d) return;
+    localStorage.setItem(LS_KEY, JSON.stringify(d));
     localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-    // Re-push si local avait plus de données que cloud
-    if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-    _applyAndRebuild(merged);
+    _applyAndRebuild(d);
   });
 }
 
@@ -1828,13 +1811,9 @@ function _doInit(){
   // TOUJOURS charger depuis Supabase
   supaGet(LS_KEY, function(cloud){
     if(cloud){
-      var cloudLen = (cloud.entries||cloud.cueillettes||[]).length;
       var merged = _mergeData(cloud, cached);
-      var mergedLen = (merged.entries||merged.cueillettes||[]).length;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      // Si local avait plus de données → re-pusher vers Supabase
-      if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
       // Appliquer les données mergées
       _applyAndRebuild(merged);
     }

@@ -146,6 +146,7 @@ th,td{padding:8px 6px}
     <h1>Jus</h1>
     <p id="saison-label">Saison 2026/2027</p>
   </div>
+  <span id="sync-st" title="État sync cloud" onclick="forcePush()" style="cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto">☁️</span>
 </div>
 
 <div class="tabs">
@@ -289,8 +290,35 @@ var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
-function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function supaSet(k,d){
+  setSyncSt('syncing');
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
+  .then(function(r){
+    if(r.ok){
+      setSyncSt('ok');
+      var el=document.getElementById('sync-st');
+      if(el) el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
+    } else {
+      setSyncSt('err');
+      r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status;});
+    }
+  }).catch(function(e){
+    setSyncSt('err');
+    console.error('supaSet réseau:',e);
+    var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
+  });
+}
+function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function forcePush(){
+  var hasData = S && (
+    (S.entries && S.entries.length > 0) ||
+    (S.reappro && S.reappro.length > 0) ||
+    (S.clients && S.clients.length > 0)
+  );
+  if(!hasData){alert('Aucune donnée locale à pousser.');return;}
+  setSyncSt('syncing');
+  supaSet(LS_KEY, S);
+}
 
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
@@ -359,9 +387,13 @@ function _autoPull(){
     if(!cloud) return;
     var local = null;
     try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+    var cloudLen = (cloud.entries||[]).length + (cloud.reappro||[]).length;
     var merged = _mergeData(cloud, local);
+    var mergedLen = (merged.entries||[]).length + (merged.reappro||[]).length;
     localStorage.setItem(LS_KEY, JSON.stringify(merged));
     localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+    // Re-push si local avait plus de données que cloud
+    if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
     _applyAndRebuild(merged);
     setSyncSt('ok');
   });
@@ -379,11 +411,21 @@ function _applyAndRebuild(d){
   if(d.saveurs) S.saveurs = d.saveurs;
   if(d.saison) S.saison = d.saison;
   if(d.params) S.params = d.params;
+
+  // Activer visuellement le bon onglet SANS appeler saveLS
+  var t = S.tab || 'resume';
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  var tabBtn = document.querySelector('[data-tab="'+t+'"]');
+  if(tabBtn) tabBtn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(function(c){ c.classList.remove('active'); });
+  var panel = document.getElementById(t);
+  if(panel) panel.classList.add('active');
+
   // Rebuild selon tab actif sans saveLS
-  if(S.tab==='resume') buildResume();
-  else if(S.tab==='saisie') buildSaisie();
-  else if(S.tab==='stock') buildStock();
-  else if(S.tab==='params') buildParams();
+  if(t==='resume') buildResume();
+  else if(t==='saisie') buildSaisie();
+  else if(t==='stock') buildStock();
+  else if(t==='params') buildParams();
   renderFilters();
 }
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
@@ -1066,9 +1108,13 @@ document.addEventListener('DOMContentLoaded', function(){
     if(cloud){
       var local = null;
       try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+      var cloudLen = (cloud.entries||[]).length + (cloud.reappro||[]).length;
       var merged = _mergeData(cloud, local);
+      var mergedLen = (merged.entries||[]).length + (merged.reappro||[]).length;
       localStorage.setItem(LS_KEY, JSON.stringify(merged));
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      // Si local avait plus de données → re-pusher vers Supabase
+      if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
       _applyAndRebuild(merged);
     } else if(!cached){
       // Pas de cloud, pas de cache → init avec défauts

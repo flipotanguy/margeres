@@ -124,6 +124,7 @@ th,td{padding:6px 8px}
   </a>
   <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
   <div class="htxt"><h1>Maraîchage</h1><p id="saison-label">Saison 2026/2027</p></div>
+  <span id="sync-st" title="État sync cloud" onclick="forcePush()" style="cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto">☁️</span>
 </div>
 <div class="tabs">
   <button id="tab-cultures" class="tab act" onclick="setTab('cultures',this)">🌱 Cultures</button>
@@ -201,8 +202,35 @@ var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
 function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
-function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function supaSet(k,d){
+  setSyncSt('syncing');
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
+  .then(function(r){
+    if(r.ok){
+      setSyncSt('ok');
+      var el=document.getElementById('sync-st');
+      if(el) el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
+    } else {
+      setSyncSt('err');
+      r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status;});
+    }
+  }).catch(function(e){
+    setSyncSt('err');
+    console.error('supaSet réseau:',e);
+    var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
+  });
+}
+function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
+function forcePush(){
+  var hasData = S && (
+    (S.cultures && S.cultures.length > 0) ||
+    (S.traitements && S.traitements.length > 0) ||
+    (S.cueillettes && S.cueillettes.length > 0)
+  );
+  if(!hasData){alert('Aucune donnée locale à pousser.');return;}
+  setSyncSt('syncing');
+  supaSet(LS_KEY, S);
+}
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncPush(data){
@@ -232,11 +260,18 @@ function _pollCloud(){
 }
 
 function _autoPull(){
-  supaGet(LS_KEY, function(d){
-    if(!d) return;
-    localStorage.setItem(LS_KEY, JSON.stringify(d));
+  supaGet(LS_KEY, function(cloud){
+    if(!cloud) return;
+    var local = null;
+    try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+    var cloudLen = (cloud.cultures||[]).length + (cloud.entries||[]).length;
+    var merged = _mergeData(cloud, local);
+    var mergedLen = (merged.cultures||[]).length + (merged.entries||[]).length;
+    localStorage.setItem(LS_KEY, JSON.stringify(merged));
     localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-    _applyAndRebuild(d);
+    // Re-push si local avait plus de données que cloud
+    if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
+    _applyAndRebuild(merged);
   });
 }
 
@@ -251,6 +286,16 @@ function _applyAndRebuild(d){
   // Mettre à jour label saison
   var labelEl = document.getElementById('saison-label');
   if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
+
+  // Activer visuellement le bon onglet SANS appeler saveLS
+  var t = S.tab || 'cultures';
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('act'); });
+  var tabBtn = document.getElementById('tab-'+t);
+  if(tabBtn) tabBtn.classList.add('act');
+  document.querySelectorAll('[id^="panel-"]').forEach(function(p){ p.classList.add('hidden'); });
+  var panel = document.getElementById('panel-'+t);
+  if(panel) panel.classList.remove('hidden');
+
   rebuildProdList();
   initCultures();
   initTrait();
@@ -907,9 +952,13 @@ function _doInit(){
 
   supaGet(LS_KEY, function(cloud){
     if(cloud){
+      var cloudLen = (cloud.cultures||[]).length + (cloud.entries||[]).length;
       var merged = _mergeData(cloud, cached);
+      var mergedLen = (merged.cultures||[]).length + (merged.entries||[]).length;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+      // Si local avait plus de données → re-pusher vers Supabase
+      if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
       _applyAndRebuild(merged);
     }
     if(!cached){ _doInit(); } // Premier chargement sans cache (ex: GitHub Pages vierge)

@@ -529,6 +529,7 @@
       <h1>Fraise</h1>
       <p id="saison-hdr">Saison 2026/2027</p>
     </div>
+    <span id="sync-st" title="État sync cloud" onclick="forcePush()" style="cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto">☁️</span>
   </div>
 
   <div class="tabs">
@@ -672,8 +673,27 @@
     var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
     function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
     function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-    function supaSet(k,d){fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})}).catch(function(){});}
-    function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else{el.textContent='☁️';el.style.color='#bbb';}}
+    function supaSet(k,d){
+      setSyncSt('syncing');
+      fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
+      .then(function(r){
+        if(r.ok){
+          setSyncSt('ok');
+          var el=document.getElementById('sync-st');
+          var n=(d.entries||[]).length;
+          if(el) el.title='✅ Sync OK · '+n+' entrées · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
+        } else {
+          setSyncSt('err');
+          r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status+'\n'+t.slice(0,200);});
+        }
+      }).catch(function(e){
+        setSyncSt('err');
+        console.error('supaSet réseau:',e);
+        var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
+      });
+    }
+    function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
+    function forcePush(){if(!S||!(S.entries&&S.entries.length>0)){alert('Aucune donnée locale à pousser.');return;}setSyncSt('syncing');supaSet(LS_KEY,S);}
 
     var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
@@ -732,16 +752,20 @@
         if(!cloud) return;
         var local = null;
         try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+        var cloudLen = (cloud.entries||[]).length;
         var merged = _mergeData(cloud, local);
+        var mergedLen = (merged.entries||[]).length;
         localStorage.setItem(LS_KEY, JSON.stringify(merged));
         localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+        // Si le local avait plus de données que le cloud → re-pusher vers Supabase
+        if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
         _applyAndRebuild(merged);
         setSyncSt('ok');
       });
     }
 
     function _applyAndRebuild(d){
-      // Appliquer les données mergées (pas overwriter les locales plus récentes)
+      // Appliquer les données
       S.entries = (d.entries||[]).map(function(e){
         if(!e.variete){ var ch=S.chapelles.find(function(c){return c.n===e.chapelle;}); e.variete=ch?ch.v:''; }
         return e;
@@ -754,21 +778,27 @@
       if(d.rendement) S.rendement = d.rendement;
       if(d.nbChapellesTrait) S.nbChapellesTrait = d.nbChapellesTrait;
       if(d.tab) S.tab = d.tab;
-      // NE PAS appeler saveLS() ici — uniquement rebuild l'UI
 
       // Mettre à jour le header
-      var h = document.getElementById('saison-hdr');
-      if(h) h.textContent = 'Saison ' + S.saison;
-
-      // Rebuild TOUS les éléments de la structure UI sans appeler saveLS
+      var hdr = document.getElementById('saison-hdr');
+      if(hdr) hdr.textContent = 'Saison ' + S.saison;
       rebuildTraitProdList();
 
-      // Rebuild le tab actif
-      if(S.tab==='saisie') { buildBatchTable(); buildJournal(); }
-      else if(S.tab==='resume') buildResume();
-      else if(S.tab==='saison') buildSaison();
-      else if(S.tab==='drainage') buildDrainage();
-      else if(S.tab==='trait') buildTrait();
+      // ACTIVER le bon onglet SANS appeler saveLS
+      // (sans switchTab car switchTab appelle saveLS et peut pousser des données vides)
+      var t = S.tab || 'saisie';
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('[data-tab="'+t+'"]').forEach(function(b){ b.classList.add('active'); });
+      document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
+      var pane = document.getElementById(t+'-pane');
+      if(pane) pane.classList.add('active');
+
+      // Construire le contenu de l'onglet actif
+      if(t==='saisie') { buildBatchTable(); buildJournal(); }
+      else if(t==='resume') buildResume();
+      else if(t==='saison') buildSaison();
+      else if(t==='drainage') buildDrainage();
+      else if(t==='trait') buildTrait();
     }
 
     const CHAPELLES_INIT = [
@@ -1548,9 +1578,13 @@
         if(cloud){
           var local = null;
           try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+          var cloudLen = (cloud.entries||[]).length;
           var merged = _mergeData(cloud, local);
+          var mergedLen = (merged.entries||[]).length;
           localStorage.setItem(LS_KEY, JSON.stringify(merged));
           localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
+          // Si le local avait plus de données que le cloud → re-pusher pour corriger Supabase
+          if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
           _applyAndRebuild(merged);
         } else if(!cached){
           // Pas de cloud, pas de cache → init avec défauts
