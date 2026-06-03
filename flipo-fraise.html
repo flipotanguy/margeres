@@ -1619,7 +1619,15 @@ var FLIPO_CAN_DELETE=false;
       if(p)p.style.display='none';
     }else if(!first)first=tid;
   });
-  if(first&&typeof switchTab==='function'){switchTab(first);}
+  // NE PAS appeler switchTab(first) ici car switchTab appelle saveLS
+  // qui pousserait S avec les valeurs par défaut (avant chargement localStorage)
+  if(first){
+    S.tab = first;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('[data-tab="'+first+'"]').forEach(function(b){ b.classList.add('active'); });
+    document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
+    var fp=document.getElementById(first+'-pane'); if(fp)fp.classList.add('active');
+  }
 })();
 </script>
 </body>
