@@ -24,6 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-siz
 .stabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .stab{font-size:12px;padding:5px 14px;border-radius:99px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--mu);font-weight:500}
 .stab.act{background:var(--gr);color:#fff;border-color:var(--gr)}
+.hist-sel{padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:14px;font-family:inherit;background:var(--wh);cursor:pointer;margin-bottom:14px}
 .btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;gap:5px;font-weight:500;min-height:36px}
 .btn:hover{background:var(--bg)}
 .btn.pdf{background:var(--bl);color:#fff;border-color:var(--bl)}.btn.pdf:hover{background:#1450a0}
@@ -162,12 +163,14 @@ function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if
 <div class="tabs">
   <button id="tab-trait" class="tab act" onclick="setTab('trait',this)">Traitements</button>
   <button id="tab-cueill" class="tab" onclick="setTab('cueill',this)">Cueillette</button>
+  <button id="tab-historique" class="tab" onclick="setTab('historique',this)">📅 Historique</button>
   <button id="tab-stock" class="tab" onclick="setTab('stock',this)">🏗️ Bâtiments</button>
   <button id="tab-phyto" class="tab sec" onclick="setTab('phyto',this)">🔒 Phyto / Coûts</button>
 </div>
 <div class="content">
   <div id="panel-trait"></div>
   <div id="panel-cueill" class="hidden"></div>
+  <div id="panel-historique" class="hidden"></div>
   <div id="panel-stock" class="hidden"></div>
   <div id="panel-phyto" class="hidden"></div>
 </div>
@@ -398,6 +401,8 @@ function _applyAndRebuild(d){
   if(d.pxPoi!==undefined) S.pxPoi = d.pxPoi;
   if(d.bats) S.bats = d.bats;
   if(d.achatsExt) S.achatsExt = d.achatsExt;
+  if(d.saison) S.saison = d.saison;
+  if(Array.isArray(d.historique)) S.historique = d.historique;
 
   // Activer visuellement le bon onglet SANS appeler saveLS
   var t = S.tab || 'trait';
@@ -412,6 +417,7 @@ function _applyAndRebuild(d){
   else if(t==='cueill') initCueill();
   else if(t==='stock') initStock();
   else if(t==='phyto') initPhyto();
+  else if(t==='historique') initHistorique();
 }
 
 // ══════════════════════════════════════════════
@@ -449,7 +455,8 @@ function saveLS(){
     bp:S.bp,br:S.br,bn:S.bn,
     pd:S.pd,qd:S.qd,nd:S.nd,
     tarif:S.tarif,pxPom:S.pxPom,pxPoi:S.pxPoi,
-    bats:S.bats,achatsExt:S.achatsExt
+    bats:S.bats,achatsExt:S.achatsExt,
+    saison:S.saison,historique:S.historique
   };
   try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){}
   syncSaveVerger(d);
@@ -479,14 +486,19 @@ function loadLS(){
     if(d.pxPoi!==undefined)S.pxPoi=d.pxPoi;
     if(Array.isArray(d.bats)&&d.bats.length)S.bats=d.bats;
     if(Array.isArray(d.achatsExt))S.achatsExt=d.achatsExt;
+    if(d.saison)S.saison=d.saison;
+    if(Array.isArray(d.historique))S.historique=d.historique;
   }catch(e){}
 }
 
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
+var _histIdxV = 0; // index saison historique affichée dans verger
+
 const S = {
   tab:'trait',
+  saison:'2026/2027',
   tSub:'pc',
   pcPom: PC_POM_INIT.map(r=>({p:r.p,d:[...r.d]})),
   pcPoi: PC_POI_INIT.map(r=>({p:r.p,d:[...r.d]})),
@@ -504,7 +516,8 @@ const S = {
   entries:[],
   entCult:'pomme',
   bats:[{id:'b1',nom:'Bâtiment 1',frigos:[{id:'f1',nom:'Frigo 1'}]}],
-  achatsExt:[]
+  achatsExt:[],
+  historique:[]
 };
 
 // ══════════════════════════════════════════════
@@ -587,11 +600,12 @@ function coutBloc(culture,bi){
 // ══════════════════════════════════════════════
 function setTab(name,btn){
   S.tab=name;
-  ['trait','cueill','stock','phyto'].forEach(t=>{const p=$('panel-'+t);if(p)p.classList.toggle('hidden',t!==name);});
+  ['trait','cueill','historique','stock','phyto'].forEach(t=>{const p=$('panel-'+t);if(p)p.classList.toggle('hidden',t!==name);});
   document.querySelectorAll('.tabs .tab').forEach(b=>b.classList.remove('act'));
   btn.classList.add('act');
   if(name==='cueill'&&S.cvw==='courbe')setTimeout(drawChart,60);
   if(name==='stock'){const ps=$('panel-stock');if(ps&&!ps.innerHTML.trim())initStock();}
+  if(name==='historique') initHistorique();
 }
 
 // ══════════════════════════════════════════════
@@ -1505,14 +1519,177 @@ function rebuildProdList(){
 const DATES_POM_ORIG=["20/08","22/08","26/08","27/08","28/08","29/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
 const DATES_POI_ORIG=["20/08","21/08","22/08","23/08","25/08","26/08","01/09","02/09","03/09","04/09","05/09","08/09","09/09","10/09","11/09","12/09","13/09","15/09","16/09","17/09","18/09","19/09","22/09","23/09","24/09","26/09","29/09","30/09","01/10","02/10","03/10","08/10","09/10","10/10","14/10","15/10","16/10","17/10","20/10","21/10","30/10","03/11","04/11","05/11"];
 
+// ══════════════════════════════════════════════
+// HISTORIQUE
+// ══════════════════════════════════════════════
+function initHistorique(){
+  const p=$('panel-historique');
+  if(p) p.innerHTML=buildHistoriqueVerger();
+}
+
+function buildHistoriqueVerger(){
+  if(!S.historique||S.historique.length===0){
+    return '<div style="padding:20px;color:#aaa;font-style:italic">Aucune saison archivée pour l\'instant.<br>Les saisons apparaîtront ici après chaque clôture.</div>';
+  }
+  const arc=S.historique[_histIdxV]||S.historique[0];
+  let h='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">';
+  h+='<strong style="font-size:14px">Saison archivée :</strong>';
+  h+='<select class="hist-sel" onchange="_histIdxV=parseInt(this.value);initHistorique()">';
+  S.historique.forEach(function(a,i){
+    h+='<option value="'+i+'"'+(i===_histIdxV?' selected':'')+'>'+a.saison+' — clôturée le '+a.closedAt+'</option>';
+  });
+  h+='</select></div>';
+  h+=_buildHistoriqueContent(arc);
+  return h;
+}
+
+function _buildHistoriqueContent(arc){
+  const pomR=arc.pomR||[];
+  const poiR=arc.poiR||[];
+  const dPom=arc.datesPom||[];
+  const dPoi=arc.datesPoi||[];
+  const saison=arc.saison||'';
+
+  const tP=Math.round(pomR.reduce(function(a,r){return a+r.d.reduce(function(x,y){return x+(parseFloat(y)||0);},0);},0));
+  const tQ=Math.round(poiR.reduce(function(a,r){return a+r.d.reduce(function(x,y){return x+(parseFloat(y)||0);},0);},0));
+
+  let h='';
+
+  // ── Cartes totaux ──
+  h+='<div class="sts" style="margin-bottom:16px">';
+  h+='<div class="st"><div class="sl">Pommes</div><div class="sv">'+tP+'</div><div class="su">palox</div></div>';
+  h+='<div class="st"><div class="sl">Poids pommes</div><div class="sv" style="font-size:16px">'+((tP*300).toLocaleString('fr-FR'))+'</div><div class="su">kg</div></div>';
+  h+='<div class="st"><div class="sl">Poires</div><div class="sv">'+tQ+'</div><div class="su">palox</div></div>';
+  h+='<div class="st"><div class="sl">Poids poires</div><div class="sv" style="font-size:16px">'+((tQ*440).toLocaleString('fr-FR'))+'</div><div class="su">kg</div></div>';
+  h+='<div class="st" style="border-left:3px solid var(--gr)"><div class="sl">Total général</div><div class="sv" style="font-size:16px">'+(tP+tQ)+'</div><div class="su">palox</div></div>';
+  h+='</div>';
+
+  // ── Tableau par variété ──
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:14px 0 8px;padding-top:12px;border-top:1px solid #eee">Détail par variété</div>';
+  h+='<div style="overflow-x:auto"><table>';
+  h+='<thead><tr><th>Culture</th><th>Variété</th><th style="text-align:right">Total palox</th><th style="text-align:right">Poids estimé (kg)</th></tr></thead><tbody>';
+  pomR.forEach(function(r){
+    const tot=Math.round(r.d.reduce(function(a,v){return a+(parseFloat(v)||0);},0));
+    if(tot===0)return;
+    h+='<tr><td>🍎 Pomme</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+((tot*300).toLocaleString('fr-FR'))+'</td></tr>';
+  });
+  poiR.forEach(function(r){
+    const tot=Math.round(r.d.reduce(function(a,v){return a+(parseFloat(v)||0);},0));
+    if(tot===0)return;
+    h+='<tr><td>🍐 Poire</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+((tot*440).toLocaleString('fr-FR'))+'</td></tr>';
+  });
+  h+='<tr style="font-weight:700;border-top:2px solid #eee"><td colspan="2">Total</td><td style="text-align:right">'+(tP+tQ)+'</td><td style="text-align:right">'+((tP*300+tQ*440).toLocaleString('fr-FR'))+'</td></tr>';
+  h+='</tbody></table></div>';
+
+  // ── Graphique palox par jour ──
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:14px 0 8px;padding-top:12px;border-top:1px solid #eee">Palox par jour</div>';
+  h+=_buildChartVerger(pomR,poiR,dPom,dPoi);
+
+  return h;
+}
+
+function _buildChartVerger(pomR,poiR,dPom,dPoi){
+  // Construire totaux par date
+  const byDate={};
+  dPom.forEach(function(date,di){
+    const v=pomR.reduce(function(a,r){return a+(parseFloat(r.d[di])||0);},0);
+    if(v>0) byDate[date]=(byDate[date]||{pom:0,poi:0});
+    if(v>0) byDate[date].pom=(byDate[date].pom||0)+v;
+  });
+  dPoi.forEach(function(date,di){
+    const v=poiR.reduce(function(a,r){return a+(parseFloat(r.d[di])||0);},0);
+    if(v>0){
+      if(!byDate[date]) byDate[date]={pom:0,poi:0};
+      byDate[date].poi=(byDate[date].poi||0)+v;
+    }
+  });
+
+  // Trier les dates (format DD/MM → tri par MM puis DD)
+  const dates=Object.keys(byDate).sort(function(a,b){
+    const pa=a.split('/'),pb=b.split('/');
+    return (+pa[1]*100+ +pa[0])-(+pb[1]*100+ +pb[0]);
+  });
+  if(dates.length===0) return '<p style="color:#aaa;font-style:italic;padding:8px 0">Aucune donnée.</p>';
+
+  const valsPom=dates.map(function(d){return byDate[d].pom||0;});
+  const valsPoi=dates.map(function(d){return byDate[d].poi||0;});
+  const valsTotal=dates.map(function(d,i){return valsPom[i]+valsPoi[i];});
+  const maxV=Math.max.apply(null,valsTotal);
+
+  const bW=26,gap=5,padL=38,padR=12,padT=20,padB=52,cH=150;
+  const totalW=padL+dates.length*(bW+gap)-gap+padR;
+  const svgH=cH+padT+padB;
+
+  const yTicks=[0];
+  const step=maxV<=10?2:maxV<=30?5:maxV<=100?10:maxV<=300?50:100;
+  for(let t=step;t<=maxV+step;t+=step) yTicks.push(t);
+  const yMax=yTicks[yTicks.length-1];
+
+  function yPx(v){return padT+cH-Math.round((v/yMax)*cH);}
+  function xPx(i){return padL+i*(bW+gap);}
+
+  let s='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  s+='<svg viewBox="0 0 '+totalW+' '+svgH+'" width="'+Math.max(totalW,300)+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;font-family:inherit">';
+  s+='<rect width="'+totalW+'" height="'+svgH+'" fill="#fff" rx="6"/>';
+
+  yTicks.forEach(function(v){
+    const y=yPx(v);
+    s+='<line x1="'+padL+'" x2="'+(totalW-padR)+'" y1="'+y+'" y2="'+y+'" stroke="#f0f0f0" stroke-width="1"/>';
+    s+='<text x="'+(padL-4)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#aaa">'+v+'</text>';
+  });
+
+  dates.forEach(function(d,i){
+    const vP=valsPom[i], vQ=valsPoi[i], vT=valsTotal[i];
+    const x=xPx(i);
+    const bT=Math.max(2,Math.round((vT/yMax)*cH));
+    const bP=vT>0?Math.round((vP/vT)*bT):0;
+    const bQ=bT-bP;
+    const yT=padT+cH-bT;
+
+    // Barre poire (bas, vert)
+    if(bQ>0) s+='<rect x="'+x+'" y="'+(yT+bP)+'" width="'+bW+'" height="'+bQ+'" rx="2" fill="#2d7a4a" opacity="0.75"><title>'+d+' Poire: '+vQ+' palox</title></rect>';
+    // Barre pomme (haut, rouge)
+    if(bP>0) s+='<rect x="'+x+'" y="'+yT+'" width="'+bW+'" height="'+bP+'" rx="2" fill="#c0392b" opacity="0.75"><title>'+d+' Pomme: '+vP+' palox</title></rect>';
+
+    // Valeur totale
+    if(bT>14) s+='<text x="'+(x+bW/2)+'" y="'+(yT+bT/2+4)+'" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">'+Math.round(vT)+'</text>';
+    else s+='<text x="'+(x+bW/2)+'" y="'+(yT-3)+'" text-anchor="middle" font-size="10" fill="#555" font-weight="600">'+Math.round(vT)+'</text>';
+
+    // Label date
+    s+='<text x="'+(x+bW/2)+'" y="'+(padT+cH+14)+'" text-anchor="end" transform="rotate(-45,'+(x+bW/2)+','+(padT+cH+14)+')" font-size="10" fill="#888">'+d+'</text>';
+  });
+
+  s+='<line x1="'+padL+'" x2="'+padL+'" y1="'+padT+'" y2="'+(padT+cH)+'" stroke="#ddd" stroke-width="1"/>';
+  // Légende
+  s+='<rect x="'+(padL+10)+'" y="'+(svgH-14)+'" width="10" height="10" rx="2" fill="#c0392b" opacity="0.75"/>';
+  s+='<text x="'+(padL+24)+'" y="'+(svgH-6)+'" font-size="10" fill="#666">Pomme</text>';
+  s+='<rect x="'+(padL+80)+'" y="'+(svgH-14)+'" width="10" height="10" rx="2" fill="#2d7a4a" opacity="0.75"/>';
+  s+='<text x="'+(padL+94)+'" y="'+(svgH-6)+'" font-size="10" fill="#666">Poire</text>';
+  s+='</svg></div>';
+  return s;
+}
+
 function cloturerAnnee(){
   const saison=S.saison||'2026/2027';
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
-  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${(tP*300).toLocaleString('fr-FR')} kg\n• Poires : ${tQ} palox — ${(tQ*440).toLocaleString('fr-FR')} kg\n\nCette action va :\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
+  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${(tP*300).toLocaleString('fr-FR')} kg\n• Poires : ${tQ} palox — ${(tQ*440).toLocaleString('fr-FR')} kg\n\nCette action va :\n✓ Archiver la saison dans l'onglet Historique\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
   if(!ok)return;
   const ok2=confirm(`Dernière confirmation : clôturer définitivement la saison ${saison} ?`);
   if(!ok2)return;
+
+  // ── Archiver la saison ──
+  if(!S.historique) S.historique=[];
+  if(tP+tQ > 0) {
+    S.historique.unshift({
+      saison: saison,
+      pomR: JSON.parse(JSON.stringify(S.pomR)),
+      poiR: JSON.parse(JSON.stringify(S.poiR)),
+      datesPom: DATES_POM.slice(),
+      datesPoi: DATES_POI.slice(),
+      closedAt: new Date().toISOString().slice(0,10)
+    });
+  }
 
   // Générer CSV
   let csv=`\uFEFFSaison ${saison} — Récapitulatif Cueillette Flipo\n\n`;
@@ -1793,7 +1970,7 @@ var FLIPO_STABS={};
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
   if(sess.isAdmin)return;
   var tabs=mp.tabs||{};
-  var tabIds=['trait','cueill','stock','phyto'];
+  var tabIds=['trait','cueill','historique','stock','phyto'];
   var first=null;
   tabIds.forEach(function(tid){
     var tp=tabs[tid];
