@@ -545,6 +545,7 @@
     <div class="tab-pane active" id="resume-pane">
       <div class="section" id="resume-sec-a"></div>
       <div class="section" id="resume-sec-b"></div>
+      <div class="section" id="resume-sec-d"></div>
       <div class="section" id="resume-sec-c"></div>
     </div>
 
@@ -992,6 +993,9 @@
       const secB = $('resume-sec-b');
       secB.innerHTML = html;
 
+      // Graphique barquettes par jour
+      $('resume-sec-d').innerHTML = buildChartBarquettes();
+
       const secC = $('resume-sec-c');
       const nbCueillettes = S.entries.length;
       const kgMoy = nbCueillettes > 0 ? R2(kgTotal / nbCueillettes) : 0;
@@ -1002,6 +1006,83 @@
       html += '<div class="total-box-item"><div class="label">Moyenne par cueillette</div><div class="value">' + kgMoy + ' kg</div></div></div>';
       html += '<button class="btn" onclick="clotureModal()" style="width:100%;margin-top:12px">Clôturer la saison</button>';
       secC.innerHTML = html;
+    }
+
+    function buildChartBarquettes() {
+      // Agréger barquettes par date
+      const byDate = {};
+      S.entries.forEach(function(e) {
+        if(!e.date) return;
+        byDate[e.date] = (byDate[e.date] || 0) + (e.barquettes || 0);
+      });
+      const dates = Object.keys(byDate).sort();
+      if(dates.length === 0) return '';
+
+      const vals = dates.map(function(d){ return byDate[d]; });
+      const maxV = Math.max.apply(null, vals);
+      const avgV = R2(vals.reduce(function(a,b){return a+b;},0) / vals.length);
+
+      const bW = 26, gap = 5;
+      const padL = 42, padR = 12, padT = 20, padB = 52;
+      const cH = 160; // hauteur zone graphe
+      const totalW = padL + dates.length * (bW + gap) - gap + padR;
+      const svgH = cH + padT + padB;
+
+      // Graduations Y
+      const yTicks = [0];
+      const step = maxV <= 50 ? 10 : maxV <= 150 ? 25 : maxV <= 400 ? 50 : 100;
+      for(var t = step; t <= maxV + step; t += step) yTicks.push(t);
+      const yMax = yTicks[yTicks.length - 1];
+
+      function yPx(v){ return padT + cH - Math.round((v / yMax) * cH); }
+      function xPx(i){ return padL + i * (bW + gap); }
+
+      var s = '<div class="section-title">Barquettes par jour</div>';
+      s += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+      s += '<svg viewBox="0 0 ' + totalW + ' ' + svgH + '" width="' + Math.max(totalW, 300) + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="display:block;font-family:inherit">';
+
+      // Fond blanc
+      s += '<rect width="' + totalW + '" height="' + svgH + '" fill="#fff" rx="6"/>';
+
+      // Grille horizontale + labels Y
+      yTicks.forEach(function(v) {
+        var y = yPx(v);
+        s += '<line x1="' + padL + '" x2="' + (totalW - padR) + '" y1="' + y + '" y2="' + y + '" stroke="#f0f0f0" stroke-width="1"/>';
+        s += '<text x="' + (padL - 5) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#aaa">' + v + '</text>';
+      });
+
+      // Ligne moyenne
+      var avgY = yPx(avgV);
+      s += '<line x1="' + padL + '" x2="' + (totalW - padR) + '" y1="' + avgY + '" y2="' + avgY + '" stroke="#e84a5f" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>';
+      s += '<text x="' + (totalW - padR - 2) + '" y="' + (avgY - 3) + '" text-anchor="end" font-size="9" fill="#e84a5f" opacity="0.8">moy. ' + avgV + '</text>';
+
+      // Barres
+      dates.forEach(function(d, i) {
+        var v = vals[i];
+        var x = xPx(i);
+        var bH = Math.max(2, Math.round((v / yMax) * cH));
+        var y = padT + cH - bH;
+        var alpha = 0.55 + 0.45 * (v / maxV);
+        s += '<rect x="' + x + '" y="' + y + '" width="' + bW + '" height="' + bH + '" rx="3" fill="#e84a5f" opacity="' + R2(alpha) + '">';
+        s += '<title>' + d + ' : ' + v + ' barquettes (' + R2(v * 0.5) + ' kg)</title>';
+        s += '</rect>';
+        // Valeur sur la barre
+        if(bH > 16) {
+          s += '<text x="' + (x + bW/2) + '" y="' + (y + bH/2 + 4) + '" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">' + v + '</text>';
+        } else {
+          s += '<text x="' + (x + bW/2) + '" y="' + (y - 3) + '" text-anchor="middle" font-size="10" fill="#e84a5f" font-weight="600">' + v + '</text>';
+        }
+        // Label date (DD/MM, rotaté)
+        var parts = d.split('-');
+        var label = parts[2] + '/' + parts[1];
+        s += '<text x="' + (x + bW/2) + '" y="' + (padT + cH + 14) + '" text-anchor="end" transform="rotate(-45,' + (x + bW/2) + ',' + (padT + cH + 14) + ')" font-size="10" fill="#888">' + label + '</text>';
+      });
+
+      // Axe Y
+      s += '<line x1="' + padL + '" x2="' + padL + '" y1="' + padT + '" y2="' + (padT + cH) + '" stroke="#ddd" stroke-width="1"/>';
+
+      s += '</svg></div>';
+      return s;
     }
 
     function clotureModal() {
