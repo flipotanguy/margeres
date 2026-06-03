@@ -124,6 +124,18 @@
       border-bottom-color: var(--gd);
     }
 
+    .ch-sel-wrap { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin:8px 0 12px; }
+    .ch-sel-btn {
+      padding:4px 9px; border-radius:20px; border:1.5px solid var(--brd);
+      background:#fff; cursor:pointer; font-size:12px; font-weight:600; color:var(--mu);
+      transition:.12s; line-height:1.4;
+    }
+    .ch-sel-btn.on { background:var(--gr); border-color:var(--gr); color:#fff; }
+    .ch-sel-btn.ext { border-style:dashed; }
+    .ch-sel-btn.ext.on { background:#f4a020; border-color:#f4a020; }
+    .ch-sel-all { background:#f5f5f5; border-color:#ddd; color:#555; font-size:11px; }
+    .hist-sel { padding:7px 10px; border:1px solid var(--brd); border-radius:6px; font-size:14px; font-family:inherit; background:#fff; cursor:pointer; }
+
     .content {
       max-width: 1000px;
       margin: 0 auto;
@@ -538,6 +550,7 @@
     <button class="tab-btn" data-tab="saison" onclick="switchTab('saison')">🌿 Saison</button>
     <button class="tab-btn" data-tab="drainage" onclick="switchTab('drainage')">💧 Drainage</button>
     <button class="tab-btn" data-tab="trait" onclick="switchTab('trait')">🧪 Traitements</button>
+    <button class="tab-btn" data-tab="historique" onclick="switchTab('historique')">📅 Historique</button>
   </div>
 
   <div class="content">
@@ -644,6 +657,15 @@
   </div>
 
   <datalist id="trait-prod-list"></datalist>
+
+    <!-- HISTORIQUE -->
+    <div class="tab-pane" id="historique-pane">
+      <div class="section" id="hist-sec-sel"></div>
+      <div class="section" id="hist-sec-a"></div>
+      <div class="section" id="hist-sec-b"></div>
+      <div class="section" id="hist-sec-d"></div>
+      <div class="section" id="hist-sec-c"></div>
+    </div>
 
   <div class="share-fab">
     <div class="share-pill">
@@ -779,6 +801,7 @@
       if(d.rendement) S.rendement = d.rendement;
       if(d.nbChapellesTrait) S.nbChapellesTrait = d.nbChapellesTrait;
       if(d.tab) S.tab = d.tab;
+      if(d.historique) S.historique = d.historique;
 
       // Mettre à jour le header
       var hdr = document.getElementById('saison-hdr');
@@ -830,12 +853,16 @@
       {ch:10, goutteur:3, litBouchon:3.6, nbArrosage:6, temps:2.5}
     ];
 
+    var _selCh = null;      // null = toutes chapelles, sinon tableau de numéros
+    var _histIdx = 0;       // index de la saison historique affichée
+
     const S = {
       tab: 'resume',
       saison: '2026/2027',
       chapelles: CHAPELLES_INIT.map(c => ({...c})),
       drainage: DRAINAGE_INIT.map(d => ({...d})),
       entries: [],
+      historique: [],
       rendement: {
         fraisesParPlant: 22,
         fraisesParBarquette: 29,
@@ -928,6 +955,7 @@
         S.traitements = parsed.traitements || [];
         S.surfaceChapelle = parsed.surfaceChapelle || 0.04;
         S.nbChapellesTrait = parsed.nbChapellesTrait || 10;
+        S.historique = parsed.historique || [];
       }
     }
 
@@ -946,6 +974,7 @@
 
     function switchTab(t) {
       S.tab = t;
+      _selCh = null; // reset filtre chapelles à chaque changement d'onglet
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('[data-tab="' + t + '"]').forEach(btn => btn.classList.add('active'));
       document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
@@ -957,6 +986,7 @@
       else if (t === 'saison') buildSaison();
       else if (t === 'drainage') buildDrainage();
       else if (t === 'trait') buildTrait();
+      else if (t === 'historique') buildHistorique();
     }
 
     function buildResume() {
@@ -1008,81 +1038,209 @@
       secC.innerHTML = html;
     }
 
+    // ── Sélecteur de chapelles ──────────────────────────────
+    function buildChapelleSelector(chapelles, ctx) {
+      // ctx = 'resume' ou 'hist'
+      var sel = _selCh; // null = toutes
+      var h = '<div class="ch-sel-wrap">';
+      h += '<button class="ch-sel-btn ch-sel-all' + (!sel ? ' on' : '') + '" onclick="selAllCh(\'' + ctx + '\')">Toutes</button>';
+      chapelles.forEach(function(ch) {
+        var on = !sel || sel.indexOf(ch.n) >= 0;
+        var extCls = ch.ext ? ' ext' : '';
+        h += '<button class="ch-sel-btn' + extCls + (on ? ' on' : '') + '" onclick="toggleCh(' + ch.n + ',\'' + ctx + '\')">';
+        h += ch.n + (ch.ext ? '*' : '');
+        h += '</button>';
+      });
+      h += '</div>';
+      h += '<p style="font-size:11px;color:#aaa;margin:-6px 0 10px">* extérieure — cliquez pour filtrer le graphique</p>';
+      return h;
+    }
+
+    function toggleCh(n, ctx) {
+      if(!_selCh) {
+        // Toutes sélectionnées → passer en mode sélection unique
+        _selCh = [n];
+      } else if(_selCh.indexOf(n) >= 0) {
+        _selCh = _selCh.filter(function(x){ return x !== n; });
+        if(_selCh.length === 0) _selCh = null; // retour à "toutes"
+      } else {
+        _selCh = _selCh.concat([n]);
+      }
+      if(ctx === 'resume') {
+        var sec = $('resume-sec-d');
+        if(sec) sec.innerHTML = buildChartSection(S.entries, S.chapelles, 'resume');
+      } else {
+        var h = $('hist-sec-d');
+        if(h && S.historique.length > 0) {
+          var arc = S.historique[_histIdx];
+          h.innerHTML = buildChartSection(arc.entries, arc.chapelles, 'hist');
+        }
+      }
+    }
+
+    function selAllCh(ctx) {
+      _selCh = null;
+      toggleCh(-999, ctx); // trigger rebuild via dummy → annulé car on reset d'abord
+      _selCh = null;
+      if(ctx === 'resume') {
+        var sec = $('resume-sec-d');
+        if(sec) sec.innerHTML = buildChartSection(S.entries, S.chapelles, 'resume');
+      } else {
+        var h = $('hist-sec-d');
+        if(h && S.historique.length > 0) {
+          var arc = S.historique[_histIdx];
+          h.innerHTML = buildChartSection(arc.entries, arc.chapelles, 'hist');
+        }
+      }
+    }
+
+    // ── Graphique barquettes par jour (paramétré) ───────────
+    function buildChartSection(entries, chapelles, ctx) {
+      // Filtrer par chapelles sélectionnées
+      var filteredEntries = entries;
+      if(_selCh && _selCh.length > 0) {
+        filteredEntries = entries.filter(function(e){ return _selCh.indexOf(e.chapelle) >= 0; });
+      }
+      var selector = buildChapelleSelector(chapelles, ctx);
+      var chart = _buildChartSVG(filteredEntries, _selCh ? chapelles.filter(function(ch){ return _selCh.indexOf(ch.n)>=0; }) : chapelles);
+      return '<div class="section-title">Barquettes par jour</div>' + selector + chart;
+    }
+
     function buildChartBarquettes() {
-      // Agréger barquettes par date
-      const byDate = {};
-      S.entries.forEach(function(e) {
+      return buildChartSection(S.entries, S.chapelles, 'resume');
+    }
+
+    function _buildChartSVG(entries, chapellesForLabel) {
+      var byDate = {};
+      entries.forEach(function(e) {
         if(!e.date) return;
         byDate[e.date] = (byDate[e.date] || 0) + (e.barquettes || 0);
       });
-      const dates = Object.keys(byDate).sort();
-      if(dates.length === 0) return '';
+      var dates = Object.keys(byDate).sort();
+      if(dates.length === 0) return '<p style="color:#aaa;font-style:italic;padding:8px 0">Aucune donnée pour cette sélection.</p>';
 
-      const vals = dates.map(function(d){ return byDate[d]; });
-      const maxV = Math.max.apply(null, vals);
-      const avgV = R2(vals.reduce(function(a,b){return a+b;},0) / vals.length);
+      var vals = dates.map(function(d){ return byDate[d]; });
+      var maxV = Math.max.apply(null, vals);
+      var avgV = R2(vals.reduce(function(a,b){return a+b;},0) / vals.length);
 
-      const bW = 26, gap = 5;
-      const padL = 42, padR = 12, padT = 20, padB = 52;
-      const cH = 160; // hauteur zone graphe
-      const totalW = padL + dates.length * (bW + gap) - gap + padR;
-      const svgH = cH + padT + padB;
+      var bW = 26, gap = 5;
+      var padL = 42, padR = 12, padT = 20, padB = 52;
+      var cH = 160;
+      var totalW = padL + dates.length * (bW + gap) - gap + padR;
+      var svgH = cH + padT + padB;
 
-      // Graduations Y
-      const yTicks = [0];
-      const step = maxV <= 50 ? 10 : maxV <= 150 ? 25 : maxV <= 400 ? 50 : 100;
+      var yTicks = [0];
+      var step = maxV <= 50 ? 10 : maxV <= 150 ? 25 : maxV <= 400 ? 50 : 100;
       for(var t = step; t <= maxV + step; t += step) yTicks.push(t);
-      const yMax = yTicks[yTicks.length - 1];
+      var yMax = yTicks[yTicks.length - 1];
 
       function yPx(v){ return padT + cH - Math.round((v / yMax) * cH); }
       function xPx(i){ return padL + i * (bW + gap); }
 
-      var s = '<div class="section-title">Barquettes par jour</div>';
-      s += '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+      var s = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
       s += '<svg viewBox="0 0 ' + totalW + ' ' + svgH + '" width="' + Math.max(totalW, 300) + '" height="' + svgH + '" xmlns="http://www.w3.org/2000/svg" style="display:block;font-family:inherit">';
-
-      // Fond blanc
       s += '<rect width="' + totalW + '" height="' + svgH + '" fill="#fff" rx="6"/>';
 
-      // Grille horizontale + labels Y
       yTicks.forEach(function(v) {
         var y = yPx(v);
-        s += '<line x1="' + padL + '" x2="' + (totalW - padR) + '" y1="' + y + '" y2="' + y + '" stroke="#f0f0f0" stroke-width="1"/>';
-        s += '<text x="' + (padL - 5) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#aaa">' + v + '</text>';
+        s += '<line x1="' + padL + '" x2="' + (totalW-padR) + '" y1="' + y + '" y2="' + y + '" stroke="#f0f0f0" stroke-width="1"/>';
+        s += '<text x="' + (padL-5) + '" y="' + (y+4) + '" text-anchor="end" font-size="10" fill="#aaa">' + v + '</text>';
       });
 
-      // Ligne moyenne
       var avgY = yPx(avgV);
-      s += '<line x1="' + padL + '" x2="' + (totalW - padR) + '" y1="' + avgY + '" y2="' + avgY + '" stroke="#e84a5f" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>';
-      s += '<text x="' + (totalW - padR - 2) + '" y="' + (avgY - 3) + '" text-anchor="end" font-size="9" fill="#e84a5f" opacity="0.8">moy. ' + avgV + '</text>';
+      s += '<line x1="' + padL + '" x2="' + (totalW-padR) + '" y1="' + avgY + '" y2="' + avgY + '" stroke="#e84a5f" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>';
+      s += '<text x="' + (totalW-padR-2) + '" y="' + (avgY-3) + '" text-anchor="end" font-size="9" fill="#e84a5f" opacity="0.8">moy. ' + avgV + '</text>';
 
-      // Barres
       dates.forEach(function(d, i) {
         var v = vals[i];
         var x = xPx(i);
-        var bH = Math.max(2, Math.round((v / yMax) * cH));
+        var bH = Math.max(2, Math.round((v/yMax)*cH));
         var y = padT + cH - bH;
-        var alpha = 0.55 + 0.45 * (v / maxV);
-        s += '<rect x="' + x + '" y="' + y + '" width="' + bW + '" height="' + bH + '" rx="3" fill="#e84a5f" opacity="' + R2(alpha) + '">';
-        s += '<title>' + d + ' : ' + v + ' barquettes (' + R2(v * 0.5) + ' kg)</title>';
-        s += '</rect>';
-        // Valeur sur la barre
-        if(bH > 16) {
-          s += '<text x="' + (x + bW/2) + '" y="' + (y + bH/2 + 4) + '" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">' + v + '</text>';
-        } else {
-          s += '<text x="' + (x + bW/2) + '" y="' + (y - 3) + '" text-anchor="middle" font-size="10" fill="#e84a5f" font-weight="600">' + v + '</text>';
-        }
-        // Label date (DD/MM, rotaté)
+        var alpha = R2(0.55 + 0.45*(v/maxV));
+        s += '<rect x="' + x + '" y="' + y + '" width="' + bW + '" height="' + bH + '" rx="3" fill="#e84a5f" opacity="' + alpha + '">';
+        s += '<title>' + d + ' : ' + v + ' barq. (' + R2(v*0.5) + ' kg)</title></rect>';
+        if(bH > 16) s += '<text x="' + (x+bW/2) + '" y="' + (y+bH/2+4) + '" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">' + v + '</text>';
+        else s += '<text x="' + (x+bW/2) + '" y="' + (y-3) + '" text-anchor="middle" font-size="10" fill="#e84a5f" font-weight="600">' + v + '</text>';
         var parts = d.split('-');
-        var label = parts[2] + '/' + parts[1];
-        s += '<text x="' + (x + bW/2) + '" y="' + (padT + cH + 14) + '" text-anchor="end" transform="rotate(-45,' + (x + bW/2) + ',' + (padT + cH + 14) + ')" font-size="10" fill="#888">' + label + '</text>';
+        var lbl = parts[2]+'/'+parts[1];
+        s += '<text x="' + (x+bW/2) + '" y="' + (padT+cH+14) + '" text-anchor="end" transform="rotate(-45,' + (x+bW/2) + ',' + (padT+cH+14) + ')" font-size="10" fill="#888">' + lbl + '</text>';
       });
 
-      // Axe Y
-      s += '<line x1="' + padL + '" x2="' + padL + '" y1="' + padT + '" y2="' + (padT + cH) + '" stroke="#ddd" stroke-width="1"/>';
-
+      s += '<line x1="' + padL + '" x2="' + padL + '" y1="' + padT + '" y2="' + (padT+cH) + '" stroke="#ddd" stroke-width="1"/>';
       s += '</svg></div>';
       return s;
+    }
+
+    // ── Historique ──────────────────────────────────────────
+    function buildHistorique() {
+      var secSel = $('hist-sec-sel');
+      var secA = $('hist-sec-a'), secB = $('hist-sec-b'), secD = $('hist-sec-d'), secC = $('hist-sec-c');
+      if(!S.historique || S.historique.length === 0) {
+        secSel.innerHTML = '<p style="color:#aaa;font-style:italic;padding:12px">Aucune saison archivée pour l\'instant.<br>Les saisons apparaîtront ici après chaque clôture.</p>';
+        secA.innerHTML = secB.innerHTML = secD.innerHTML = secC.innerHTML = '';
+        return;
+      }
+      // Sélecteur saison
+      var sel = '<div class="section-title">Saison archivée</div>';
+      sel += '<select class="hist-sel" onchange="_histIdx=parseInt(this.value);_selCh=null;buildHistoriqueData()">';
+      S.historique.forEach(function(arc, i) {
+        sel += '<option value="' + i + '"' + (i===_histIdx?' selected':'') + '>' + arc.saison + ' (clôturée le ' + arc.closedAt + ')</option>';
+      });
+      sel += '</select>';
+      secSel.innerHTML = sel;
+      buildHistoriqueData();
+    }
+
+    function buildHistoriqueData() {
+      if(!S.historique || !S.historique[_histIdx]) return;
+      var arc = S.historique[_histIdx];
+      var entries = arc.entries || [];
+      var chapelles = arc.chapelles || [];
+      var saison = arc.saison || '';
+
+      var secA = $('hist-sec-a'), secB = $('hist-sec-b'), secD = $('hist-sec-d'), secC = $('hist-sec-c');
+
+      // Tableau par chapelle
+      var htmlA = '<div class="section-title">Résumé par chapelle — ' + saison + '</div>';
+      htmlA += '<div style="overflow-x:auto"><table><thead><tr><th>Chapelle</th><th>Variété</th><th>Ext</th><th>Total kg</th><th>Rendement g/plant</th></tr></thead><tbody>';
+      chapelles.forEach(function(ch) {
+        var ents = entries.filter(function(e){ return e.chapelle === ch.n; });
+        var barq = ents.reduce(function(a,e){ return a+(e.barquettes||0); }, 0);
+        var kg = R2(barq*0.5);
+        var rend = ch.plants > 0 ? R2((barq*500)/ch.plants) : 0;
+        htmlA += '<tr' + (ch.ext?' class="ext-row"':'') + '><td>Chapelle ' + ch.n + '</td><td>' + es(ch.v) + '</td><td>' + (ch.ext?'Oui':'Non') + '</td><td>' + kg + '</td><td>' + rend + '</td></tr>';
+      });
+      htmlA += '</tbody></table></div>';
+      secA.innerHTML = htmlA;
+
+      // Totaux
+      var intE = entries.filter(function(e){ return chapelles.find(function(ch){ return ch.n===e.chapelle&&!ch.ext; }); });
+      var extE = entries.filter(function(e){ return chapelles.find(function(ch){ return ch.n===e.chapelle&&ch.ext; }); });
+      var bInt = intE.reduce(function(a,e){ return a+(e.barquettes||0); },0);
+      var bExt = extE.reduce(function(a,e){ return a+(e.barquettes||0); },0);
+      var kgInt=R2(bInt*0.5), kgExt=R2(bExt*0.5), kgTot=R2(kgInt+kgExt);
+      var pInt = chapelles.filter(function(ch){ return !ch.ext; }).reduce(function(a,ch){ return a+(ch.plants||0); },0);
+      var rendInt = pInt>0 ? R2((bInt*500)/pInt) : 0;
+      var htmlB = '<div class="section-title">Totaux</div>';
+      htmlB += '<div class="total-box">';
+      htmlB += '<div class="total-box-item"><div class="label">Total intérieur</div><div class="value">'+kgInt+' kg</div></div>';
+      htmlB += '<div class="total-box-item"><div class="label">Total extérieur</div><div class="value">'+kgExt+' kg</div></div>';
+      htmlB += '<div class="total-box-item"><div class="label">Total général</div><div class="value">'+kgTot+' kg</div></div>';
+      htmlB += '<div class="total-box-item"><div class="label">Rendement moy. intérieur</div><div class="value">'+rendInt+' g/pl</div></div></div>';
+      secB.innerHTML = htmlB;
+
+      // Graphique filtrable
+      secD.innerHTML = buildChartSection(entries, chapelles, 'hist');
+
+      // Rendement global
+      var nb = entries.length;
+      var kgMoy = nb>0 ? R2(kgTot/nb) : 0;
+      var htmlC = '<div class="section-title">Rendement global — ' + saison + '</div>';
+      htmlC += '<div class="total-box">';
+      htmlC += '<div class="total-box-item"><div class="label">Total saison</div><div class="value">'+kgTot+' kg</div></div>';
+      htmlC += '<div class="total-box-item"><div class="label">Nb cueillettes</div><div class="value">'+nb+'</div></div>';
+      htmlC += '<div class="total-box-item"><div class="label">Moy. par cueillette</div><div class="value">'+kgMoy+' kg</div></div></div>';
+      secC.innerHTML = htmlC;
     }
 
     function clotureModal() {
@@ -1094,6 +1252,17 @@
 
     function clotureSaison() {
       closeModal();
+      // Archiver la saison avant d'effacer
+      if(S.entries.length > 0) {
+        if(!S.historique) S.historique = [];
+        S.historique.unshift({
+          saison: S.saison,
+          entries: JSON.parse(JSON.stringify(S.entries)),
+          chapelles: JSON.parse(JSON.stringify(S.chapelles)),
+          closedAt: new Date().toISOString().slice(0,10)
+        });
+      }
+      // Export CSV
       const csv = genCSV();
       const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
       const link = document.createElement('a');
