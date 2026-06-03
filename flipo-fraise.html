@@ -1520,23 +1520,46 @@
         const barqInt = intEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
         const barqExt = extEntries.reduce((a, e) => a + (e.barquettes !== undefined ? e.barquettes : 0), 0);
         const kgInt = R2(barqInt * 0.5), kgExt = R2(barqExt * 0.5), kgTotal = R2(kgInt + kgExt);
+        const plantsInt = S.chapelles.filter(ch => !ch.ext).reduce((a, ch) => a + (ch.plants || 0), 0);
+        const rendInt = plantsInt > 0 ? R2((barqInt * 500) / plantsInt) : 0;
+
+        // Cartes totaux (gardées)
         html = '<div style="margin-bottom:16px">';
         html += '<div class="stat-box"><div class="stat-val">' + kgInt + ' kg</div><div class="stat-lbl">🏠 Intérieur</div></div>';
         html += '<div class="stat-box"><div class="stat-val">' + kgExt + ' kg</div><div class="stat-lbl">🌤️ Extérieur</div></div>';
         html += '<div class="stat-box"><div class="stat-val">' + kgTotal + ' kg</div><div class="stat-lbl">Total</div></div>';
+        html += '<div class="stat-box"><div class="stat-val">' + rendInt + ' g/pl</div><div class="stat-lbl">Rend. intérieur</div></div>';
         html += '</div>';
+
+        // Tableau détaillé : chapelle, variété, kg, rendement g/plant
         html += '<div class="section-title">Détail par chapelle</div>';
-        const byChapelle = {};
-        S.entries.forEach(e => { byChapelle[e.chapelle] = (byChapelle[e.chapelle] || 0) + (e.barquettes || 0); });
-        html += '<table><thead><tr><th>Chapelle</th><th class="tar">Barquettes</th><th class="tar">Kg</th></tr></thead><tbody>';
-        plain = 'Flipo Fraise ' + S.saison + '\n' + dt + '\nIntérieur: ' + kgInt + ' kg — Extérieur: ' + kgExt + ' kg — Total: ' + kgTotal + ' kg\n\n';
-        Object.keys(byChapelle).sort().forEach(ch => {
-          const b = byChapelle[ch]; const kg = R2(b * 0.5);
-          html += '<tr><td>' + es(ch) + '</td><td class="tar">' + b + '</td><td class="tar">' + kg + ' kg</td></tr>';
-          plain += ch + ': ' + b + ' barquettes (' + kg + ' kg)\n';
+        html += '<table><thead><tr><th>Ch.</th><th>Variété</th><th class="tar">kg</th><th class="tar">g/plant</th></tr></thead><tbody>';
+        plain = 'Fraise Flipo — Saison ' + S.saison + '\n' + dt + '\n';
+        plain += 'Intérieur: ' + kgInt + ' kg | Extérieur: ' + kgExt + ' kg | Total: ' + kgTotal + ' kg | Rend. int: ' + rendInt + ' g/pl\n\n';
+        plain += 'Ch | Variété          | kg    | g/plant\n';
+        plain += '---|------------------|-------|--------\n';
+
+        S.chapelles.forEach(ch => {
+          const entries = S.entries.filter(e => e.chapelle === ch.n);
+          const barq = entries.reduce((a, e) => a + (e.barquettes || 0), 0);
+          const kg = R2(barq * 0.5);
+          const rendG = ch.plants > 0 ? R2((barq * 500) / ch.plants) : '-';
+          const extMark = ch.ext ? ' *' : '';
+          html += '<tr' + (ch.ext ? ' class="ext-row"' : '') + '>';
+          html += '<td>' + ch.n + extMark + '</td>';
+          html += '<td>' + es(ch.v) + '</td>';
+          html += '<td class="tar">' + kg + '</td>';
+          html += '<td class="tar">' + rendG + '</td>';
+          html += '</tr>';
+          plain += ch.n + extMark + ' | ' + (ch.v || '').padEnd(16) + ' | ' + String(kg).padEnd(5) + ' | ' + rendG + '\n';
         });
-        html += '<tr class="tr"><td>Total</td><td class="tar">' + (barqInt + barqExt) + '</td><td class="tar">' + kgTotal + ' kg</td></tr>';
+
+        html += '<tr style="font-weight:600;border-top:2px solid var(--brd)">';
+        html += '<td colspan="2">Total</td><td class="tar">' + kgTotal + '</td><td class="tar"></td></tr>';
         html += '</tbody></table>';
+        html += '<p style="font-size:11px;color:#999;margin-top:6px">* chapelle extérieure</p>';
+
+        plain += '---\nTotal: ' + kgTotal + ' kg\n* chapelle extérieure\n';
         openSharePreview('Fraise — ' + S.saison, '#e84a7a', html, 'Fraise Flipo ' + S.saison + ' — ' + dt, plain + '\n— Flipo');
       }
     }
