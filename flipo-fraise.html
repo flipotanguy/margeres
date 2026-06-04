@@ -1034,7 +1034,10 @@
       html += '<div class="total-box"><div class="total-box-item"><div class="label">Total saison</div><div class="value">' + R2(kgTotal) + ' kg</div></div>';
       html += '<div class="total-box-item"><div class="label">Cueillettes</div><div class="value">' + nbCueillettes + '</div></div>';
       html += '<div class="total-box-item"><div class="label">Moyenne par cueillette</div><div class="value">' + kgMoy + ' kg</div></div></div>';
-      html += '<button class="btn" onclick="clotureModal()" style="width:100%;margin-top:12px">Clôturer la saison</button>';
+      html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">';
+      html += '<button class="btn" onclick="clotureModal()" style="flex:1;min-width:160px">🗓 Clôturer la saison</button>';
+      html += '<button class="btn secondary" onclick="backupFraise()" style="flex:1;min-width:160px" title="Télécharge toutes vos saisies en JSON + CSV">💾 Sauvegarder mes données</button>';
+      html += '</div>';
       secC.innerHTML = html;
     }
 
@@ -1241,6 +1244,36 @@
       htmlC += '<div class="total-box-item"><div class="label">Nb cueillettes</div><div class="value">'+nb+'</div></div>';
       htmlC += '<div class="total-box-item"><div class="label">Moy. par cueillette</div><div class="value">'+kgMoy+' kg</div></div></div>';
       secC.innerHTML = htmlC;
+    }
+
+    function backupFraise() {
+      const dt = new Date().toISOString().slice(0,10);
+      // 1. JSON complet
+      const jsonBlob = new Blob([JSON.stringify(S, null, 2)], {type:'application/json;charset=utf-8'});
+      const jUrl = URL.createObjectURL(jsonBlob);
+      const jLink = document.createElement('a');
+      jLink.href = jUrl;
+      jLink.download = 'flipo-fraise-backup-' + dt + '.json';
+      jLink.click();
+      setTimeout(()=>URL.revokeObjectURL(jUrl), 1000);
+      // 2. CSV cueillettes
+      setTimeout(function() {
+        let csv = '\uFEFFBackup Fraise — Saison ' + S.saison + ' — ' + dt + '\n';
+        csv += 'ID,Date,Chapelle,Variété,Barquettes,kg\n';
+        const sorted = S.entries.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+        sorted.forEach(e => {
+          const kg = R2((e.barquettes||0)*0.5);
+          csv += (e.id||e.ts||'') + ',' + (e.date||'') + ',' + (e.chapelle||'') + ',"' + (e.variete||'') + '",' + (e.barquettes||0) + ',' + kg + '\n';
+        });
+        const csvBlob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+        const cUrl = URL.createObjectURL(csvBlob);
+        const cLink = document.createElement('a');
+        cLink.href = cUrl;
+        cLink.download = 'flipo-fraise-cueillettes-' + dt + '.csv';
+        cLink.click();
+        setTimeout(()=>URL.revokeObjectURL(cUrl), 1000);
+        alert('✅ Sauvegarde effectuée :\n• flipo-fraise-backup-' + dt + '.json\n• flipo-fraise-cueillettes-' + dt + '.csv\n\n' + S.entries.length + ' cueillettes exportées.');
+      }, 500);
     }
 
     function clotureModal() {
