@@ -968,6 +968,7 @@ function updDose(type,ri,val){
     blocs.forEach((_,bi)=>{if(dist[`${ri}-${bi}`]===undefined){const e=$(`dc-${cult}-${ri}-${bi}`);if(e)e.value=R2(dv*blocs[bi].s);}});
     updDistTotal(cult,ri);
   }
+  saveLS();
 }
 function addProdPC(type){
   if(type==='pom')S.pcPom.push({p:'',d:[0,0,0,0,0,0,0]});
@@ -1458,6 +1459,7 @@ function addVar(type){
   const rows=type==='pom'?S.pomR:S.poiR;
   rows.push({v:'Nouvelle variété',d:new Array((type==='pom'?DATES_POM:DATES_POI).length).fill(0)});
   rows.sort((a,b)=>a.v.localeCompare(b.v,'fr'));
+  saveLS();
   const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
 }
 
@@ -1790,6 +1792,7 @@ function updTP(ri,field,val){
   const tT2=R2(S.tarif.reduce((s,r)=>s+(r.t2||0),0));
   setText('pht1',fr(tT1));setText('pht2',fr(tT2));
   const ee=$('pheco');if(ee){ee.textContent=fr(R2(tT1-tT2));ee.style.color=tT1-tT2>0?'var(--gd)':'#a32d2d';}
+  saveLS();
 }
 function addTarif(){
   S.tarif.push({p:'Nouveau produit',px:0,d1:0,d2:0,t1:0,t2:0});

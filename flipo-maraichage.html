@@ -690,7 +690,7 @@ function buildTrait(){
   </div>`;
   return h;
 }
-function selTrait(cult){S.selCult=cult;const f=saveFocus();initTrait();restFocus(f);}
+function selTrait(cult){S.selCult=cult;saveLS();const f=saveFocus();initTrait();restFocus(f);}
 function updTrait(ri,field,val){
   const rows=getTrait(S.selCult);
   if(!rows[ri])return;
@@ -705,6 +705,7 @@ function updTrait(ri,field,val){
 function addTrait(){
   const rows=getTrait(S.selCult);
   rows.push({p:'',doseHa:0,note:''});
+  saveLS();
   const f=saveFocus();initTrait();restFocus(f);
   // Focus on new product name input
   setTimeout(()=>{const e=$(`tp-${rows.length-1}`);if(e)e.focus();},50);
@@ -747,7 +748,7 @@ function buildCueill(){
   h+=`<div id="cvw-mar">${buildCVw()}</div>`;
   return h;
 }
-function setCVw(v){S.cvw=v;const f=saveFocus();const el=$('cvw-mar');if(el)el.innerHTML=buildCVw();restFocus(f);}
+function setCVw(v){S.cvw=v;saveLS();const f=saveFocus();const el=$('cvw-mar');if(el)el.innerHTML=buildCVw();restFocus(f);}
 function buildCVw(){return S.cvw==='saisie'?buildSaisie():buildVueGlobale();}
 
 // ─── SAISIE ──────────────────────────────────

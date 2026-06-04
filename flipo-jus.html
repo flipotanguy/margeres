@@ -483,8 +483,12 @@ function loadLS(){
 
 function saveLS(){
   localStorage.setItem(LS_KEY, JSON.stringify(S));
-  // Pusher vers Supabase (TOUJOURS si on a des données)
-  if(!S || ((!S.entries || S.entries.length===0) && (!S.clients || S.clients.length===0) && (!S.formats || S.formats.length===0))) return;
+  // Pusher vers Supabase si au moins une donnée réelle présente
+  var hasAny = (S.entries && S.entries.length > 0) ||
+               (S.clients && S.clients.length > 0) ||
+               (S.formats && S.formats.length > 0) ||
+               (S.reappro && S.reappro.length > 0);
+  if(!S || !hasAny) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   supaSet(LS_KEY, S);
   render();
@@ -508,6 +512,7 @@ function switchTab(t){
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   $(t).classList.add('active');
+  saveLS();
   render();
 }
 

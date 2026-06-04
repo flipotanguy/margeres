@@ -252,8 +252,12 @@ function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if
 var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
 function syncSave(){
-  // Protection : ne pas pousser si aucune session ni transfert
-  if((!S.sessions||S.sessions.length===0) && (!S.transfers||S.transfers.length===0) && (!S.achatsExt||S.achatsExt.length===0)) return;
+  // Protection : ne pousser que si au moins une donnée réelle présente
+  var hasAny = (S.sessions && S.sessions.length > 0) ||
+               (S.transfers && S.transfers.length > 0) ||
+               (S.achatsExt && S.achatsExt.length > 0) ||
+               (S.varList && ((S.varList.pomme && S.varList.pomme.length > 0) || (S.varList.poire && S.varList.poire.length > 0)));
+  if(!hasAny) return;
   localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
   setSyncSt('syncing');
   supaSet(LS_KEY,{sessions:S.sessions,transfers:S.transfers,achatsExt:S.achatsExt,varList:S.varList});
@@ -464,8 +468,9 @@ function setTab(name,btn){
   else if(name==='stock')initStock();
   else if(name==='transfert')initTransfert();
   else if(name==='stats')buildStats();
+  saveLS();
 }
-function setSub(type,v){S[type+'Sub']=v;rebuildTab(type);}
+function setSub(type,v){S[type+'Sub']=v;saveLS();rebuildTab(type);}
 function rebuildTab(type){var p=$('panel-'+type);if(p)p.innerHTML=buildTab(type);}
 
 function buildTab(type){
