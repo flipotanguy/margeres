@@ -721,6 +721,17 @@
     var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
 
     // Merge par ID pour entries, par longueur pour autres tableaux
+    // Merge tableau par clé unique : local gagne pour existants, nouveaux du cloud ajoutés
+    function _mergeByKey(cloudArr, localArr, keyFn){
+      if(!localArr) return cloudArr || [];
+      if(!cloudArr || cloudArr.length === 0) return localArr;
+      var result = JSON.parse(JSON.stringify(localArr));
+      var localKeys = {};
+      localArr.forEach(function(r){ localKeys[String(keyFn(r))] = true; });
+      cloudArr.forEach(function(r){ if(!localKeys[String(keyFn(r))]) result.push(JSON.parse(JSON.stringify(r))); });
+      return result;
+    }
+
     function _mergeData(cloud, local){
       if(!cloud) return local || {};
       if(!local) return cloud;
@@ -735,11 +746,15 @@
         });
         result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
       }
-      // Pour les autres tableaux, garder le plus grand
-      ['chapelles','traitements','drainage','sessions','transfers','achatsExt','reappro'].forEach(function(k){
-        var loc = local[k]||[];
-        var cld = cloud[k]||[];
-        if(loc.length > cld.length) result[k] = loc;
+      // Chapelles : merge par numéro (local gagne → préserve suppressions/modifications)
+      result.chapelles = _mergeByKey(cloud.chapelles, local.chapelles, function(c){ return c.n; });
+      // Traitements : merge par nom de produit (local gagne)
+      result.traitements = _mergeByKey(cloud.traitements, local.traitements, function(t){ return (t.produit||t.id||'').toLowerCase().trim(); });
+      // Drainage : local gagne s'il a des données
+      if(local.drainage && local.drainage.length > 0) result.drainage = local.drainage;
+      // Autres tableaux : garder le plus grand
+      ['sessions','transfers','achatsExt','reappro'].forEach(function(k){
+        if((local[k]||[]).length > (result[k]||[]).length) result[k] = local[k];
       });
       return result;
     }
