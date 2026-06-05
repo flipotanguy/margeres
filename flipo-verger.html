@@ -355,6 +355,8 @@ function forcePush(){
 }
 
 var _pollInProgressV = false;
+var _pcProtected = false;       // Protège pcPom/pcPoi/pcNoy après une suppression
+var _pcProtectTimer = null;
 
 function _startAutoSync(){
   _pollCloud();
@@ -426,15 +428,18 @@ function _applyAndRebuild(d){
   if(d.facPom) S.facPom = d.facPom;
   if(d.facPoi) S.facPoi = d.facPoi;
   if(d.facPrix) S.facPrix = d.facPrix;
-  if(d.pcPom) S.pcPom = d.pcPom;
-  if(d.pcPoi) S.pcPoi = d.pcPoi;
-  if(d.pcNoy) S.pcNoy = d.pcNoy;
-  if(d.bp) S.bp = d.bp;
-  if(d.br) S.br = d.br;
-  if(d.bn) S.bn = d.bn;
-  if(d.pd) S.pd = d.pd;
-  if(d.qd) S.qd = d.qd;
-  if(d.nd) S.nd = d.nd;
+  // Ne pas écraser les produits traitement si une suppression vient d'avoir lieu (_pcProtected)
+  if(!_pcProtected){
+    if(d.pcPom) S.pcPom = d.pcPom;
+    if(d.pcPoi) S.pcPoi = d.pcPoi;
+    if(d.pcNoy) S.pcNoy = d.pcNoy;
+    if(d.bp) S.bp = d.bp;
+    if(d.br) S.br = d.br;
+    if(d.bn) S.bn = d.bn;
+    if(d.pd) S.pd = d.pd;
+    if(d.qd) S.qd = d.qd;
+    if(d.nd) S.nd = d.nd;
+  }
   if(d.tarif) S.tarif = d.tarif;
   if(d.pxPom!==undefined) S.pxPom = d.pxPom;
   if(d.pxPoi!==undefined) S.pxPoi = d.pxPoi;
@@ -1017,7 +1022,13 @@ function deleteProdPC(type,ri){
   if(norm==='pomme')S.pd=newDist;
   else if(norm==='poire')S.qd=newDist;
   else S.nd=newDist;
-  saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
+  // Bloquer _applyAndRebuild pendant 15s pour éviter toute restauration par sync
+  _pcProtected=true;
+  if(_pcProtectTimer)clearTimeout(_pcProtectTimer);
+  _pcProtectTimer=setTimeout(function(){_pcProtected=false;},15000);
+  // Reconstruire l'UI AVANT saveLS (sync asynchrone ne peut plus annuler)
+  $('panel-trait').innerHTML=buildTrait();
+  saveLS();
 }
 
 // ─── MATRICE DISTRIBUTION (pomme / poire / noyaux) ──────
@@ -2056,14 +2067,17 @@ function _doInit(){
   // TOUJOURS charger depuis Supabase
   supaGet(LS_KEY, function(cloud){
     if(cloud){
+      // Lire localStorage MAINTENANT (pas la snapshot cached du chargement)
+      // pour respecter toute modification faite entre le chargement et le retour de supaGet
+      var currentLocal = null;
+      try{ currentLocal = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+      var localToMerge = currentLocal || cached;
       var cloudLen = (cloud.entries||cloud.cueillettes||[]).length;
-      var merged = _mergeData(cloud, cached);
+      var merged = _mergeData(cloud, localToMerge);
       var mergedLen = (merged.entries||merged.cueillettes||[]).length;
       try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      // Si local avait plus de données → re-pusher vers Supabase
       if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-      // Appliquer les données mergées
       _applyAndRebuild(merged);
     }
     if(!cached){ _doInit(); } // Premier chargement sans cache
