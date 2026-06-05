@@ -468,21 +468,6 @@ var _deviceId = localStorage.getItem('flipo_device_id') ||
 
 // Merge un tableau de produits par nom : local gagne pour les produits existants,
 // les nouveaux produits du cloud (absents en local) sont ajoutés
-function _mergePcArr(cloudArr, localArr){
-  if(!localArr) return cloudArr || [];
-  if(!cloudArr || cloudArr.length === 0) return localArr;
-  // Partir de local (préserve suppressions et modifications)
-  var result = JSON.parse(JSON.stringify(localArr));
-  var localNames = {};
-  localArr.forEach(function(r){ if(r.p) localNames[(r.p||'').toLowerCase().trim()] = true; });
-  // Ajouter les nouveaux produits du cloud absents en local
-  cloudArr.forEach(function(row){
-    var rn = (row.p||'').toLowerCase().trim();
-    if(rn && !localNames[rn]) result.push(JSON.parse(JSON.stringify(row)));
-  });
-  return result;
-}
-
 function _mergeData(cloud, local){
   if(!cloud) return local || {};
   if(!local) return cloud;
@@ -497,16 +482,14 @@ function _mergeData(cloud, local){
     });
     result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date||0)-new Date(a.date||0); });
   }
-  // Produits traitement (pcPom/Poi/Noy) : merge par nom de produit
-  // → préserve les suppressions et modifications locales, ajoute les nouveaux produits du cloud
-  result.pcPom = _mergePcArr(cloud.pcPom, local.pcPom);
-  result.pcPoi = _mergePcArr(cloud.pcPoi, local.pcPoi);
-  result.pcNoy = _mergePcArr(cloud.pcNoy, local.pcNoy);
-  // Blocs (bp/br/bn) : local gagne s'il a des données (suppressions/modifications)
-  ['bp','br','bn'].forEach(function(k){
-    if(local[k] && local[k].length > 0) result[k] = local[k];
+  // Produits traitement pcPom/pcPoi/pcNoy + blocs bp/br/bn :
+  // LOCAL GAGNE TOUJOURS si local a des données.
+  // Pourquoi : "garder le plus grand" empêche les suppressions (après delete, local < cloud → cloud gagnait).
+  // Sur appareil vierge (local=null), cloud s'applique normalement (ligne if(!local) ci-dessus).
+  ['pcPom','pcPoi','pcNoy','bp','br','bn'].forEach(function(k){
+    if(local[k] !== undefined) result[k] = local[k];
   });
-  // Autres tableaux : garder le plus grand
+  // Autres tableaux : garder le plus grand (additions sûres)
   ['pomR','poiR','bats','tarif'].forEach(function(k){
     if(local[k] && local[k].length > (result[k]||[]).length) result[k] = local[k];
   });
