@@ -381,10 +381,26 @@ function _pollCloud(){
 }
 
 function _autoPull(){
+  // Mémoriser le timestamp de push AU DÉBUT du pull
+  // Si une sauvegarde locale se produit PENDANT le fetch, on le détectera
+  var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
   supaGet(LS_KEY, function(cloud){
     if(!cloud) return;
     var local = null;
     try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+
+    // Détecter si une sauvegarde locale a eu lieu PENDANT le fetch
+    var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
+    var localChangedDuringFetch = pushTsNow !== pushTsAtPullStart && local;
+
+    if(localChangedDuringFetch) {
+      // Modification locale pendant le fetch → préserver les données locales de traitement
+      // (évite que la suppression d'un produit soit annulée par l'ancien cloud)
+      ['pcPom','pcPoi','pcNoy','bp','br','bn','pd','qd','nd'].forEach(function(k){
+        if(local[k] !== undefined) cloud[k] = local[k];
+      });
+    }
+
     // Comparer sur la somme des données principales
     var cloudLen = ((cloud.pomR||[]).reduce(function(a,r){return a+r.d.filter(function(v){return v>0;}).length;},0)) +
                    ((cloud.poiR||[]).reduce(function(a,r){return a+r.d.filter(function(v){return v>0;}).length;},0)) +

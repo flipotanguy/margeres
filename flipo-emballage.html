@@ -302,19 +302,22 @@ function _pollCloud(){
 }
 
 function _autoPull(){
+  var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
   supaGet(LS_KEY, function(cloud){
     if(!cloud) return;
     var local = null;
     try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+    var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
+    if(pushTsNow !== pushTsAtPullStart && local) {
+      ['varList'].forEach(function(k){ if(local[k] !== undefined) cloud[k] = local[k]; });
+    }
     var cloudLen = (cloud.sessions||[]).length + (cloud.transfers||[]).length + (cloud.achatsExt||[]).length;
     var merged = _mergeData(cloud, local);
     var mergedLen = (merged.sessions||[]).length + (merged.transfers||[]).length + (merged.achatsExt||[]).length;
     localStorage.setItem(LS_KEY, JSON.stringify(merged));
     localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-    // Re-push si local avait plus de données que cloud
     if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
     _applyAndRebuild(merged);
-    // Déclenche l'init si elle est en attente
     if(window._initPending) { window._initPending = false; _doInit(); }
   });
 }

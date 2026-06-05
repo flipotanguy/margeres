@@ -771,16 +771,23 @@
     }
 
     function _autoPull(){
+      var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
       supaGet(LS_KEY, function(cloud){
         if(!cloud) return;
         var local = null;
         try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
+        // Si une sauvegarde locale a eu lieu PENDANT le fetch → protéger les données de config
+        var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
+        if(pushTsNow !== pushTsAtPullStart && local) {
+          ['chapelles','traitements','drainage'].forEach(function(k){
+            if(local[k] !== undefined) cloud[k] = local[k];
+          });
+        }
         var cloudLen = (cloud.entries||[]).length;
         var merged = _mergeData(cloud, local);
         var mergedLen = (merged.entries||[]).length;
         localStorage.setItem(LS_KEY, JSON.stringify(merged));
         localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-        // Si le local avait plus de données que le cloud → re-pusher vers Supabase
         if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
         _applyAndRebuild(merged);
         setSyncSt('ok');
