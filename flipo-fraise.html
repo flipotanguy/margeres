@@ -751,7 +751,7 @@
 
     function _startAutoSync(){
       _pollCloud();
-      setInterval(_pollCloud, 30000);
+      setInterval(_pollCloud, 10000);
     }
 
     var _pollInProgress = false;
@@ -769,7 +769,7 @@
         if(!rows||!rows.length) return;
         var cloudAt = new Date(rows[0].updated_at).getTime();
         var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
-        if(cloudAt > pushAt + 10000){ _autoPull(); }
+        if(cloudAt > pushAt + 2000){ _autoPull(); }
       }).catch(function(){
         _pollInProgress = false;
       });
@@ -935,10 +935,7 @@
     }
 
     function saveLS() {
-      // Sauvegarder en local immédiatement
       localStorage.setItem(LS_KEY, JSON.stringify(S));
-      // Pusher vers Supabase (TOUJOURS si on a des données)
-      if(!S || ((!S.entries || S.entries.length===0) && (!S.chapelles || S.chapelles.length===0) && (!S.traitements || S.traitements.length===0))) return;
       localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
       supaSet(LS_KEY, S);
     }
