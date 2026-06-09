@@ -298,6 +298,8 @@ function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 // ══════════════════════════════════════════════
 var _cloudTs = null;
 var _pulling = false;
+var _pcProtected = false;   // protège pcPom/pcPoi/pcNoy d'un écrasement par sync après une suppression
+var _pcProtectTimer = null; // timer associé à _pcProtected (réinitialise au bout de 15s)
 
 function setSyncSt(s){
   var el=document.getElementById('sync-st');
@@ -1943,6 +1945,7 @@ function updateFrigoSelectInStock(){
 // INIT
 // ══════════════════════════════════════════════
 var FLIPO_STABS={};
+var FLIPO_CAN_DELETE=false;
 // ─── Auth ────────────────────────────────────────────────
 function _checkAuth(){
   var sess=null;
@@ -1950,6 +1953,7 @@ function _checkAuth(){
   if(!sess){location.href='flipo-login.html';return;}
   var mp=sess.perms&&sess.perms['verger'];
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
   if(sess.isAdmin)return;
   var tabs=mp.tabs||{};
   var tabIds=['trait','cueill','historique','stock','phyto'];
