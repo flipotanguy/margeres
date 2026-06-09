@@ -258,24 +258,51 @@ function _rebuildUI(){
   else if(t==='stats'){var ps=document.getElementById('panel-stats');if(ps&&typeof buildStats==='function')ps.innerHTML=buildStats();}
 }
 
+// Fusionne UNIQUEMENT sessions/transferts/achats du cloud (union par id + tombstones), sans toucher à la config locale
+function _mergeColsFromCloud(cloud){
+  if(!cloud)return;
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  var ms={};
+  (cloud.sessions||[]).forEach(function(s){ms[String(s.id)]=s;});
+  (S.sessions||[]).forEach(function(s){if(!ms[String(s.id)])ms[String(s.id)]=s;});
+  S.sessions=Object.values(ms).filter(function(s){return !del['sessions:'+String(s.id)];});
+  var mt={};
+  (cloud.transfers||[]).forEach(function(t){mt[String(t.id)]=t;});
+  (S.transfers||[]).forEach(function(t){if(!mt[String(t.id)])mt[String(t.id)]=t;});
+  S.transfers=Object.values(mt).filter(function(t){return !del['transfers:'+String(t.id)];});
+  var ma={};
+  (cloud.achatsExt||[]).forEach(function(a){ma[String(a.id)]=a;});
+  (S.achatsExt||[]).forEach(function(a){if(!ma[String(a.id)])ma[String(a.id)]=a;});
+  S.achatsExt=Object.values(ma).filter(function(a){return !del['achatsExt:'+String(a.id)];});
+}
 function saveLS(){
-  var data=_buildData();
-  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
   var ts = new Date().toISOString();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){} // sauvegarde locale immédiate (hors-ligne OK)
   setSyncSt('syncing');
-  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
-    method:'POST',
-    headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-    body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+  // 1) récupérer le cloud et fusionner ses sessions/transferts/achats (ne JAMAIS écraser ceux des autres) ; 2) pousser l'union
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(rows&&rows.length)_mergeColsFromCloud(rows[0].data);
+    var data=_buildData();
+    try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+    return fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+      method:'POST',
+      headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+    });
   }).then(function(r){
-    if(r.ok){
+    if(r&&r.ok){
       setSyncSt('ok');
       _cloudTs=ts;
       var el=document.getElementById('sync-st');
       if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');
     }else{
       setSyncSt('err');
-      r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
+      if(r&&r.text)r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
     }
   }).catch(function(){setSyncSt('err');});
 }

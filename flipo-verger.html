@@ -309,24 +309,44 @@ function setSyncSt(s){
   else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}
 }
 
+// Fusionne UNIQUEMENT les saisies du cloud (union par id + tombstones) puis recalcule la matrice — sans toucher à la config locale
+function _mergeEntriesFromCloud(cloud){
+  if(!cloud)return;
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  var m={};
+  (cloud.entries||[]).forEach(function(e){m[String(e.id||e.ts||Math.random())]=e;});
+  (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(k&&!m[k])m[k]=e;});
+  S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];});
+  _rebuildMatrix();
+}
 function saveLS(){
-  var data = _buildData();
   var ts = new Date().toISOString(); // Timestamp unique — même valeur envoyée et stockée dans _cloudTs
-  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+  try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){} // sauvegarde locale immédiate (hors-ligne OK)
   setSyncSt('syncing');
-  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
-    method:'POST',
-    headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-    body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+  // 1) récupérer le cloud et fusionner ses saisies (ne JAMAIS écraser celles des autres) ; 2) pousser l'union
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(rows&&rows.length)_mergeEntriesFromCloud(rows[0].data);
+    var data=_buildData();
+    try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+    return fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+      method:'POST',
+      headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+    });
   }).then(function(r){
-    if(r.ok){
+    if(r&&r.ok){
       setSyncSt('ok');
-      _cloudTs = ts; // Même valeur que ce qu'on a envoyé → le poll ne re-pullera pas
+      _cloudTs = ts;
       var el=document.getElementById('sync-st');
       if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+' (cliquer pour forcer sync)';
     }else{
       setSyncSt('err');
-      r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status+': '+t.slice(0,100);});
+      if(r&&r.text)r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status+': '+t.slice(0,100);});
     }
   }).catch(function(){setSyncSt('err');});
 }

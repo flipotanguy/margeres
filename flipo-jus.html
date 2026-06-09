@@ -348,24 +348,47 @@ function _rebuildUI(){
   render();
 }
 
+// Fusionne UNIQUEMENT les saisies et réappros du cloud (union par id + tombstones), sans toucher à la config locale
+function _mergeColsFromCloud(cloud){
+  if(!cloud)return;
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  var me={};
+  (cloud.entries||[]).forEach(function(e){me[String(e.id||e.ts)]=e;});
+  (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!me[k])me[k]=e;});
+  S.entries=Object.values(me).filter(function(e){return !del['entries:'+String(e.id||e.ts)];});
+  var mr={};
+  (cloud.reappro||[]).forEach(function(r){mr[String(r.id||r.ts)]=r;});
+  (S.reappro||[]).forEach(function(r){var k=String(r.id||r.ts);if(!mr[k])mr[k]=r;});
+  S.reappro=Object.values(mr).filter(function(r){return !del['reappro:'+String(r.id||r.ts)];});
+}
 function saveLS(){
-  var data=_buildData();
-  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
   var ts = new Date().toISOString();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){} // sauvegarde locale immédiate (hors-ligne OK)
   setSyncSt('syncing');
-  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
-    method:'POST',
-    headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-    body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+  // 1) récupérer le cloud et fusionner ses saisies/réappros (ne JAMAIS écraser celles des autres) ; 2) pousser l'union
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(rows&&rows.length)_mergeColsFromCloud(rows[0].data);
+    var data=_buildData();
+    try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+    return fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+      method:'POST',
+      headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+    });
   }).then(function(r){
-    if(r.ok){
+    if(r&&r.ok){
       setSyncSt('ok');
       _cloudTs=ts;
       var el=document.getElementById('sync-st');
       if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');
     }else{
       setSyncSt('err');
-      r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
+      if(r&&r.text)r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
     }
   }).catch(function(){setSyncSt('err');});
 }
