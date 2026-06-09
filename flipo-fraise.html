@@ -695,146 +695,116 @@
     var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
     var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
     function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
-    function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-    function supaSet(k,d){
+    // ══════════════════════════════════════════════
+    // SYNC — version simple et fiable
+    // ══════════════════════════════════════════════
+    var _cloudTs = null;
+    var _pulling = false;
+
+    function setSyncSt(s){
+      var el=document.getElementById('sync-st');
+      if(!el)return;
+      if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}
+      else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}
+      else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}
+    }
+
+    function saveLS(){
+      var data = _buildData();
+      try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
       setSyncSt('syncing');
-      fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
-      .then(function(r){
+      fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+        method:'POST',
+        headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+        body:JSON.stringify({key:LS_KEY,data:data,updated_at:new Date().toISOString()})
+      }).then(function(r){
         if(r.ok){
           setSyncSt('ok');
+          _cloudTs=new Date().toISOString();
           var el=document.getElementById('sync-st');
-          var n=(d.entries||[]).length;
-          if(el) el.title='✅ Sync OK · '+n+' entrées · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
-        } else {
+          if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+' (cliquer pour forcer sync)';
+        }else{
           setSyncSt('err');
-          r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status+'\n'+t.slice(0,200);});
+          r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status+': '+t.slice(0,100);});
         }
-      }).catch(function(e){
-        setSyncSt('err');
-        console.error('supaSet réseau:',e);
-        var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
-      });
-    }
-    function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
-    function forcePush(){if(!S||!(S.entries&&S.entries.length>0)){alert('Aucune donnée locale à pousser.');return;}setSyncSt('syncing');supaSet(LS_KEY,S);}
-
-    var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
-
-    // Merge par ID pour entries, par longueur pour autres tableaux
-    // Merge tableau par clé unique : local gagne pour existants, nouveaux du cloud ajoutés
-    function _mergeData(cloud, local){
-      if(!cloud) return local || {};
-      if(!local) return cloud;
-      var result = JSON.parse(JSON.stringify(cloud));
-      // Fusionner les entries par ID (union - on garde tout)
-      if(cloud.entries || local.entries){
-        var m = {};
-        (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts)] = e; });
-        (local.entries||[]).forEach(function(e){
-          var k = String(e.id||e.ts);
-          if(!m[k]) m[k] = e;
-        });
-        result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
-      }
-      // Données de configuration : LOCAL GAGNE TOUJOURS si présent
-      // (chapelles, traitements, drainage ne peuvent pas être mergés sans timestamps)
-      // Sur appareil vierge (local=null) → cloud s'applique via if(!local) ci-dessus
-      ['chapelles','traitements','drainage'].forEach(function(k){
-        if(local[k] !== undefined) result[k] = local[k];
-      });
-      // Autres tableaux : garder le plus grand
-      ['sessions','transfers','achatsExt','reappro'].forEach(function(k){
-        if((local[k]||[]).length > (result[k]||[]).length) result[k] = local[k];
-      });
-      return result;
+      }).catch(function(){setSyncSt('err');});
     }
 
-    function _startAutoSync(){
-      _pollCloud();
-      setInterval(_pollCloud, 10000);
-    }
-
-    var _pollInProgress = false;
-
-    function _pollCloud(){
-      if(_pollInProgress) return;
-      _pollInProgress = true;
-      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-        {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
-      .then(function(r){
-        _pollInProgress = false;
-        return r.json();
-      })
+    function _pull(rebuild){
+      if(_pulling)return;
+      _pulling=true;
+      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data,updated_at',
+        {headers:_supaH()})
+      .then(function(r){_pulling=false;return r.ok?r.json():[];})
       .then(function(rows){
-        if(!rows||!rows.length) return;
-        var cloudAt = new Date(rows[0].updated_at).getTime();
-        var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
-        if(cloudAt > pushAt + 2000){ _autoPull(); }
-      }).catch(function(){
-        _pollInProgress = false;
-      });
-    }
-
-    function _autoPull(){
-      var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
-      supaGet(LS_KEY, function(cloud){
-        if(!cloud) return;
-        var local = null;
-        try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-        // Si une sauvegarde locale a eu lieu PENDANT le fetch → protéger les données de config
-        var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
-        if(pushTsNow !== pushTsAtPullStart && local) {
-          ['chapelles','traitements','drainage'].forEach(function(k){
-            if(local[k] !== undefined) cloud[k] = local[k];
-          });
-        }
-        var cloudLen = (cloud.entries||[]).length;
-        var merged = _mergeData(cloud, local);
-        var mergedLen = (merged.entries||[]).length;
-        localStorage.setItem(LS_KEY, JSON.stringify(merged));
-        localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-        if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-        _applyAndRebuild(merged);
+        if(!rows||!rows.length)return;
+        _cloudTs=rows[0].updated_at;
+        _applyCloud(rows[0].data);
+        try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
+        if(rebuild)_rebuildUI();
         setSyncSt('ok');
-      });
+      }).catch(function(){_pulling=false;});
     }
 
-    function _applyAndRebuild(d){
-      // Appliquer les données
-      S.entries = (d.entries||[]).map(function(e){
-        if(!e.variete){ var ch=S.chapelles.find(function(c){return c.n===e.chapelle;}); e.variete=ch?ch.v:''; }
-        return e;
+    function forcePush(){_pull(false);setTimeout(function(){saveLS();},200);}
+
+    setInterval(function(){
+      fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+        {headers:{apikey:SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+      .then(function(r){return r.ok?r.json():[];})
+      .then(function(rows){
+        if(!rows||!rows.length)return;
+        if(rows[0].updated_at!==_cloudTs)_pull(true);
+      }).catch(function(){});
+    },10000);
+
+    function _buildData(){
+      return {
+        tab:S.tab, saison:S.saison,
+        chapelles:S.chapelles, drainage:S.drainage,
+        entries:S.entries, historique:S.historique,
+        rendement:S.rendement, traitements:S.traitements,
+        surfaceChapelle:S.surfaceChapelle, nbChapellesTrait:S.nbChapellesTrait
+      };
+    }
+
+    function _applyCloud(cloud){
+      if(!cloud)return;
+      if(cloud.saison)S.saison=cloud.saison;
+      if(cloud.chapelles&&cloud.chapelles.length)S.chapelles=cloud.chapelles;
+      if(cloud.drainage&&cloud.drainage.length)S.drainage=cloud.drainage;
+      if(cloud.rendement)S.rendement=cloud.rendement;
+      if(cloud.traitements)S.traitements=cloud.traitements;
+      if(cloud.surfaceChapelle)S.surfaceChapelle=cloud.surfaceChapelle;
+      if(cloud.nbChapellesTrait)S.nbChapellesTrait=cloud.nbChapellesTrait;
+      if(cloud.historique)S.historique=cloud.historique;
+      if(cloud.tab)S.tab=cloud.tab;
+      // Entries : union par ID
+      var m={};
+      (cloud.entries||[]).forEach(function(e){
+        if(!e.variete){var ch=S.chapelles.find(function(c){return c.n===e.chapelle;});e.variete=ch?ch.v:'';}
+        m[String(e.id||e.ts)]=e;
       });
-      if(d.chapelles) S.chapelles = d.chapelles;
-      if(d.saison) S.saison = d.saison;
-      if(d.drainage) S.drainage = d.drainage;
-      if(d.traitements) S.traitements = d.traitements;
-      if(d.surfaceChapelle) S.surfaceChapelle = d.surfaceChapelle;
-      if(d.rendement) S.rendement = d.rendement;
-      if(d.nbChapellesTrait) S.nbChapellesTrait = d.nbChapellesTrait;
-      if(d.tab) S.tab = d.tab;
-      if(d.historique) S.historique = d.historique;
+      (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!m[k])m[k]=e;});
+      S.entries=Object.values(m).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    }
 
-      // Mettre à jour le header
-      var hdr = document.getElementById('saison-hdr');
-      if(hdr) hdr.textContent = 'Saison ' + S.saison;
+    function _rebuildUI(){
+      var hdr=document.getElementById('saison-hdr');
+      if(hdr)hdr.textContent='Saison '+S.saison;
       rebuildTraitProdList();
-
-      // ACTIVER le bon onglet SANS appeler saveLS
-      // (sans switchTab car switchTab appelle saveLS et peut pousser des données vides)
-      var t = S.tab || 'saisie';
-      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-      document.querySelectorAll('[data-tab="'+t+'"]').forEach(function(b){ b.classList.add('active'); });
-      document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
-      var pane = document.getElementById(t+'-pane');
-      if(pane) pane.classList.add('active');
-
-      // Construire le contenu de l'onglet actif
-      if(t==='saisie') { buildBatchTable(); buildJournal(); }
-      else if(t==='resume') buildResume();
-      else if(t==='saison') buildSaison();
-      else if(t==='drainage') buildDrainage();
-      else if(t==='trait') buildTrait();
+      var t=S.tab||'resume';
+      document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+      document.querySelectorAll('[data-tab="'+t+'"]').forEach(function(b){b.classList.add('active');});
+      document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
+      var pane=document.getElementById(t+'-pane');
+      if(pane)pane.classList.add('active');
+      if(t==='saisie'){buildBatchTable();buildJournal();}
+      else if(t==='resume')buildResume();
+      else if(t==='saison')buildSaison();
+      else if(t==='drainage')buildDrainage();
+      else if(t==='trait')buildTrait();
+      else if(t==='historique')buildHistorique();
     }
 
     const CHAPELLES_INIT = [
@@ -934,39 +904,6 @@
       return null;
     }
 
-    function saveLS() {
-      localStorage.setItem(LS_KEY, JSON.stringify(S));
-      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      supaSet(LS_KEY, S);
-    }
-
-    function loadLS() {
-      const d = localStorage.getItem(LS_KEY);
-      if (d) {
-        const parsed = JSON.parse(d);
-        S.tab = parsed.tab || 'resume';
-        S.saison = parsed.saison || '2026/2027';
-        S.chapelles = parsed.chapelles || CHAPELLES_INIT.map(c => ({...c}));
-        S.drainage = parsed.drainage || DRAINAGE_INIT.map(d => ({...d}));
-        S.entries = (parsed.entries || []).map(e => {
-          if (e.barquettes === undefined && e.kg !== undefined) {
-            e.barquettes = Math.round(e.kg * 2);
-          }
-          if (e.variete === undefined) {
-            // Chercher la variété dans S.chapelles (sincronisé depuis cloud)
-            const ch = S.chapelles.find(c => c.n === e.chapelle) || CHAPELLES_INIT.find(c => c.n === e.chapelle);
-            e.variete = ch ? ch.v : '';
-          }
-          return e;
-        });
-        S.rendement = parsed.rendement || {fraisesParPlant: 22, fraisesParBarquette: 29, poidsBarquette: 500, poidsFraise: 8};
-        if(S.rendement.poidsFraise === undefined) S.rendement.poidsFraise = 8;
-        S.traitements = parsed.traitements || [];
-        S.surfaceChapelle = parsed.surfaceChapelle || 0.04;
-        S.nbChapellesTrait = parsed.nbChapellesTrait || 10;
-        S.historique = parsed.historique || [];
-      }
-    }
 
     function saveFocus(id) {
       sessionStorage.setItem('focus', id);
@@ -1884,38 +1821,35 @@
     }
 
     document.addEventListener('DOMContentLoaded', function(){
-      var cached = localStorage.getItem(LS_KEY);
-      // 1. Afficher les données en cache immédiatement (rapidité)
-      if(cached){ try{ loadLS(); $('saison-hdr').textContent = 'Saison ' + S.saison; rebuildTraitProdList(); switchTab(S.tab); restFocus(); }catch(e){} }
-
-      // 2. TOUJOURS charger depuis Supabase (source de vérité)
-      supaGet(LS_KEY, function(cloud){
-        if(cloud){
-          var local = null;
-          try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-          var cloudLen = (cloud.entries||[]).length;
-          var merged = _mergeData(cloud, local);
-          var mergedLen = (merged.entries||[]).length;
-          localStorage.setItem(LS_KEY, JSON.stringify(merged));
-          localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-          // Si le local avait plus de données que le cloud → re-pusher pour corriger Supabase
-          if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-          _applyAndRebuild(merged);
-        } else if(!cached){
-          // Pas de cloud, pas de cache → init avec défauts
-          $('saison-hdr').textContent = 'Saison ' + S.saison;
+      var cached=localStorage.getItem(LS_KEY);
+      if(cached){
+        try{
+          var d=JSON.parse(cached);
+          S.tab=d.tab||'resume'; S.saison=d.saison||'2026/2027';
+          S.chapelles=d.chapelles||CHAPELLES_INIT.map(c=>({...c}));
+          S.drainage=d.drainage||DRAINAGE_INIT.map(d=>({...d}));
+          S.entries=(d.entries||[]).map(e=>{
+            if(e.barquettes===undefined&&e.kg!==undefined)e.barquettes=Math.round(e.kg*2);
+            if(!e.variete){const ch=S.chapelles.find(c=>c.n===e.chapelle)||CHAPELLES_INIT.find(c=>c.n===e.chapelle);e.variete=ch?ch.v:'';}
+            return e;
+          });
+          S.rendement=d.rendement||{fraisesParPlant:22,fraisesParBarquette:29,poidsBarquette:500,poidsFraise:8};
+          if(!S.rendement.poidsFraise)S.rendement.poidsFraise=8;
+          S.traitements=d.traitements||[];
+          S.surfaceChapelle=d.surfaceChapelle||0.04;
+          S.nbChapellesTrait=d.nbChapellesTrait||10;
+          S.historique=d.historique||[];
+          $('saison-hdr').textContent='Saison '+S.saison;
           rebuildTraitProdList();
           switchTab(S.tab);
-          restFocus();
-        }
-        // Démarrer le polling
-        if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
-      });
+        }catch(e){}
+      }
+      _pull(true);
     });
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_CAN_DELETE=false;
-(function(){
+function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
   if(!sess){location.href='flipo-login.html';return;}
@@ -1934,8 +1868,6 @@ var FLIPO_CAN_DELETE=false;
       if(p)p.style.display='none';
     }else if(!first)first=tid;
   });
-  // NE PAS appeler switchTab(first) ici car switchTab appelle saveLS
-  // qui pousserait S avec les valeurs par défaut (avant chargement localStorage)
   if(first){
     S.tab = first;
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -1943,7 +1875,8 @@ var FLIPO_CAN_DELETE=false;
     document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
     var fp=document.getElementById(first+'-pane'); if(fp)fp.classList.add('active');
   }
-})();
+}
+_checkAuth();
 </script>
 </body>
 </html>

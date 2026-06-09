@@ -178,161 +178,108 @@ const LS_KEY = 'flipo-maraichage-v2';
 var _deviceId = localStorage.getItem('flipo_device_id') ||
   (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
 
-// ─── Merge Data ─────────────────────────────────────────
-function _mergeData(cloud, local){
-  if(!cloud) return local || {};
-  if(!local) return cloud;
-  var result = JSON.parse(JSON.stringify(cloud));
-  // Merge entries par ID si présents
-  if(cloud.entries || local.entries){
-    var m = {};
-    (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts||Math.random())] = e; });
-    (local.entries||[]).forEach(function(e){ var k=String(e.id||e.ts); if(!m[k]) m[k]=e; });
-    result.entries = Object.values(m);
-  }
-  // Pour cultures et traitements (pas d'IDs uniques) → garder le plus grand
-  ['cultures','traitements'].forEach(function(k){
-    if(local[k] && local[k].length > (result[k]||[]).length) result[k] = local[k];
-  });
-  return result;
-}
-
 // ─── Supabase Sync ───────────────────────────────────────
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
-function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-function supaSet(k,d){
+
+var _cloudTs = null;
+var _pulling = false;
+
+function setSyncSt(s){
+  var el=document.getElementById('sync-st');
+  if(!el)return;
+  if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}
+  else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}
+  else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}
+}
+
+function _buildData(){
+  return {
+    cultures:S.cultures,traitements:S.traitements,
+    entries:S.entries,saison:S.saison,
+    tab:S.tab,selCult:S.selCult,cvw:S.cvw
+  };
+}
+
+function _applyCloud(cloud){
+  if(!cloud)return;
+  if(cloud.saison)S.saison=cloud.saison;
+  if(cloud.cultures&&cloud.cultures.length)S.cultures=cloud.cultures;
+  if(cloud.traitements)S.traitements=cloud.traitements;
+  if(cloud.tab)S.tab=cloud.tab;
+  if(cloud.selCult)S.selCult=cloud.selCult;
+  if(cloud.cvw)S.cvw=cloud.cvw;
+  // Entries : union par ID
+  var m={};
+  (cloud.entries||[]).forEach(function(e){m[String(e.id||e.ts)]=e;});
+  (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!m[k])m[k]=e;});
+  S.entries=Object.values(m);
+}
+
+function _rebuildUI(){
+  var t=S.tab||'cultures';
+  ['cultures','trait','cueill'].forEach(function(n){
+    var p=document.getElementById('panel-'+n);
+    if(p)p.classList.toggle('hidden',n!==t);
+  });
+  document.querySelectorAll('.tabs .tab').forEach(function(b){b.classList.remove('act');});
+  var btn=document.getElementById('tab-'+t);
+  if(btn)btn.classList.add('act');
+  rebuildProdList();
+  if(t==='cultures')initCultures();
+  else if(t==='trait')initTrait();
+  else if(t==='cueill')initCueill();
+}
+
+function saveLS(){
+  var data=_buildData();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
   setSyncSt('syncing');
-  fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
-  .then(function(r){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+    method:'POST',
+    headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+    body:JSON.stringify({key:LS_KEY,data:data,updated_at:new Date().toISOString()})
+  }).then(function(r){
     if(r.ok){
       setSyncSt('ok');
+      _cloudTs=new Date().toISOString();
       var el=document.getElementById('sync-st');
-      if(el) el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
-    } else {
+      if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');
+    }else{
       setSyncSt('err');
-      r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status;});
+      r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
     }
-  }).catch(function(e){
-    setSyncSt('err');
-    console.error('supaSet réseau:',e);
-    var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
-  });
-}
-function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
-function forcePush(){
-  var hasData = S && (
-    (S.cultures && S.cultures.length > 0) ||
-    (S.traitements && S.traitements.length > 0) ||
-    (S.cueillettes && S.cueillettes.length > 0)
-  );
-  if(!hasData){alert('Aucune donnée locale à pousser.');return;}
-  setSyncSt('syncing');
-  supaSet(LS_KEY, S);
-}
-var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
-
-function syncPush(data){
-  localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-  setSyncSt('syncing');
-  supaSet(LS_KEY, data);
+  }).catch(function(){setSyncSt('err');});
 }
 
-var _pollInProgressM = false;
-
-function _startAutoSync(){
-  _pollCloud();
-  setInterval(_pollCloud, 10000);
-}
-
-function _pollCloud(){
-  if(_pollInProgressM) return;
-  _pollInProgressM = true;
-  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-    {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
-  .then(function(r){
-    _pollInProgressM = false;
-    return r.ok ? r.json() : [];
-  })
+function _pull(rebuild){
+  if(_pulling)return;
+  _pulling=true;
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data,updated_at',
+    {headers:_supaH()})
+  .then(function(r){_pulling=false;return r.ok?r.json():[];})
   .then(function(rows){
-    if(!rows||!rows.length) return;
-    var cloudAt = new Date(rows[0].updated_at).getTime();
-    var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
-    if(cloudAt > pushAt + 2000){ _autoPull(); }
-  }).catch(function(){
-    _pollInProgressM = false;
-  });
+    if(!rows||!rows.length)return;
+    _cloudTs=rows[0].updated_at;
+    _applyCloud(rows[0].data);
+    try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
+    if(rebuild)_rebuildUI();
+    setSyncSt('ok');
+  }).catch(function(){_pulling=false;});
 }
 
-function _autoPull(){
-  var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
-  supaGet(LS_KEY, function(cloud){
-    if(!cloud) return;
-    var local = null;
-    try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-    var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
-    if(pushTsNow !== pushTsAtPullStart && local) {
-      ['cultures','traitements'].forEach(function(k){
-        if(local[k] !== undefined) cloud[k] = local[k];
-      });
-    }
-    var cloudLen = (cloud.cultures||[]).length + (cloud.entries||[]).length;
-    var merged = _mergeData(cloud, local);
-    var mergedLen = (merged.cultures||[]).length + (merged.entries||[]).length;
-    localStorage.setItem(LS_KEY, JSON.stringify(merged));
-    localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-    if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-    _applyAndRebuild(merged);
-  });
-}
+function forcePush(){saveLS();}
 
-function _applyAndRebuild(d){
-  if(d.cultures) S.cultures = d.cultures;
-  if(d.traitements) S.traitements = d.traitements;
-  if(d.entries) S.entries = d.entries;
-  if(d.saison) S.saison = d.saison;
-  if(d.tab) S.tab = d.tab;
-  if(d.selCult) S.selCult = d.selCult;
-  if(d.cvw) S.cvw = d.cvw;
-  // Mettre à jour label saison
-  var labelEl = document.getElementById('saison-label');
-  if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
-
-  // Activer visuellement le bon onglet SANS appeler saveLS
-  var t = S.tab || 'cultures';
-  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('act'); });
-  var tabBtn = document.getElementById('tab-'+t);
-  if(tabBtn) tabBtn.classList.add('act');
-  document.querySelectorAll('[id^="panel-"]').forEach(function(p){ p.classList.add('hidden'); });
-  var panel = document.getElementById('panel-'+t);
-  if(panel) panel.classList.remove('hidden');
-
-  rebuildProdList();
-  initCultures();
-  initTrait();
-  initCueill();
-  // NE PAS appeler saveLS() ici (éviter boucle infinie)
-}
-function saveLS(){
-  try{
-    var d={cultures:S.cultures,traitements:S.traitements,entries:S.entries,saison:S.saison,tab:S.tab,selCult:S.selCult,cvw:S.cvw};
-    localStorage.setItem(LS_KEY,JSON.stringify(d));
-    syncPush(d);
-  }catch(e){}
-}
-function loadLS(){
-  try{
-    const d=JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-    if(d.cultures&&d.cultures.length)S.cultures=d.cultures;
-    if(d.traitements)S.traitements=d.traitements;
-    if(d.entries)S.entries=d.entries;
-    if(d.saison)S.saison=d.saison;
-    if(d.tab)S.tab=d.tab;
-    if(d.selCult)S.selCult=d.selCult;
-    if(d.cvw)S.cvw=d.cvw;
-  }catch(e){}
-}
+setInterval(function(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:{apikey:SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(!rows||!rows.length)return;
+    if(rows[0].updated_at!==_cloudTs)_pull(true);
+  }).catch(function(){});
+},10000);
 
 // ══════════════════════════════════════════════
 // STATE
@@ -924,7 +871,8 @@ function cloturerAnnee(){
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_STABS = {};
-(function(){
+
+function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
   if(!sess){location.href='flipo-login.html';return;}
@@ -946,37 +894,33 @@ var FLIPO_STABS = {};
       if(tp.stabs&&tp.stabs.length>0)FLIPO_STABS[tid]=tp.stabs;
     }
   });
-  if(first){setTab(first,document.getElementById('tab-'+first));}
-})();
+  if(first){S.tab=first;var btn=document.getElementById('tab-'+first);if(btn)btn.classList.add('act');}
+}
 
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
 function _doInit(){
-  loadLS();
   if(!S.selCult&&S.cultures.length)S.selCult=S.cultures[0];
   rebuildProdList();initCultures();initTrait();initCueill();
 }
 
 (function(){
-  var cached = null;
-  try{ cached = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-  if(cached){ _doInit(); } // Affichage rapide depuis cache
-
-  supaGet(LS_KEY, function(cloud){
-    if(cloud){
-      var cloudLen = (cloud.cultures||[]).length + (cloud.entries||[]).length;
-      var merged = _mergeData(cloud, cached);
-      var mergedLen = (merged.cultures||[]).length + (merged.entries||[]).length;
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(merged)); }catch(e){}
-      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      // Si local avait plus de données → re-pusher vers Supabase
-      if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-      _applyAndRebuild(merged);
-    }
-    if(!cached){ _doInit(); } // Premier chargement sans cache (ex: GitHub Pages vierge)
-    if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
-  });
+  var cached=localStorage.getItem(LS_KEY);
+  if(cached){
+    try{
+      var d=JSON.parse(cached);
+      if(d.cultures&&d.cultures.length)S.cultures=d.cultures;
+      if(d.traitements)S.traitements=d.traitements;
+      if(d.entries)S.entries=d.entries;
+      if(d.saison)S.saison=d.saison;
+      if(d.tab)S.tab=d.tab;
+      if(d.selCult)S.selCult=d.selCult;
+      _doInit();
+    }catch(e){}
+  }
+  _pull(!cached);
+  _checkAuth();
 })();
 </script>
 </body>

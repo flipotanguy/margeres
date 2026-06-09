@@ -289,151 +289,108 @@ var _deviceId = localStorage.getItem('flipo_device_id') ||
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
 function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
-function supaGet(k,cb){fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(k)+'&select=data',{headers:_supaH()}).then(function(r){return r.ok?r.json():[];}).then(function(rows){cb(rows&&rows.length?rows[0].data:null);}).catch(function(){cb(null);});}
-function supaSet(k,d){
+
+var _cloudTs = null;
+var _pulling = false;
+
+function setSyncSt(s){
+  var el=document.getElementById('sync-st');
+  if(!el)return;
+  if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}
+  else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}
+  else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}
+}
+
+function _buildData(){
+  return {
+    tab:S.tab,saison:S.saison,
+    clients:S.clients,formats:S.formats,saveurs:S.saveurs,
+    couleurs:S.couleurs,couleursBouchon:S.couleursBouchon,
+    entries:S.entries,reappro:S.reappro,stock:S.stock,
+    filterClient:S.filterClient,filterSaveur:S.filterSaveur,filterFormat:S.filterFormat
+  };
+}
+
+function _applyCloud(cloud){
+  if(!cloud)return;
+  if(cloud.saison)S.saison=cloud.saison;
+  if(cloud.clients&&cloud.clients.length)S.clients=cloud.clients;
+  if(cloud.formats&&cloud.formats.length)S.formats=cloud.formats;
+  if(cloud.saveurs&&cloud.saveurs.length)S.saveurs=cloud.saveurs;
+  if(cloud.couleurs)S.couleurs=cloud.couleurs;
+  if(cloud.couleursBouchon)S.couleursBouchon=cloud.couleursBouchon;
+  if(cloud.stock)S.stock=cloud.stock;
+  if(cloud.tab)S.tab=cloud.tab;
+  // Entries : union par ID
+  var me={};
+  (cloud.entries||[]).forEach(function(e){me[String(e.id||e.ts)]=e;});
+  (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!me[k])me[k]=e;});
+  S.entries=Object.values(me);
+  // Reappro : union par ID
+  var mr={};
+  (cloud.reappro||[]).forEach(function(r){mr[String(r.id||r.ts)]=r;});
+  (S.reappro||[]).forEach(function(r){var k=String(r.id||r.ts);if(!mr[k])mr[k]=r;});
+  S.reappro=Object.values(mr);
+}
+
+function _rebuildUI(){
+  var t=S.tab||'resume';
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('[data-tab="'+t+'"]').forEach(function(b){b.classList.add('active');});
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+  var tc=document.getElementById(t);
+  if(tc)tc.classList.add('active');
+  render();
+}
+
+function saveLS(){
+  var data=_buildData();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
   setSyncSt('syncing');
-  fetch(SUPA_URL+'/rest/v1/flipo_sync',{method:'POST',headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({key:k,data:d,updated_at:new Date().toISOString()})})
-  .then(function(r){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+    method:'POST',
+    headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+    body:JSON.stringify({key:LS_KEY,data:data,updated_at:new Date().toISOString()})
+  }).then(function(r){
     if(r.ok){
       setSyncSt('ok');
+      _cloudTs=new Date().toISOString();
       var el=document.getElementById('sync-st');
-      if(el) el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+'\n(Cliquer pour forcer sync)';
-    } else {
+      if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');
+    }else{
       setSyncSt('err');
-      r.text().then(function(t){console.error('supaSet HTTP '+r.status,t);var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur sync: HTTP '+r.status;});
+      r.text().then(function(t){var el=document.getElementById('sync-st');if(el)el.title='⚠️ HTTP '+r.status;});
     }
-  }).catch(function(e){
-    setSyncSt('err');
-    console.error('supaSet réseau:',e);
-    var el=document.getElementById('sync-st');if(el)el.title='⚠️ Erreur réseau: '+e;
-  });
-}
-function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
-function forcePush(){
-  var hasData = S && (
-    (S.entries && S.entries.length > 0) ||
-    (S.reappro && S.reappro.length > 0) ||
-    (S.clients && S.clients.length > 0)
-  );
-  if(!hasData){alert('Aucune donnée locale à pousser.');return;}
-  setSyncSt('syncing');
-  supaSet(LS_KEY, S);
+  }).catch(function(){setSyncSt('err');});
 }
 
-var _PUSH_TS_KEY = '_flipo_pts_' + LS_KEY;
-
-// Merge par ID pour entries et reappro, par longueur pour autres tableaux
-function _mergeData(cloud, local){
-  if(!cloud) return local || {};
-  if(!local) return cloud;
-  var result = JSON.parse(JSON.stringify(cloud));
-  // Fusionner les entries par ID (union - on garde tout)
-  if(cloud.entries || local.entries){
-    var m = {};
-    (cloud.entries||[]).forEach(function(e){ m[String(e.id||e.ts)] = e; });
-    (local.entries||[]).forEach(function(e){
-      var k = String(e.id||e.ts);
-      if(!m[k]) m[k] = e;
-    });
-    result.entries = Object.values(m).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
-  }
-  // Fusionner reappro par ID
-  if(cloud.reappro || local.reappro){
-    var mr = {};
-    (cloud.reappro||[]).forEach(function(r){ mr[String(r.id||r.ts)] = r; });
-    (local.reappro||[]).forEach(function(r){
-      var k = String(r.id||r.ts);
-      if(!mr[k]) mr[k] = r;
-    });
-    result.reappro = Object.values(mr).sort(function(a,b){ return new Date(b.date)-new Date(a.date); });
-  }
-  // Pour les autres tableaux, garder le plus grand
-  ['clients','formats','saveurs','couleurs','couleursBouchon'].forEach(function(k){
-    var loc = local[k]||[];
-    var cld = cloud[k]||[];
-    if(loc.length > cld.length) result[k] = loc;
-  });
-  return result;
-}
-
-function _startAutoSync(){
-  _pollCloud();
-  setInterval(_pollCloud, 10000);
-}
-
-var _pollInProgress = false;
-
-function _pollCloud(){
-  if(_pollInProgress) return;
-  _pollInProgress = true;
-  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
-    {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
-  .then(function(r){
-    _pollInProgress = false;
-    return r.json();
-  })
+function _pull(rebuild){
+  if(_pulling)return;
+  _pulling=true;
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data,updated_at',
+    {headers:_supaH()})
+  .then(function(r){_pulling=false;return r.ok?r.json():[];})
   .then(function(rows){
-    if(!rows||!rows.length) return;
-    var cloudAt = new Date(rows[0].updated_at).getTime();
-    var pushAt = new Date(localStorage.getItem(_PUSH_TS_KEY)||0).getTime();
-    if(cloudAt > pushAt + 2000){ _autoPull(); }
-  }).catch(function(){
-    _pollInProgress = false;
-  });
-}
-
-function _autoPull(){
-  var pushTsAtPullStart = localStorage.getItem(_PUSH_TS_KEY);
-  supaGet(LS_KEY, function(cloud){
-    if(!cloud) return;
-    var local = null;
-    try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-    var pushTsNow = localStorage.getItem(_PUSH_TS_KEY);
-    if(pushTsNow !== pushTsAtPullStart && local) {
-      ['clients','formats','saveurs','couleurs','couleursBouchon'].forEach(function(k){
-        if(local[k] !== undefined) cloud[k] = local[k];
-      });
-    }
-    var cloudLen = (cloud.entries||[]).length + (cloud.reappro||[]).length;
-    var merged = _mergeData(cloud, local);
-    var mergedLen = (merged.entries||[]).length + (merged.reappro||[]).length;
-    localStorage.setItem(LS_KEY, JSON.stringify(merged));
-    localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-    if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-    _applyAndRebuild(merged);
+    if(!rows||!rows.length)return;
+    _cloudTs=rows[0].updated_at;
+    _applyCloud(rows[0].data);
+    try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
+    if(rebuild)_rebuildUI();
     setSyncSt('ok');
-  });
+  }).catch(function(){_pulling=false;});
 }
 
-function _applyAndRebuild(d){
-  // Appliquer les données mergées (pas overwriter les locales plus récentes)
-  if(d.entries) S.entries = d.entries;
-  if(d.stock) S.stock = d.stock;
-  if(d.reappro) S.reappro = d.reappro;
-  if(d.couleurs) S.couleurs = d.couleurs;
-  if(d.couleursBouchon) S.couleursBouchon = d.couleursBouchon;
-  if(d.clients) S.clients = d.clients;
-  if(d.formats) S.formats = d.formats;
-  if(d.saveurs) S.saveurs = d.saveurs;
-  if(d.saison) S.saison = d.saison;
-  if(d.params) S.params = d.params;
+function forcePush(){saveLS();}
 
-  // Activer visuellement le bon onglet SANS appeler saveLS
-  var t = S.tab || 'resume';
-  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-  var tabBtn = document.querySelector('[data-tab="'+t+'"]');
-  if(tabBtn) tabBtn.classList.add('active');
-  document.querySelectorAll('.tab-content').forEach(function(c){ c.classList.remove('active'); });
-  var panel = document.getElementById(t);
-  if(panel) panel.classList.add('active');
-
-  // Rebuild selon tab actif sans saveLS
-  if(t==='resume') buildResume();
-  else if(t==='saisie') buildSaisie();
-  else if(t==='stock') buildStock();
-  else if(t==='params') buildParams();
-  renderFilters();
-}
+setInterval(function(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:{apikey:SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(!rows||!rows.length)return;
+    if(rows[0].updated_at!==_cloudTs)_pull(true);
+  }).catch(function(){});
+},10000);
 const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
 const CLIENTS_INIT = ['VDP','PRESTA BEAURAINVILLE','PRESTA BENARDERIE','PRESTA MARTINE','PRESTA MOISMONT'];
@@ -469,30 +426,7 @@ function R2(v){ return Math.round(v*100)/100; }
 function saveFocus(){ return document.activeElement?.id; }
 function restFocus(id){ if(id) setTimeout(() => $(id)?.focus(), 0); }
 
-function loadLS(){
-  const raw = localStorage.getItem(LS_KEY);
-  if(!raw) return;
-  const d = JSON.parse(raw);
-  S.saison = d.saison || S.saison;
-  S.clients = d.clients || [...CLIENTS_INIT];
-  S.formats = d.formats || [...FORMATS_INIT];
-  S.saveurs = d.saveurs || [...SAVEURS_INIT];
-  S.couleurs = d.couleurs || [...COULEURS_INIT];
-  S.couleursBouchon = d.couleursBouchon || ['Blanc','Noir','Rouge'];
-  S.entries = d.entries || [];
-  S.stock = d.stock || S.stock;
-  S.reappro = d.reappro || [];
-  S.filterClient = d.filterClient || 'Tous';
-  S.filterSaveur = d.filterSaveur || 'Toutes';
-  S.filterFormat = d.filterFormat || 'Tous';
-}
 
-function saveLS(){
-  localStorage.setItem(LS_KEY, JSON.stringify(S));
-  localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-  supaSet(LS_KEY, S);
-  render();
-}
 
 function render(){
   const labelEl = $('saison-label');
@@ -1103,35 +1037,31 @@ function updCarton(key, val){
 }
 
 
-document.addEventListener('DOMContentLoaded', function(){
-  var cached = localStorage.getItem(LS_KEY);
-  // 1. Afficher les données en cache immédiatement (rapidité)
-  if(cached){ try{ loadLS(); render(); }catch(e){} }
-
-  // 2. TOUJOURS charger depuis Supabase (source de vérité)
-  supaGet(LS_KEY, function(cloud){
-    if(cloud){
-      var local = null;
-      try{ local = JSON.parse(localStorage.getItem(LS_KEY)||'null'); }catch(e){}
-      var cloudLen = (cloud.entries||[]).length + (cloud.reappro||[]).length;
-      var merged = _mergeData(cloud, local);
-      var mergedLen = (merged.entries||[]).length + (merged.reappro||[]).length;
-      localStorage.setItem(LS_KEY, JSON.stringify(merged));
-      localStorage.setItem(_PUSH_TS_KEY, new Date().toISOString());
-      // Si local avait plus de données → re-pusher vers Supabase
-      if(mergedLen > cloudLen && mergedLen > 0){ supaSet(LS_KEY, merged); }
-      _applyAndRebuild(merged);
-    } else if(!cached){
-      // Pas de cloud, pas de cache → init avec défauts
+document.addEventListener('DOMContentLoaded',function(){
+  var cached=localStorage.getItem(LS_KEY);
+  if(cached){
+    try{
+      var d=JSON.parse(cached);
+      S.tab=d.tab||'resume';
+      S.saison=d.saison||'2026/2027';
+      S.clients=d.clients||[];
+      S.formats=d.formats||[];
+      S.saveurs=d.saveurs||[];
+      S.couleurs=d.couleurs||[];
+      S.couleursBouchon=d.couleursBouchon||[];
+      S.entries=d.entries||[];
+      S.reappro=d.reappro||[];
+      if(d.stock)S.stock=d.stock;
+      if(d.filterClient)S.filterClient=d.filterClient;
       render();
-    }
-    // Démarrer le polling
-    if(!window._syncStarted){ window._syncStarted=true; _startAutoSync(); }
-  });
+    }catch(e){}
+  }
+  _pull(true);
+  _checkAuth();
 });
 
 // ─── Auth ────────────────────────────────────────────────
-(function(){
+function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
   if(!sess){location.href='flipo-login.html';return;}
@@ -1149,16 +1079,12 @@ document.addEventListener('DOMContentLoaded', function(){
       if(p)p.style.display='none';
     }else if(!first)first=tid;
   });
-  // NE PAS appeler switchTab(first) ici car switchTab appelle saveLS
-  // qui pousserait S avec les valeurs par défaut (avant chargement localStorage)
   if(first){
     S.tab = first;
     document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
     document.querySelectorAll('[data-tab="'+first+'"]').forEach(function(b){ b.classList.add('active'); });
-    document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
-    var fp=document.getElementById(first+'-pane'); if(fp)fp.classList.add('active');
   }
-})();
+}
 </script>
 
 </body>
