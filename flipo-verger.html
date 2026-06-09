@@ -413,6 +413,54 @@ function _applyCloud(cloud){
   (cloud.entries||[]).forEach(function(e){m[String(e.id||e.ts||Math.random())]=e;});
   (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(k&&!m[k])m[k]=e;});
   S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];});
+  // Saisies = source de vérité : récupérer d'éventuelles données matricielles héritées du cloud, puis recalculer la matrice
+  _migrateMatrix(S.pomR,S.poiR,DATES_POM,DATES_POI);
+  _rebuildMatrix();
+}
+
+// Convertit toute valeur de matrice non couverte par les saisies en saisie de migration (id déterministe → pas de double comptage entre appareils)
+function _migrateMatrix(pomR,poiR,datesPom,datesPoi){
+  [['pomme',pomR||[],datesPom||[]],['poire',poiR||[],datesPoi||[]]].forEach(function(t){
+    var cult=t[0],rows=t[1],dates=t[2];
+    var real={};
+    (S.entries||[]).forEach(function(e){if(e.cult!==cult||e.mig)return;var k=(e.variete||'').toLowerCase()+'|'+e.date;real[k]=(real[k]||0)+(parseFloat(e.palox)||0);});
+    rows.forEach(function(row){
+      if(!row||!row.d)return;
+      row.d.forEach(function(v,ci){
+        v=parseFloat(v)||0;if(v<=0)return;
+        var date=dates[ci];if(!date)return;
+        var k=(row.v||'').toLowerCase()+'|'+date;
+        var delta=v-(real[k]||0);
+        if(delta>0){
+          var id='mig:'+cult+':'+(row.v||'')+':'+date;
+          var ex=null,i;for(i=0;i<S.entries.length;i++){if(S.entries[i].id===id){ex=S.entries[i];break;}}
+          if(ex){if(delta>(parseFloat(ex.palox)||0))ex.palox=delta;}
+          else S.entries.push({id:id,cult:cult,date:date,variete:row.v,palox:delta,ts:new Date().toISOString(),mig:true});
+        }
+      });
+    });
+  });
+}
+
+// Recalcule pomR/poiR (et donc les totaux) à partir des saisies fusionnées — garantit des chiffres identiques sur tous les appareils
+function _rebuildMatrix(){
+  [['pomme','pomR',DATES_POM],['poire','poiR',DATES_POI]].forEach(function(t){
+    var cult=t[0],key=t[1],dates=t[2];
+    (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.date&&dates.indexOf(e.date)===-1)dates.push(e.date);});
+    dates.sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return (+pa[1]*100 + +pa[0])-(+pb[1]*100 + +pb[0]);});
+    var vset={};
+    (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.variete)vset[e.variete]=true;});
+    var vlist=Object.keys(vset).sort(function(a,b){return a.localeCompare(b,'fr');});
+    var idx={},newRows=vlist.map(function(v,i){idx[v.toLowerCase()]=i;return {v:v,d:new Array(dates.length).fill(0)};});
+    (S.entries||[]).forEach(function(e){
+      if(e.cult!==cult)return;
+      var di=dates.indexOf(e.date);if(di<0)return;
+      var ri=idx[(e.variete||'').toLowerCase()];if(ri===undefined)return;
+      newRows[ri].d[di]=(newRows[ri].d[di]||0)+(parseFloat(e.palox)||0);
+    });
+    newRows=newRows.filter(function(r){return Math.round(sm(r.d))!==0;});
+    S[key]=newRows;
+  });
 }
 
 function _rebuildUI(){
@@ -469,6 +517,9 @@ function loadLS(){
     if(d.tab)S.tab=d.tab;
     if(d.tSub)S.tSub=d.tSub;
     if(d.cvw)S.cvw=d.cvw;
+    // Saisies = source de vérité : migrer d'éventuelles valeurs matricielles locales puis recalculer la matrice
+    _migrateMatrix(S.pomR,S.poiR,DATES_POM,DATES_POI);
+    _rebuildMatrix();
   }catch(e){}
 }
 
@@ -1280,6 +1331,7 @@ function addEntry(){
   if(batId)entry.bat=batId;
   if(friId)entry.fri=friId;
   S.entries.unshift(entry);
+  _rebuildMatrix();
   saveLS();
   updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
@@ -1297,6 +1349,7 @@ function deleteEntry(id){
   S.deletedIds=S.deletedIds||[];
   if(S.deletedIds.indexOf('entries:'+String(id))<0)S.deletedIds.push('entries:'+String(id));
   S.entries.splice(idx,1);
+  _rebuildMatrix();
   saveLS();
   updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
@@ -1312,7 +1365,7 @@ function clearEntries(){
   });
   S.deletedIds=S.deletedIds||[];
   S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
-  S.entries=[];saveLS();updCeilStats();
+  S.entries=[];_rebuildMatrix();saveLS();updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }
 
@@ -1412,18 +1465,47 @@ function buildCeilTable(type){
 function deleteVar(type,ri){
   if(!confirm('Supprimer cette variété ?'))return;
   const rows=type==='pom'?S.pomR:S.poiR;
-  rows.splice(ri,1);
-  saveLS();
+  if(!rows[ri])return;
+  const cult=type==='pom'?'pomme':'poire';
+  const name=(rows[ri].v||'').toLowerCase();
+  S.deletedIds=S.deletedIds||[];
+  S.entries=(S.entries||[]).filter(function(e){
+    if(e.cult===cult&&(e.variete||'').toLowerCase()===name){
+      var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);
+      return false;
+    }
+    return true;
+  });
+  _rebuildMatrix();updCeilStats();saveLS();
   const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
 }
-function updVN(type,ri,v){(type==='pom'?S.pomR:S.poiR)[ri].v=v;saveLS();}
+function updVN(type,ri,v){
+  const rows=type==='pom'?S.pomR:S.poiR;
+  if(!rows[ri])return;
+  const cult=type==='pom'?'pomme':'poire';
+  const oldName=(rows[ri].v||'').toLowerCase();
+  const newName=(v||'').trim();
+  if(newName&&newName.toLowerCase()!==oldName){
+    (S.entries||[]).forEach(function(e){if(e.cult===cult&&(e.variete||'').toLowerCase()===oldName)e.variete=newName;});
+  }
+  _rebuildMatrix();saveLS();
+  const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
+}
+// Édition directe d'une cellule → enregistrée comme saisie d'ajustement (delta), pour rester convergent entre appareils
 function updC(type,ri,ci,val){
   const rows=type==='pom'?S.pomR:S.poiR;
-  rows[ri].d[ci]=parseFloat(val)||0;
-  const tot=Math.round(sm(rows[ri].d));
-  const te=$(type+'t-'+ri);if(te)te.textContent=tot;
-  if(type==='pom'){const ke=$(type+'k-'+ri);if(ke)ke.textContent=(tot*300).toLocaleString('fr-FR');}
-  updCeilStats();saveLS();
+  const dates=type==='pom'?DATES_POM:DATES_POI;
+  if(!rows[ri])return;
+  const cult=type==='pom'?'pomme':'poire';
+  const variete=rows[ri].v, date=dates[ci];
+  const target=parseFloat(val)||0;
+  const current=parseFloat(rows[ri].d[ci])||0;
+  const delta=target-current;
+  if(delta!==0&&date){
+    S.entries.unshift({id:'adj-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),cult:cult,date:date,variete:variete,palox:delta,ts:new Date().toISOString(),adj:true});
+  }
+  _rebuildMatrix();updCeilStats();saveLS();
+  const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
 }
 function addVar(type){
   const rows=type==='pom'?S.pomR:S.poiR;
@@ -1712,6 +1794,9 @@ function cloturerAnnee(){
   DATES_POI.length=0;DATES_POI_ORIG.forEach(d=>DATES_POI.push(d));
   S.pomR=varP.map(v=>({v,d:new Array(44).fill(0)}));
   S.poiR=varQ.map(v=>({v,d:new Array(44).fill(0)}));
+  // Marquer toutes les saisies de la saison comme supprimées (sinon la fusion les ferait réapparaître depuis un autre appareil)
+  S.deletedIds=S.deletedIds||[];
+  S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
   S.entries=[];S.facPom={};S.facPoi={};S.facPrix=null;
   S.saison=newSaison;
   saveLS();
