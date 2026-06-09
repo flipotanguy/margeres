@@ -362,7 +362,7 @@ setInterval(function(){
 function _buildData(){
   return {
     pomR:S.pomR,poiR:S.poiR,datesPom:DATES_POM,datesPoi:DATES_POI,
-    entries:S.entries,facPom:S.facPom,facPoi:S.facPoi,facPrix:S.facPrix,
+    entries:S.entries,deletedIds:S.deletedIds,facPom:S.facPom,facPoi:S.facPoi,facPrix:S.facPrix,
     pcPom:S.pcPom,pcPoi:S.pcPoi,pcNoy:S.pcNoy,
     bp:S.bp,br:S.br,bn:S.bn,pd:S.pd,qd:S.qd,nd:S.nd,
     tarif:S.tarif,pxPom:S.pxPom,pxPoi:S.pxPoi,
@@ -403,11 +403,16 @@ function _applyCloud(cloud){
   if(cloud.tab)S.tab=cloud.tab;
   if(cloud.tSub)S.tSub=cloud.tSub;
   if(cloud.cvw)S.cvw=cloud.cvw;
-  // Entries : union par ID
+  // Marqueurs de suppression (tombstones) : union, pour que les suppressions se propagent
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  // Entries : union par ID, puis on retire les éléments marqués supprimés
   var m={};
   (cloud.entries||[]).forEach(function(e){m[String(e.id||e.ts||Math.random())]=e;});
   (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(k&&!m[k])m[k]=e;});
-  S.entries=Object.values(m);
+  S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];});
 }
 
 function _rebuildUI(){
@@ -441,6 +446,7 @@ function loadLS(){
     if(d.datesPom&&d.datesPom.length)DATES_POM=d.datesPom;
     if(d.datesPoi&&d.datesPoi.length)DATES_POI=d.datesPoi;
     if(d.entries)S.entries=d.entries;
+    if(d.deletedIds)S.deletedIds=d.deletedIds;
     if(d.facPom)S.facPom=d.facPom;
     if(d.facPoi)S.facPoi=d.facPoi;
     if(d.facPrix)S.facPrix=d.facPrix;
@@ -489,6 +495,7 @@ const S = {
   facPom:{}, facPoi:{}, facPrix:null,
   tarif: TARIF_INIT.map(r=>({...r,t1:R2(r.px*r.d1),t2:R2(r.px*r.d2)})),
   entries:[],
+  deletedIds:[],
   entCult:'pomme',
   bats:[{id:'b1',nom:'Bâtiment 1',frigos:[{id:'f1',nom:'Frigo 1'}]}],
   achatsExt:[],
@@ -1021,12 +1028,13 @@ function getDistArr(culture){return culture==='pomme'?S.pd:culture==='poire'?S.q
 function updBase(culture,ri,val){
   const dv=parseFloat(val)||0;
   const pc=getPcArr(culture);
-  pc[ri].d[2]=dv;pc[ri].d[0]=R2(dv/5);pc[ri].d[1]=R2(dv/2);pc[ri].d[3]=R2(dv*2);pc[ri].d[4]=R2(dv*3);pc[ri].d[5]=R2(dv*4);
+  const surf=culture==='pomme'?22.76:culture==='poire'?10.54:2;
+  pc[ri].d[2]=dv;pc[ri].d[0]=R2(dv/5);pc[ri].d[1]=R2(dv/2);pc[ri].d[3]=R2(dv*2);pc[ri].d[4]=R2(dv*3);pc[ri].d[5]=R2(dv*4);pc[ri].d[6]=R2(dv*surf);
   const blocs=getBlocArr(culture);const dist=getDistArr(culture);
   blocs.forEach((b,bi)=>{if(dist[`${ri}-${bi}`]===undefined){const e=$(`dc-${culture}-${ri}-${bi}`);if(e)e.value=R2(dv*b.s);}});
   updDistTotal(culture,ri);updBlocCouts(culture);
   const pf=culture==='pomme'?'dp':culture==='poire'?'dq':null;
-  if(pf)[3,4,5].forEach(ci=>{const e=$(`${pf}-${ri}-${ci}`);if(e)e.textContent=pc[ri].d[ci]||0;});
+  if(pf)[3,4,5,6].forEach(ci=>{const e=$(`${pf}-${ri}-${ci}`);if(e)e.textContent=pc[ri].d[ci]||0;});
   saveLS();
 }
 function updDistTotal(culture,ri){
@@ -1286,6 +1294,8 @@ function deleteEntry(id){
   const di=dates.indexOf(entry.date);
   const ri=rows.findIndex(r=>r.v.toLowerCase()===entry.variete.toLowerCase());
   if(di!==-1&&ri!==-1)rows[ri].d[di]=Math.max(0,(rows[ri].d[di]||0)-entry.palox);
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('entries:'+String(id))<0)S.deletedIds.push('entries:'+String(id));
   S.entries.splice(idx,1);
   saveLS();
   updCeilStats();
@@ -1300,6 +1310,8 @@ function clearEntries(){
     const ri=rows.findIndex(r=>r.v.toLowerCase()===entry.variete.toLowerCase());
     if(di!==-1&&ri!==-1)rows[ri].d[di]=Math.max(0,(rows[ri].d[di]||0)-entry.palox);
   });
+  S.deletedIds=S.deletedIds||[];
+  S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
   S.entries=[];saveLS();updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }

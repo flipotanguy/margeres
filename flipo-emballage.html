@@ -169,7 +169,7 @@ var S={
   stockSub:'bilan',stockFilter:'',
   batCulture:'',batVar:'',
   bilanVar:'',
-  sessions:[],transfers:[],achatsExt:[],
+  sessions:[],transfers:[],achatsExt:[],deletedIds:[],
   varList:{pomme:[],poire:[]}
 };
 
@@ -203,7 +203,7 @@ function setSyncSt(s){
 function _buildData(){
   return {
     sessions:S.sessions,transfers:S.transfers,
-    achatsExt:S.achatsExt,varList:S.varList,
+    achatsExt:S.achatsExt,varList:S.varList,deletedIds:S.deletedIds,
     tab:S.tab,pommeSub:S.pommeSub,poireSub:S.poireSub,
     stockSub:S.stockSub,stockFilter:S.stockFilter,
     batCulture:S.batCulture,batVar:S.batVar,bilanVar:S.bilanVar
@@ -212,26 +212,36 @@ function _buildData(){
 
 function _applyCloud(cloud){
   if(!cloud)return;
-  // Sessions : union par ID
+  // Marqueurs de suppression (tombstones) : union, pour que les suppressions se propagent
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  // Sessions : union par ID, puis on retire les éléments marqués supprimés
   var ms={};
   (cloud.sessions||[]).forEach(function(s){ms[String(s.id)]=s;});
   (S.sessions||[]).forEach(function(s){if(!ms[String(s.id)])ms[String(s.id)]=s;});
-  S.sessions=Object.values(ms);
-  // Transfers : union par ID
+  S.sessions=Object.values(ms).filter(function(s){return !del['sessions:'+String(s.id)];});
+  // Transfers : union par ID, puis on retire les éléments marqués supprimés
   var mt={};
   (cloud.transfers||[]).forEach(function(t){mt[String(t.id)]=t;});
   (S.transfers||[]).forEach(function(t){if(!mt[String(t.id)])mt[String(t.id)]=t;});
-  S.transfers=Object.values(mt);
-  // AchatsExt : union par ID
+  S.transfers=Object.values(mt).filter(function(t){return !del['transfers:'+String(t.id)];});
+  // AchatsExt : union par ID, puis on retire les éléments marqués supprimés
   var ma={};
   (cloud.achatsExt||[]).forEach(function(a){ma[String(a.id)]=a;});
   (S.achatsExt||[]).forEach(function(a){if(!ma[String(a.id)])ma[String(a.id)]=a;});
-  S.achatsExt=Object.values(ma);
+  S.achatsExt=Object.values(ma).filter(function(a){return !del['achatsExt:'+String(a.id)];});
   // Config : cloud gagne
   if(cloud.varList)S.varList=cloud.varList;
   if(cloud.tab)S.tab=cloud.tab;
   if(cloud.pommeSub)S.pommeSub=cloud.pommeSub;
   if(cloud.poireSub)S.poireSub=cloud.poireSub;
+  if(cloud.stockSub)S.stockSub=cloud.stockSub;
+  if(cloud.stockFilter)S.stockFilter=cloud.stockFilter;
+  if(cloud.batCulture)S.batCulture=cloud.batCulture;
+  if(cloud.batVar)S.batVar=cloud.batVar;
+  if(cloud.bilanVar)S.bilanVar=cloud.bilanVar;
 }
 
 function _rebuildUI(){
@@ -598,6 +608,8 @@ function buildHistorique(type){
 function delSess(id,type){
   if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer cette session ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('sessions:'+String(id))<0)S.deletedIds.push('sessions:'+String(id));
   S.sessions=S.sessions.filter(function(s){return s.id!==id;});
   saveLS();rebuildTab(type||S.tab);
 }
@@ -694,6 +706,8 @@ function saveAchat(){
 }
 function delAchat(id){
   if(!confirm('Supprimer cet achat ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('achatsExt:'+String(id))<0)S.deletedIds.push('achatsExt:'+String(id));
   S.achatsExt=S.achatsExt.filter(function(a){return a.id!==id;});
   saveLS();initStock();
 }
@@ -1051,6 +1065,8 @@ function saveXfr(){
 function delXfr(id){
   if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer ce transfert ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('transfers:'+String(id))<0)S.deletedIds.push('transfers:'+String(id));
   S.transfers=S.transfers.filter(function(t){return t.id!==id;});
   saveLS();initTransfert();
 }
@@ -1209,6 +1225,7 @@ function _doInit(){
       if(d.sessions)S.sessions=d.sessions;
       if(d.transfers)S.transfers=d.transfers;
       if(d.achatsExt)S.achatsExt=d.achatsExt;
+      if(d.deletedIds)S.deletedIds=d.deletedIds;
       if(d.varList)S.varList=d.varList;
       if(d.tab)S.tab=d.tab;
       _doInit();
