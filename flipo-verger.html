@@ -309,16 +309,17 @@ function setSyncSt(s){
 
 function saveLS(){
   var data = _buildData();
+  var ts = new Date().toISOString(); // Timestamp unique — même valeur envoyée et stockée dans _cloudTs
   try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
   setSyncSt('syncing');
   fetch(SUPA_URL+'/rest/v1/flipo_sync',{
     method:'POST',
     headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-    body:JSON.stringify({key:LS_KEY,data:data,updated_at:new Date().toISOString()})
+    body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
   }).then(function(r){
     if(r.ok){
       setSyncSt('ok');
-      _cloudTs=new Date().toISOString();
+      _cloudTs = ts; // Même valeur que ce qu'on a envoyé → le poll ne re-pullera pas
       var el=document.getElementById('sync-st');
       if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR')+' (cliquer pour forcer sync)';
     }else{
@@ -378,15 +379,18 @@ function _applyCloud(cloud){
   if(cloud.facPom)S.facPom=cloud.facPom;
   if(cloud.facPoi)S.facPoi=cloud.facPoi;
   if(cloud.facPrix!==undefined)S.facPrix=cloud.facPrix;
-  if(cloud.pcPom)S.pcPom=cloud.pcPom;
-  if(cloud.pcPoi)S.pcPoi=cloud.pcPoi;
-  if(cloud.pcNoy)S.pcNoy=cloud.pcNoy;
-  if(cloud.bp&&cloud.bp.length)S.bp=cloud.bp;
-  if(cloud.br&&cloud.br.length)S.br=cloud.br;
-  if(cloud.bn&&cloud.bn.length)S.bn=cloud.bn;
-  if(cloud.pd)S.pd=cloud.pd;
-  if(cloud.qd)S.qd=cloud.qd;
-  if(cloud.nd)S.nd=cloud.nd;
+  // Ne pas écraser les produits traitement si une suppression/modification vient d'avoir lieu
+  if(!_pcProtected){
+    if(cloud.pcPom)S.pcPom=cloud.pcPom;
+    if(cloud.pcPoi)S.pcPoi=cloud.pcPoi;
+    if(cloud.pcNoy)S.pcNoy=cloud.pcNoy;
+    if(cloud.bp&&cloud.bp.length)S.bp=cloud.bp;
+    if(cloud.br&&cloud.br.length)S.br=cloud.br;
+    if(cloud.bn&&cloud.bn.length)S.bn=cloud.bn;
+    if(cloud.pd)S.pd=cloud.pd;
+    if(cloud.qd)S.qd=cloud.qd;
+    if(cloud.nd)S.nd=cloud.nd;
+  }
   if(cloud.tarif&&cloud.tarif.length)S.tarif=cloud.tarif;
   if(cloud.pxPom!==undefined)S.pxPom=cloud.pxPom;
   if(cloud.pxPoi!==undefined)S.pxPoi=cloud.pxPoi;

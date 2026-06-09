@@ -251,15 +251,16 @@ function _rebuildUI(){
 function saveLS(){
   var data=_buildData();
   try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+  var ts = new Date().toISOString();
   setSyncSt('syncing');
   fetch(SUPA_URL+'/rest/v1/flipo_sync',{
     method:'POST',
     headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
-    body:JSON.stringify({key:LS_KEY,data:data,updated_at:new Date().toISOString()})
+    body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
   }).then(function(r){
     if(r.ok){
       setSyncSt('ok');
-      _cloudTs=new Date().toISOString();
+      _cloudTs=ts;
       var el=document.getElementById('sync-st');
       if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');
     }else{
