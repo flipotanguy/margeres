@@ -468,8 +468,8 @@ function _rebuildMatrix(){
     var cult=t[0],key=t[1],dates=t[2];
     (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.date&&dates.indexOf(e.date)===-1)dates.push(e.date);});
     dates.sort(function(a,b){var pa=a.split('/'),pb=b.split('/');return (+pa[1]*100 + +pa[0])-(+pb[1]*100 + +pb[0]);});
-    var vset={};
-    (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.variete)vset[e.variete]=true;});
+    var vset={},defset={};
+    (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.variete){vset[e.variete]=true;if(e.vardef)defset[e.variete.toLowerCase()]=true;}});
     var vlist=Object.keys(vset).sort(function(a,b){return a.localeCompare(b,'fr');});
     var idx={},newRows=vlist.map(function(v,i){idx[v.toLowerCase()]=i;return {v:v,d:new Array(dates.length).fill(0)};});
     (S.entries||[]).forEach(function(e){
@@ -478,7 +478,8 @@ function _rebuildMatrix(){
       var ri=idx[(e.variete||'').toLowerCase()];if(ri===undefined)return;
       newRows[ri].d[di]=(newRows[ri].d[di]||0)+(parseFloat(e.palox)||0);
     });
-    newRows=newRows.filter(function(r){return Math.round(sm(r.d))!==0;});
+    // Conserver une variété si elle a une récolte OU si elle a été définie via l'onglet Variétés (vardef)
+    newRows=newRows.filter(function(r){return Math.round(sm(r.d))!==0||defset[(r.v||'').toLowerCase()];});
     S[key]=newRows;
   });
 }
@@ -1199,7 +1200,7 @@ function buildCueill(){
   </div>`;
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <div class="stabs" style="margin-bottom:0">
-      ${(function(){var all=[{id:'saisie',l:'📝 Saisie'},{id:'courbe',l:'📈 Courbe'},{id:'tableau',l:'📋 Tableau'},{id:'factu',l:'🧾 Facturation'}];var ok=FLIPO_STABS['cueill'];var tabs=ok&&ok.length?all.filter(function(t){return ok.indexOf(t.id)>=0;}):all;if(!tabs.length)tabs=all;if(!tabs.find(function(t){return t.id===S.cvw;})&&tabs.length)S.cvw=tabs[0].id;return tabs.map(function(t){return '<button class="stab'+(S.cvw===t.id?' act':'')+'" onclick="setCVw(\''+t.id+'\')">'+t.l+'</button>';}).join('');})()}
+      ${(function(){var all=[{id:'saisie',l:'📝 Saisie'},{id:'courbe',l:'📈 Courbe'},{id:'tableau',l:'📋 Tableau'},{id:'variete',l:'🌳 Variétés'}];var ok=FLIPO_STABS['cueill'];var tabs=ok&&ok.length?all.filter(function(t){return ok.indexOf(t.id)>=0;}):all;if(!tabs.length)tabs=all;if(!tabs.find(function(t){return t.id===S.cvw;})&&tabs.length)S.cvw=tabs[0].id;return tabs.map(function(t){return '<button class="stab'+(S.cvw===t.id?' act':'')+'" onclick="setCVw(\''+t.id+'\')">'+t.l+'</button>';}).join('');})()}
     </div>
     <button class="btn" onclick="cloturerAnnee()" style="background:#fff3f3;color:#c0392b;border-color:#f5c6c6;font-size:11px">🗓 Clôturer la saison ${S.saison||'2026/2027'}</button>
   </div>`;
@@ -1211,7 +1212,7 @@ function buildCVw(){
   if(S.cvw==='saisie')return buildSaisie();
   if(S.cvw==='courbe')return buildCourbe();
   if(S.cvw==='tableau')return buildTableau();
-  return buildFactu();
+  return buildVarietes();
 }
 function updCeilStats(){
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
@@ -1242,12 +1243,12 @@ function buildSaisie(){
       </div>
       <div class="form-field" style="flex:2">
         <label>Variété</label>
-        <select id="ent-var" style="min-width:160px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+        <select id="ent-var" onchange="toggleNewVar()" style="min-width:160px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
           ${vars.map(v=>`<option value="${es(v)}">${es(v)}</option>`).join('')}
           <option value="__new__">+ Nouvelle variété...</option>
         </select>
       </div>
-      <div class="form-field" id="new-var-field" class="hidden" style="display:none;flex:2">
+      <div class="form-field" id="new-var-field" style="display:none;flex:2">
         <label>Nom de la variété</label>
         <input type="text" id="ent-newvar" placeholder="Nom variété" style="min-width:140px">
       </div>
@@ -1278,16 +1279,17 @@ function buildSaisie(){
       </div>
     </div>
   </div>`;
-  // Journal
+  // Journal (les entrées "définition de variété" sont masquées ici)
+  const journal=S.entries.filter(e=>!e.vardef);
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-    <span style="font-weight:600;font-size:13px">Journal des saisies (${S.entries.length})</span>
-    ${S.entries.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
+    <span style="font-weight:600;font-size:13px">Journal des saisies (${journal.length})</span>
+    ${journal.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
   </div>`;
-  if(!S.entries.length){
+  if(!journal.length){
     h+=`<div class="empty-journal">Aucune saisie pour le moment.<br>Utilisez le formulaire ci-dessus pour enregistrer vos récoltes.</div>`;
   } else {
     h+=`<div style="max-height:400px;overflow-y:auto">`;
-    S.entries.forEach(e=>{
+    journal.forEach(e=>{
       const icon=e.cult==='pomme'?'🍎':'🍐';
       const kg=e.palox*(e.kgPalox||0);
       const tsStr=e.ts?new Date(e.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
@@ -1309,6 +1311,7 @@ function buildSaisie(){
   return h;
 }
 function setEntCult(cult){S.entCult=cult;const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);}
+function toggleNewVar(){const sel=$('ent-var'),fld=$('new-var-field');if(!sel||!fld)return;fld.style.display=sel.value==='__new__'?'':'none';}
 
 function updFrigoSelect(){
   const batId=$('ent-bat')?$('ent-bat').value:'';
@@ -1375,17 +1378,14 @@ function deleteEntry(id){
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }
 function clearEntries(){
-  // Subtract all entries from rows
-  S.entries.forEach(entry=>{
-    const dates=entry.cult==='pomme'?DATES_POM:DATES_POI;
-    const rows=entry.cult==='pomme'?S.pomR:S.poiR;
-    const di=dates.indexOf(entry.date);
-    const ri=rows.findIndex(r=>r.v.toLowerCase()===entry.variete.toLowerCase());
-    if(di!==-1&&ri!==-1)rows[ri].d[di]=Math.max(0,(rows[ri].d[di]||0)-entry.palox);
-  });
+  // Ne supprime que les saisies de récolte ; conserve les définitions de variétés (vardef)
   S.deletedIds=S.deletedIds||[];
-  S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
-  S.entries=[];_rebuildMatrix();saveLS();updCeilStats();
+  S.entries.forEach(function(e){
+    if(e.vardef)return;
+    var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);
+  });
+  S.entries=S.entries.filter(function(e){return e.vardef;});
+  _rebuildMatrix();saveLS();updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }
 
@@ -1535,70 +1535,59 @@ function addVar(type){
   const f=saveFocus();$('cvw').innerHTML=buildCVw();restFocus(f);
 }
 
-// ─── FACTURATION ─────────────────────────────
-function buildFactu(){
-  let h=`<div class="info">Tableau de facturation interne. Saisissez les montants déjà facturés. Les totaux et le reste à facturer se calculent automatiquement.</div>`;
-  const mois=['Août','Sept.','Oct.','Nov.','Déc.','Janv.','Févr.','Mars','Avr.'];
-  const pxPomInit=[360,null,200,200,200,200,null,null,null];
-  const pxPoiInit=[430,null,150,150,150,150,null,null,null];
-  const pxAut=[null,null,43,43,43,43,25,25,25];
-  const pxJus=[null,null,100,null,null,null,null,null,null];
-  if(!S.facPrix){S.facPrix={pom:pxPomInit,poi:pxPoiInit,aut:pxAut,jus:pxJus};}
-  h+=`<div class="stitle">Tarifs par mois (€/palox)</div>`;
-  h+=`<div class="tw"><table><thead><tr><th>Vente</th>${mois.map(m=>`<th class="am">${m}</th>`).join('')}</tr></thead><tbody>`;
-  [['Pomme','pom'],['Poire','poi'],['Autre','aut'],['Jus','jus']].forEach(([label,key])=>{
-    h+=`<tr><td style="font-weight:500">${label}</td>`;
-    S.facPrix[key].forEach((v,i)=>h+=`<td class="${v?'f':''}">${v!==null&&v!==undefined?`<input class="w60" id="fpx-${key}-${i}" value="${v}" onchange="updFPx('${key}',${i},this.value)">`:''}</td>`);
-    h+=`</tr>`;
-  });
-  h+=`</tbody></table></div>`;
-  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
-  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
-  const pxPomRef=200,pxPoiRef=150;
-  const totPom=tP*pxPomRef,totPoi=tQ*pxPoiRef;
-  h+=`<div class="stitle">Reste à facturer</div>`;
-  h+=`<div class="tw"><table><thead><tr><th>Produit</th><th class="am">Total palox</th><th class="am">Poids (kg)</th><th>Prix réf (€)</th><th class="am">Total estimé (€)</th><th>Déjà facturé (€)</th><th>Reste à facturer (€)</th></tr></thead><tbody>`;
-  [
-    {label:'🍎 Pomme',tot:tP,kg:tP*300,px:pxPomRef,total:totPom,key:'pomT',facStore:S.facPom},
-    {label:'🍐 Poire', tot:tQ,kg:tQ*440,px:pxPoiRef,total:totPoi,key:'poiT',facStore:S.facPoi},
-  ].forEach(row=>{
-    const fac=parseFloat(row.facStore[row.key])||0;
-    const rest=row.total-fac;
-    h+=`<tr>
-      <td style="font-weight:500">${row.label}</td>
-      <td class="f">${row.tot}</td>
-      <td class="f">${row.kg.toLocaleString('fr-FR')}</td>
-      <td><input class="w60" value="${row.px}"></td>
-      <td class="f">${row.total.toLocaleString('fr-FR')}</td>
-      <td><input class="w80" id="fac-${row.key}" value="${row.facStore[row.key]||''}" placeholder="0 €" onchange="updFac('${row.key}',this.value)"></td>
-      <td class="${rest>=0?'pos':'neg'}" id="rest-${row.key}">${rest.toLocaleString('fr-FR')}</td>
-    </tr>`;
-  });
-  h+=`</tbody></table></div>`;
-  h+=`<div class="stitle">Palox restants (suivi)</div>`;
-  h+=`<div class="tw"><table><thead><tr><th>Type</th><th>Total récolté</th><th>Déjà facturé (palox)</th><th class="am">Reste à facturer (palox)</th></tr></thead><tbody>`;
-  h+=`<tr><td>Pomme</td><td class="f" id="rp-tot">${tP}</td><td><input class="w80" id="rp-fac" value="${S.facPom.palox||''}" placeholder="0" onchange="S.facPom.palox=this.value;saveLS();updRestePalox()"></td><td class="f" id="rp-rest">${tP-(parseFloat(S.facPom.palox)||0)}</td></tr>`;
-  h+=`<tr><td>Poire</td><td class="f" id="rq-tot">${tQ}</td><td><input class="w80" id="rq-fac" value="${S.facPoi.palox||''}" placeholder="0" onchange="S.facPoi.palox=this.value;saveLS();updRestePalox()"></td><td class="f" id="rq-rest">${tQ-(parseFloat(S.facPoi.palox)||0)}</td></tr>`;
-  const jus=S.pomR.find(r=>r.v==='Jus');
-  h+=`<tr><td>Jus</td><td class="f">${jus?Math.round(sm(jus.d)):0}</td><td><input class="w80" placeholder="0"></td><td class="f">—</td></tr>`;
-  h+=`</tbody></table></div>`;
+// ─── VARIÉTÉS ─────────────────────────────────
+function buildVarietes(){
+  const cult=S.entCult==='poire'?'poire':'pomme';
+  const type=cult==='pomme'?'pom':'poi';
+  const rows=cult==='pomme'?S.pomR:S.poiR;
+  let h=`<div class="cult-sel">
+    <button class="cult-btn pom${cult==='pomme'?' act':''}" onclick="setVarCult('pomme')">🍎 Pomme</button>
+    <button class="cult-btn poi${cult==='poire'?' act':''}" onclick="setVarCult('poire')">🍐 Poire</button>
+  </div>`;
+  h+=`<div class="info">Gérez la liste des variétés ${cult==='pomme'?'de pomme':'de poire'} : ajoutez-en de nouvelles, renommez ou supprimez. Les variétés ajoutées ici deviennent disponibles dans l'onglet <strong>📝 Saisie</strong>.</div>`;
+  h+=`<div class="entry-form">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter une variété ${cult==='pomme'?'🍎 pomme':'🍐 poire'}</p>
+    <div class="form-row">
+      <div class="form-field" style="flex:2">
+        <label>Nom de la variété</label>
+        <input type="text" id="newvar-name" placeholder="Ex : Pink Lady" style="min-width:180px" onkeydown="if(event.key==='Enter'){event.preventDefault();addVarNamed();}">
+      </div>
+      <div class="form-field" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <button class="btn ok" onclick="addVarNamed()" style="padding:8px 18px;font-size:13px">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+  h+=`<div style="font-weight:600;font-size:13px;margin-bottom:8px">Variétés enregistrées (${rows.length})</div>`;
+  if(!rows.length){
+    h+=`<div class="empty-journal">Aucune variété ${cult==='pomme'?'de pomme':'de poire'}.<br>Ajoutez-en une avec le formulaire ci-dessus.</div>`;
+  } else {
+    h+=`<div class="tw"><table><thead><tr><th style="min-width:160px">Variété</th><th class="am" style="min-width:80px">Total palox</th><th style="width:50px"></th></tr></thead><tbody>`;
+    rows.forEach((row,ri)=>{
+      const tot=Math.round(sm(row.d));
+      h+=`<tr>
+        <td><input class="w100" style="min-width:160px" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>
+        <td class="f">${tot}</td>
+        <td><button class="btn del" style="padding:2px 7px;font-size:13px;min-height:28px" onclick="deleteVar('${type}',${ri})">🗑</button></td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
   return h;
 }
-function updFPx(key,i,val){if(S.facPrix){S.facPrix[key][i]=parseFloat(val)||0;saveLS();}}
-function updFac(key,val){
-  if(key.startsWith('pom'))S.facPom[key]=val;else S.facPoi[key]=val;
+function setVarCult(c){S.entCult=c==='poire'?'poire':'pomme';const f=saveFocus();$('cvw').innerHTML=buildVarietes();restFocus(f);}
+function addVarNamed(){
+  const el=$('newvar-name');
+  const name=el?el.value.trim():'';
+  if(!name){alert('Saisissez le nom de la variété.');return;}
+  const cult=S.entCult==='poire'?'poire':'pomme';
+  const rows=cult==='pomme'?S.pomR:S.poiR;
+  if(rows.some(r=>(r.v||'').toLowerCase()===name.toLowerCase())){alert('Cette variété existe déjà.');return;}
+  // Entrée "définition" (palox 0, vardef) : persiste la variété même sans récolte, et se synchronise comme les saisies
+  S.entries.push({id:'var-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),cult:cult,variete:name,palox:0,vardef:true,ts:new Date().toISOString()});
+  _rebuildMatrix();
   saveLS();
-  const rows=key.startsWith('pom')?S.pomR:S.poiR;
-  const tot=Math.round(sm(rows.map(r=>sm(r.d))));
-  const px=key.startsWith('pom')?200:150;
-  const total=tot*px;const fac=parseFloat(val)||0;const rest=total-fac;
-  const e=$('rest-'+key);if(e){e.textContent=rest.toLocaleString('fr-FR');e.className=rest>=0?'pos':'neg';}
-}
-function updRestePalox(){
-  const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
-  const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
-  setText('rp-rest',tP-(parseFloat(S.facPom.palox)||0));
-  setText('rq-rest',tQ-(parseFloat(S.facPoi.palox)||0));
+  const f=saveFocus();$('cvw').innerHTML=buildVarietes();restFocus(f);
 }
 
 // ── Datalist produits phyto ───────────────────
