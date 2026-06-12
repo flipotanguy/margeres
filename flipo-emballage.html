@@ -170,7 +170,8 @@ var S={
   batCulture:'',batVar:'',
   bilanVar:'',
   sessions:[],transfers:[],achatsExt:[],deletedIds:[],
-  varList:{pomme:[],poire:[]}
+  varList:{pomme:[],poire:[]},
+  frigoPrio:{} // ordre des frigos Margères par variété : clé "type|variété" -> [friId, ...] (hors frigo jaune, toujours en dernier)
 };
 
 // ─── Utilitaires ─────────────────────────────────────────
@@ -204,6 +205,7 @@ function _buildData(){
   return {
     sessions:S.sessions,transfers:S.transfers,
     achatsExt:S.achatsExt,varList:S.varList,deletedIds:S.deletedIds,
+    frigoPrio:S.frigoPrio,
     tab:S.tab,pommeSub:S.pommeSub,poireSub:S.poireSub,
     stockSub:S.stockSub,stockFilter:S.stockFilter,
     batCulture:S.batCulture,batVar:S.batVar,bilanVar:S.bilanVar
@@ -234,6 +236,7 @@ function _applyCloud(cloud){
   S.achatsExt=Object.values(ma).filter(function(a){return !del['achatsExt:'+String(a.id)];});
   // Config : cloud gagne
   if(cloud.varList)S.varList=cloud.varList;
+  if(cloud.frigoPrio)S.frigoPrio=cloud.frigoPrio;
   if(cloud.tab)S.tab=cloud.tab;
   if(cloud.pommeSub)S.pommeSub=cloud.pommeSub;
   if(cloud.poireSub)S.poireSub=cloud.poireSub;
@@ -344,6 +347,35 @@ function getVergerVarieties(type){
 }
 function getVergerBats(){return getVergerData().bats||[];}
 
+// ─── Margères : bâtiment de tri, ses frigos, et le frigo "jaune" ──────────
+function getMargInfo(){
+  var bats=getVergerBats();
+  var margBat=bats.find(function(b){return b.nom&&b.nom.toLowerCase().indexOf('marg')>=0;});
+  var margKey=margBat?margBat.id:MARG_ID;
+  var frigos=(margBat&&margBat.frigos)?margBat.frigos.slice():[];
+  var yellow=frigos.find(function(f){return f.nom&&f.nom.toLowerCase().indexOf('jaune')>=0;});
+  return {margBat:margBat,margKey:margKey,frigos:frigos,yellowId:yellow?yellow.id:null,yellowNom:yellow?yellow.nom:''};
+}
+function _prioKey(type,v){return type+'|'+v;}
+// Ordre des frigos NON jaunes pour une variété : config utilisateur puis frigos restants (ordre de la liste)
+function _prioList(type,v){
+  var info=getMargInfo();
+  var nonYellow=info.frigos.filter(function(f){return f.id!==info.yellowId;});
+  var cfg=(S.frigoPrio&&S.frigoPrio[_prioKey(type,v)])||[];
+  var ordered=[];
+  cfg.forEach(function(fid){if(nonYellow.some(function(f){return f.id===fid;})&&ordered.indexOf(fid)<0)ordered.push(fid);});
+  nonYellow.forEach(function(f){if(ordered.indexOf(f.id)<0)ordered.push(f.id);});
+  return ordered; // [friId, ...]
+}
+// Clés d'emplacement (map) dans l'ordre de déduction : frigos ordonnés, puis "sans frigo", puis le jaune EN DERNIER
+function _triLocOrder(type,v){
+  var info=getMargInfo();
+  var keys=_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;});
+  keys.push(info.margKey); // bucket "sans frigo attitré" de Margères
+  if(info.yellowId)keys.push(info.margKey+'|'+info.yellowId); // frigo jaune toujours en dernier
+  return keys;
+}
+
 // Palox cueillis → TOUJOURS vers MARG_ID (virtuel, jamais les vrais bâtiments)
 function getCueilletteByVar(type){
   var vd=getVergerData();
@@ -428,10 +460,27 @@ function getStockMap(){
   });
   // NE PAS fusionner margKey|friId dans margKey — conserver le détail par frigo
 
-  // 4. Tri → déduit de margKey (toujours, même si négatif)
+  // 4. Tri → déduit de la même variété dans les frigos de Margères :
+  //    on vide les frigos dans l'ordre défini par variété, le frigo JAUNE en dernier (qui peut passer en négatif).
   S.sessions.forEach(function(s){
     var pal=+(s.palox||0);if(pal<=0)return;
-    add(margKey,s.type,s.variete,-pal);
+    var keys=_triLocOrder(s.type,s.variete);
+    var remaining=pal;
+    for(var i=0;i<keys.length;i++){
+      var k=keys[i];
+      var isLast=(i===keys.length-1);
+      if(isLast){ // dernier emplacement (jaune si présent) : absorbe tout le reste, même en négatif
+        add(k,s.type,s.variete,-remaining);
+        remaining=0;
+        break;
+      }
+      var avail=(map[k]&&map[k][s.type]&&map[k][s.type][s.variete])||0;
+      if(avail<=0)continue; // rien à prendre ici, on passe au frigo suivant
+      var take=Math.min(avail,remaining);
+      add(k,s.type,s.variete,-take);
+      remaining-=take;
+      if(remaining<=0)break;
+    }
   });
   return map;
 }
@@ -645,7 +694,7 @@ function delSess(id,type){
 function initStock(){var p=$('panel-stock');if(p)p.innerHTML=buildStockShell();}
 
 function buildStockShell(){
-  var allSubs=[{id:'bilan',l:'📊 Bilan par variété'},{id:'bat',l:'🏗️ Bâtiment'},{id:'achats',l:'🛒 Achats extérieurs'}];
+  var allSubs=[{id:'bilan',l:'📊 Bilan par variété'},{id:'bat',l:'🏗️ Bâtiment'},{id:'prio',l:'❄️ Ordre de tri'},{id:'achats',l:'🛒 Achats extérieurs'}];
   var ok=FLIPO_STABS['stock'];
   var subs=ok&&ok.length?allSubs.filter(function(t){return ok.indexOf(t.id)>=0;}):allSubs;
   if(!subs.length)subs=allSubs;
@@ -657,7 +706,7 @@ function buildStockShell(){
   var h='<div class="stabs" id="stock-stabs">';
   subs.forEach(function(t){h+='<button class="stab'+(sub===t.id?' act':'')+'" onclick="setStockSub(\''+t.id+'\')">'+t.l+'</button>';});
   h+='</div>';
-  h+='<div id="stock-content">'+(sub==='achats'?buildStockAchats():sub==='bat'?buildStockBat():buildStockBilan(map))+'</div>';
+  h+='<div id="stock-content">'+(sub==='achats'?buildStockAchats():sub==='bat'?buildStockBat():sub==='prio'?buildStockPrio():buildStockBilan(map))+'</div>';
   return h;
 }
 
@@ -806,7 +855,7 @@ function setStockSub(v){
   S.stockSub=v;
   var c=$('stock-content');if(!c)return;
   var map=getStockMap();
-  c.innerHTML=(v==='achats'?buildStockAchats():v==='bat'?buildStockBat():buildStockBilan(map));
+  c.innerHTML=(v==='achats'?buildStockAchats():v==='bat'?buildStockBat():v==='prio'?buildStockPrio():buildStockBilan(map));
   document.querySelectorAll('#stock-stabs .stab').forEach(function(b){
     b.classList.toggle('act',b.getAttribute('onclick').indexOf("'"+v+"'")>=0);
   });
@@ -943,6 +992,93 @@ function buildStockBat(){
     cards=hasCueil?'<div class="empty">Aucun stock'+(varFlt?' pour la variété '+es(varFlt):'')+'.</div>':'<div class="info-box">Aucune donnée de cueillette dans Verger. Saisissez d\'abord les palox dans Verger → Cueillette.</div>';
   }
   return h+cards;
+}
+
+// ─── Stock : Ordre de déduction du tri (priorité frigos par variété) ──────
+function buildStockPrio(){
+  var info=getMargInfo();
+  if(!info.margBat){
+    return '<div class="info-box">Aucun bâtiment « Margères » trouvé dans Verger. Créez-le (et ses frigos) dans <strong>Verger → Bâtiments</strong> pour régler l\'ordre de déduction du tri.</div>';
+  }
+  var nonYellow=info.frigos.filter(function(f){return f.id!==info.yellowId;});
+  var yellowNom=info.yellowNom||'';
+  var margKey=info.margKey;
+  var map=getStockMap();
+  function locStock(key,type,v){return (map[key]&&map[key][type]&&map[key][type][v])||0;}
+
+  var h='<div class="info-box">À chaque saisie de tri, les palox sont déduits de la <strong>même variété</strong> dans les frigos de Margères, dans l\'ordre ci-dessous (de gauche à droite). '
+    +(info.yellowId?('<strong>'+es(yellowNom)+'</strong> est toujours servi en dernier et peut passer en négatif si tout le reste est épuisé.'):'Aucun frigo dont le nom contient « jaune » n\'a été détecté — le dernier emplacement absorbe le reste.')
+    +' Réglez l\'ordre, variété par variété, avec les flèches ◀ ▶.</div>';
+
+  if(nonYellow.length===0){
+    return h+'<div class="info-box">Margères n\'a aucun frigo (hors jaune). Ajoutez des frigos dans Verger → Bâtiments.</div>';
+  }
+
+  S._prioVars={pomme:[],poire:[]};
+  ['pomme','poire'].forEach(function(type){
+    // Variétés concernées : stock Margères ≠ 0, ou présentes dans les sessions de tri, ou déjà configurées
+    var vset={};
+    var allKeys=nonYellow.map(function(f){return margKey+'|'+f.id;}).concat([margKey]);
+    if(info.yellowId)allKeys.push(margKey+'|'+info.yellowId);
+    allKeys.forEach(function(k){if(map[k]&&map[k][type])Object.keys(map[k][type]).forEach(function(v){if(Math.round(map[k][type][v])!==0)vset[v]=1;});});
+    S.sessions.filter(function(s){return s.type===type;}).forEach(function(s){vset[s.variete]=1;});
+    Object.keys(S.frigoPrio||{}).forEach(function(kk){var i=kk.indexOf('|');if(i>0&&kk.slice(0,i)===type)vset[kk.slice(i+1)]=1;});
+    var vars=Object.keys(vset).sort(function(a,b){return a.localeCompare(b,'fr');});
+    if(!vars.length)return;
+    S._prioVars[type]=vars;
+
+    h+='<div class="stitle">'+(type==='pomme'?'🍎 Pommes':'🍐 Poires')+'</div>';
+    h+='<div class="tw"><table><thead><tr><th style="min-width:120px">Variété</th><th>Ordre de déduction des frigos de Margères</th></tr></thead><tbody>';
+    vars.forEach(function(v,vIdx){
+      var order=_prioList(type,v);
+      h+='<tr><td style="font-weight:700;vertical-align:top">'+es(v)+'</td><td>';
+      h+='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:stretch">';
+      order.forEach(function(fid,idx){
+        var f=nonYellow.find(function(x){return x.id===fid;});
+        var nom=f?f.nom:fid;
+        var st=Math.round(locStock(margKey+'|'+fid,type,v));
+        h+='<div style="display:flex;align-items:center;gap:4px;border:1px solid var(--brd);border-radius:8px;padding:4px 6px;background:var(--wh)">';
+        h+='<button class="btn sm" '+(idx===0?'disabled':'')+' onclick="movePrio(\''+type+'\','+vIdx+','+idx+',-1)" title="Plus prioritaire">◀</button>';
+        h+='<span style="font-size:12px"><strong>'+(idx+1)+'.</strong> ❄️ '+es(nom)+' <span style="color:var(--mu)">('+numFr(st)+')</span></span>';
+        h+='<button class="btn sm" '+(idx===order.length-1?'disabled':'')+' onclick="movePrio(\''+type+'\','+vIdx+','+idx+',1)" title="Moins prioritaire">▶</button>';
+        h+='</div>';
+      });
+      var stB=Math.round(locStock(margKey,type,v));
+      if(stB!==0)h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#f3f3f0;font-size:12px;color:var(--mu)">📦 Sans frigo ('+numFr(stB)+')</div>';
+      if(info.yellowId){
+        var stY=Math.round(locStock(margKey+'|'+info.yellowId,type,v));
+        h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — en dernier ('+numFr(stY)+')</div>';
+      }
+      if(S.frigoPrio&&S.frigoPrio[_prioKey(type,v)]){
+        h+='<button class="btn sm" style="align-self:center" onclick="resetPrio(\''+type+'\','+vIdx+')" title="Revenir à l\'ordre par défaut">↺</button>';
+      }
+      h+='</div></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  });
+
+  var anyVar=(S._prioVars.pomme.length+S._prioVars.poire.length)>0;
+  if(!anyVar)h+='<div class="empty">Aucune variété en stock à Margères pour le moment. L\'ordre se réglera dès qu\'il y aura du stock ou des sessions de tri.</div>';
+  return h;
+}
+function movePrio(type,vIdx,fIdx,dir){
+  var v=(S._prioVars&&S._prioVars[type]&&S._prioVars[type][vIdx]);
+  if(v==null)return;
+  var list=_prioList(type,v).slice();
+  var j=fIdx+dir;
+  if(j<0||j>=list.length)return;
+  var t=list[fIdx];list[fIdx]=list[j];list[j]=t;
+  S.frigoPrio=S.frigoPrio||{};
+  S.frigoPrio[_prioKey(type,v)]=list;
+  saveLS();
+  var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
+}
+function resetPrio(type,vIdx){
+  var v=(S._prioVars&&S._prioVars[type]&&S._prioVars[type][vIdx]);
+  if(v==null)return;
+  if(S.frigoPrio)delete S.frigoPrio[_prioKey(type,v)];
+  saveLS();
+  var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
 }
 
 // ─── Stock : Par variété ──────────────────────────────────
@@ -1254,6 +1390,7 @@ function _doInit(){
       if(d.achatsExt)S.achatsExt=d.achatsExt;
       if(d.deletedIds)S.deletedIds=d.deletedIds;
       if(d.varList)S.varList=d.varList;
+      if(d.frigoPrio)S.frigoPrio=d.frigoPrio;
       if(d.tab)S.tab=d.tab;
       _doInit();
     }catch(e){}
