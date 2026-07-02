@@ -354,25 +354,35 @@ function _applyCloud(cloud){
   if(_applyMigrations())_migApplied=true;
 }
 
-// Corrections ponctuelles des données, exécutées une seule fois (flag mig.v2 synchronisé)
+// Corrections ponctuelles des données — IDEMPOTENTES : ré-appliquées après chaque fusion
+// avec le cloud, pour que des données non migrées venant d'un autre appareil soient
+// corrigées à nouveau (le flag mig.v2 ne sert qu'à déclencher un push après 1re application).
 var _migApplied=false;
+function _fixCouleurSoft(c){return c?c.replace(/ soft$/i,' Soft'):c;}
 function _applyMigrations(){
   S.mig=S.mig||{};
-  if(S.mig.v2)return false;
-  var ren={};
+  var changed=!S.mig.v2;
   // 1) Majuscule "Soft" dans les couleurs de bouchon (ex. "Rouge soft" → "Rouge Soft")
-  S.couleursBouchon=(S.couleursBouchon||[]).map(function(c){
-    var n=c.replace(/ soft$/i,' Soft');
-    if(n!==c)ren[c]=n;
-    return n;
-  }).filter(function(v,i,a){return a.indexOf(v)===i;});
-  // cascade sur les saisies et les arrivées de stock
-  (S.entries||[]).forEach(function(e){if(e.couleur&&ren[e.couleur])e.couleur=ren[e.couleur];});
-  (S.reappro||[]).forEach(function(r){if(r.couleur&&ren[r.couleur])r.couleur=ren[r.couleur];});
+  var before=(S.couleursBouchon||[]).join('|');
+  S.couleursBouchon=(S.couleursBouchon||[]).map(_fixCouleurSoft)
+    .filter(function(v,i,a){return a.indexOf(v)===i;});
+  if(S.couleursBouchon.join('|')!==before)changed=true;
+  // cascade sur les saisies et les arrivées de stock (directe, pas via la liste :
+  // corrige aussi une saisie « Rouge soft » même si la liste est déjà migrée)
+  (S.entries||[]).forEach(function(e){
+    var n=_fixCouleurSoft(e.couleur);
+    if(n!==e.couleur){e.couleur=n;changed=true;}
+  });
+  (S.reappro||[]).forEach(function(r){
+    var n=_fixCouleurSoft(r.couleur);
+    if(n!==r.couleur){r.couleur=n;changed=true;}
+  });
   // 2) Retirer le format "1L" (garde "1L Rhum" et "1L Soft")
-  S.formats=(S.formats||[]).filter(function(f){return f!=='1L';});
+  var nf=(S.formats||[]).filter(function(f){return f!=='1L';});
+  if(nf.length!==(S.formats||[]).length)changed=true;
+  S.formats=nf;
   S.mig.v2=true;
-  return true;
+  return changed;
 }
 
 function _rebuildUI(){
@@ -410,6 +420,7 @@ function saveLS(){
   .then(function(r){return r.ok?r.json():[];})
   .then(function(rows){
     if(rows&&rows.length)_mergeColsFromCloud(rows[0].data);
+    _applyMigrations(); // les saisies du cloud peuvent être non migrées → re-corriger avant le push
     var data=_buildData();
     try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
     return fetch(SUPA_URL+'/rest/v1/flipo_sync',{
@@ -1168,6 +1179,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if(d.filterClient)S.filterClient=d.filterClient;
       if(d.filterSaveur)S.filterSaveur=d.filterSaveur;
       if(d.filterFormat)S.filterFormat=d.filterFormat;
+      _applyMigrations();
       render();
     }catch(e){}
   }
