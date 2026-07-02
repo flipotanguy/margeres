@@ -462,6 +462,7 @@ const S = {
 };
 
 let modalCB = null;
+var FLIPO_CAN_DELETE = false;
 
 function $(id){ return document.getElementById(id); }
 function es(s){ const div = document.createElement('div'); div.textContent = s; return div.innerHTML; }
@@ -690,7 +691,7 @@ function buildSaisie(){
       '<span style="color:var(--mu);font-size:12px">' + es(e.client) + ' • bouchon ' + es(e.couleur) + ' • ' + e.date + '</span>' +
       '</div>' +
       '</div>' +
-      '<button class="btn btn-del" onclick="deleteEntry(\'' + e.id + '\')">✕</button>' +
+      '<button class="btn btn-del" onclick="deleteEntry(\'' + e.id + '\')" ' + (FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"') + '>✕</button>' +
       '</div>';
   });
   $('journal').innerHTML = journalHtml || '<div style="color:var(--mu);font-size:13px;padding:12px">Aucune entrée pour l\'instant.</div>';
@@ -728,6 +729,7 @@ function addEntry(){
 }
 
 function deleteEntry(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   S.deletedIds = S.deletedIds || [];
   if(S.deletedIds.indexOf('entries:'+String(id))<0) S.deletedIds.push('entries:'+String(id));
   S.entries = S.entries.filter(e => e.id !== id);
@@ -759,7 +761,7 @@ function buildParams(){
       }
       const warn = used ? ' <div class="params-warn">Utilisé dans les entrées</div>' : '';
       html += '<div class="params-item"><span>' + es(item) + '</span>' +
-        '<button class="btn btn-del" onclick="delParam(\'' + key + '\',\'' + es(item) + '\')" ' + (used ? 'disabled' : '') + '>✕</button></div>' +
+        '<button class="btn btn-del" onclick="delParam(\'' + key + '\',\'' + es(item) + '\')" ' + ((used||!FLIPO_CAN_DELETE) ? 'disabled' : '') + ' title="' + (!FLIPO_CAN_DELETE ? 'Suppression réservée aux administrateurs' : (used ? 'Utilisé dans les entrées' : 'Supprimer')) + '">✕</button></div>' +
         warn;
     });
     el.innerHTML = html;
@@ -795,6 +797,7 @@ function addParam(type){
 }
 
 function delParam(key, val){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   let k;
   if(key === 'clients') k = 'clients';
   else if(key === 'formats') k = 'formats';
@@ -922,7 +925,7 @@ function buildStock(){
       htmlD += '<div class="journal-entry"><div class="journal-entry-main"><span style="font-size:18px">📦</span>';
       htmlD += '<div class="journal-entry-txt"><strong>' + label + ' × ' + r.qte + '</strong>';
       htmlD += '<span style="color:var(--mu);font-size:12px">' + r.date + '</span></div></div>';
-      htmlD += '<button class="btn btn-del" onclick="deleteReappro(\'' + r.id + '\')">✕</button></div>';
+      htmlD += '<button class="btn btn-del" onclick="deleteReappro(\'' + r.id + '\')" ' + (FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"') + '>✕</button></div>';
     });
     htmlD += '</div>';
   }
@@ -953,6 +956,7 @@ function updateSpecial(key){
 }
 
 function closeSeasonModal(){
+  if(!FLIPO_CAN_DELETE){alert('Clôture réservée aux administrateurs');return;}
   modalCB = () => {
     const rows = [];
     rows.push(['date','saveur','format','client','couleur','qte'].join('\t'));
@@ -1102,6 +1106,7 @@ function addReappro(){
 }
 
 function deleteReappro(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   S.deletedIds = S.deletedIds || [];
   if(S.deletedIds.indexOf('reappro:'+String(id))<0) S.deletedIds.push('reappro:'+String(id));
   S.reappro = S.reappro.filter(r => r.id !== id);
@@ -1116,6 +1121,7 @@ function updCarton(key, val){
 
 
 document.addEventListener('DOMContentLoaded',function(){
+  _checkAuth();
   var cached=localStorage.getItem(LS_KEY);
   if(cached){
     try{
@@ -1138,7 +1144,6 @@ document.addEventListener('DOMContentLoaded',function(){
     }catch(e){}
   }
   _pull(true);
-  _checkAuth();
 });
 
 // ─── Auth ────────────────────────────────────────────────
@@ -1148,6 +1153,7 @@ function _checkAuth(){
   if(!sess){location.href='flipo-login.html';return;}
   var mp=sess.perms&&sess.perms['jus'];
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
   if(sess.isAdmin)return;
   var tabs=mp.tabs||{};
   var tabIds=['resume','saisie','params','stock'];

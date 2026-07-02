@@ -552,7 +552,7 @@ function buildCultures(){
     h+=`<div class="cult-card">
       <span style="font-size:20px;margin-right:6px">${getCultIcon(c)}</span>
       <span class="cname">${es(c)}</span>
-      <button class="btn del" onclick="deleteCulture('${es(c)}')" title="Supprimer">✕</button>
+      <button class="btn del" onclick="deleteCulture('${es(c)}')" ${FLIPO_CAN_DELETE?'title="Supprimer"':'disabled title="Suppression réservée aux administrateurs"'}>✕</button>
     </div>`;
   });
   h+=`</div>`;
@@ -583,6 +583,7 @@ function addCulture(){
   inp.value='';
 }
 function deleteCulture(name){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm(`Supprimer la culture "${name}" ?\n\nSes données de traitement et de récolte seront conservées mais inaccessibles.`))return;
   S.cultures=S.cultures.filter(c=>c!==name);
   if(S.selCult===name)S.selCult=S.cultures[0]||'';
@@ -648,7 +649,7 @@ function buildTrait(){
         <td><input class="w80" id="tdose-${ri}" value="${row.doseHa||''}" type="number" min="0" step="0.01" onchange="updTrait(${ri},'doseHa',this.value)" placeholder="0"></td>
         <td class="calc" id="tbidon-${ri}">${row.doseHa?doseBidon(row.doseHa)+' L':'-'}</td>
         <td><input class="w140" id="tnote-${ri}" value="${es(row.note||'')}" onchange="updTrait(${ri},'note',this.value)" placeholder="note..."></td>
-        <td><button class="btn del" onclick="delTrait(${ri})">🗑</button></td>
+        <td><button class="btn del" onclick="delTrait(${ri})" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button></td>
       </tr>`;
     });
   }
@@ -685,6 +686,7 @@ function addTrait(){
   setTimeout(()=>{const e=$(`tp-${rows.length-1}`);if(e)e.focus();},50);
 }
 function delTrait(ri){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   const rows=getTrait(S.selCult);
   rows.splice(ri,1);saveLS();
   const f=saveFocus();initTrait();restFocus(f);
@@ -766,7 +768,7 @@ function buildSaisie(){
   // Journal
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
     <span style="font-weight:600;font-size:13px">Journal des saisies (${S.entries.length})</span>
-    ${S.entries.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
+    ${(S.entries.length>0&&FLIPO_CAN_DELETE)?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
   </div>`;
   if(!S.entries.length){
     h+=`<div class="empty-journal">Aucune saisie pour le moment.</div>`;
@@ -784,7 +786,7 @@ function buildSaisie(){
           <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.qte} ${es(e.unite||'')}</span>
           ${tsStr?`<div class="jdate">Saisi le ${tsStr}</div>`:''}
         </div>
-        <button class="btn del" onclick="deleteEntry(${e.id})">🗑</button>
+        <button class="btn del" onclick="deleteEntry(${e.id})" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button>
       </div>`;
     });
     h+=`</div>`;
@@ -814,6 +816,7 @@ function addEntry(){
 }
 
 function deleteEntry(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   S.deletedIds=S.deletedIds||[];
   if(S.deletedIds.indexOf('entries:'+String(id))<0)S.deletedIds.push('entries:'+String(id));
   S.entries=S.entries.filter(e=>e.id!==id);
@@ -821,6 +824,7 @@ function deleteEntry(id){
   const el=$('panel-cueill');if(el)el.innerHTML=buildCueill();
 }
 function clearEntries(){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   S.deletedIds=S.deletedIds||[];
   S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
   S.entries=[];saveLS();const el=$('panel-cueill');if(el)el.innerHTML=buildCueill();
@@ -903,6 +907,7 @@ function cloturerAnnee(){
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_STABS = {};
+var FLIPO_CAN_DELETE = false;
 
 function _checkAuth(){
   var sess=null;
@@ -910,6 +915,7 @@ function _checkAuth(){
   if(!sess){location.href='flipo-login.html';return;}
   var mp=sess.perms&&sess.perms['maraichage'];
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
   if(sess.isAdmin)return;
   var tabs=mp.tabs||{};
   var tabIds=['cultures','trait','cueill'];
@@ -938,6 +944,7 @@ function _doInit(){
 }
 
 (function(){
+  _checkAuth();
   var cached=localStorage.getItem(LS_KEY);
   if(cached){
     try{
@@ -953,7 +960,6 @@ function _doInit(){
     }catch(e){}
   }
   _pull(!cached);
-  _checkAuth();
 })();
 </script>
 </body>

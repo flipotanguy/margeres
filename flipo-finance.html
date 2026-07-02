@@ -693,6 +693,7 @@ function addCreditBail(){
 }
 
 function deleteEmprunt(structId,n){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer cet emprunt ?'))return;
   const st=STRUCTURES.find(s=>s.id===structId);
   st.emprunts=st.emprunts.filter(e=>e.n!==n);
@@ -701,6 +702,7 @@ function deleteEmprunt(structId,n){
 }
 
 function deleteCreditBail(structId,nom){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
   if(!confirm('Supprimer ce crédit-bail ?'))return;
   const st=STRUCTURES.find(s=>s.id===structId);
   st.creditBails=(st.creditBails||[]).filter(cb=>cb.nom!==nom);
@@ -724,13 +726,13 @@ function buildListEmprunts(){
       const pay=e.mensualite?e.mensualite+'€/mois':e.annuite+'€/an';
       h+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">
         <span>Emprunt ${e.n} — ${e.montant.toLocaleString('fr-FR')}€ — ${pay} — fin ${e.fin}</span>
-        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteEmprunt('${st.id}',${e.n})">🗑</button>
+        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteEmprunt('${st.id}',${e.n})" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button>
       </div>`;
     });
     (st.creditBails||[]).forEach(cb=>{
       h+=`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">
         <span>CB: ${cb.nom} — ${cb.mensualite}€/mois</span>
-        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteCreditBail('${st.id}','${cb.nom.replace(/'/g,"\\'")}')">🗑</button>
+        <button class="set-btn" style="background:#fee2e2;color:#dc2626;padding:4px 10px" onclick="deleteCreditBail('${st.id}','${cb.nom.replace(/'/g,"\\'")}')" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button>
       </div>`;
     });
     h+='</div>';
@@ -836,12 +838,14 @@ function initApp(){
 }
 
 // ─── Auth app-level ───────────────────────────────────────
+var FLIPO_CAN_DELETE=false;
 (function(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
   if(!sess){location.href='flipo-login.html';return;}
   var mp=sess.perms&&sess.perms['finance'];
   if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
   // Autorisation OK — afficher directement l'app
   document.getElementById('lock').style.display='none';
   document.getElementById('app').style.display='block';
