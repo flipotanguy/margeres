@@ -177,6 +177,18 @@ th,td{padding:8px 6px}
           <option>Tous</option>
         </select>
       </div>
+      <div class="filter-group">
+        <label>Du</label>
+        <input type="date" id="filter-date-from" onchange="updateFilters()">
+      </div>
+      <div class="filter-group">
+        <label>Au</label>
+        <input type="date" id="filter-date-to" onchange="updateFilters()">
+      </div>
+      <div class="filter-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-del" onclick="resetDateFilter()">Effacer dates</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table id="pivot-table"></table>
@@ -444,7 +456,9 @@ const S = {
   },
   filterClient: 'Tous',
   filterSaveur: 'Toutes',
-  filterFormat: 'Tous'
+  filterFormat: 'Tous',
+  filterDateFrom: '',
+  filterDateTo: ''
 };
 
 let modalCB = null;
@@ -517,13 +531,41 @@ function renderFilters(){
     });
     ff.value = S.filterFormat;
   }
+
+  const fdf = $('filter-date-from');
+  if(fdf) fdf.value = S.filterDateFrom || '';
+  const fdt = $('filter-date-to');
+  if(fdt) fdt.value = S.filterDateTo || '';
 }
 
 function updateFilters(){
   S.filterClient = $('filter-client').value;
   S.filterSaveur = $('filter-saveur').value;
   S.filterFormat = $('filter-format').value;
+  const fdf = $('filter-date-from');
+  const fdt = $('filter-date-to');
+  S.filterDateFrom = fdf ? fdf.value : '';
+  S.filterDateTo = fdt ? fdt.value : '';
   saveLS();
+  render();
+}
+
+function resetDateFilter(){
+  S.filterDateFrom = '';
+  S.filterDateTo = '';
+  const fdf = $('filter-date-from');
+  if(fdf) fdf.value = '';
+  const fdt = $('filter-date-to');
+  if(fdt) fdt.value = '';
+  render();
+}
+
+// Vrai si la date de l'entrée est dans l'intervalle sélectionné (bornes incluses, vide = pas de borne)
+function inDateRange(d){
+  if(!d) return true;
+  if(S.filterDateFrom && d < S.filterDateFrom) return false;
+  if(S.filterDateTo && d > S.filterDateTo) return false;
+  return true;
 }
 
 function buildResume(){
@@ -534,6 +576,7 @@ function buildResume(){
     if(S.filterClient !== 'Tous' && e.client !== S.filterClient) return;
     if(S.filterSaveur !== 'Toutes' && e.saveur !== S.filterSaveur) return;
     if(S.filterFormat !== 'Tous' && e.format !== S.filterFormat) return;
+    if(!inDateRange(e.date)) return;
     if(pivot[e.saveur] && pivot[e.saveur][e.format] !== undefined) {
       pivot[e.saveur][e.format] += e.qte;
     }
@@ -572,14 +615,15 @@ function buildResume(){
   let topSaveur = 'N/A', topClient = 'N/A';
   let maxS = 0, maxC = 0;
   const saveurQte = {}, clientQte = {};
-  S.entries.forEach(e => {
+  const periodEntries = S.entries.filter(e => inDateRange(e.date));
+  periodEntries.forEach(e => {
     saveurQte[e.saveur] = (saveurQte[e.saveur] || 0) + e.qte;
     clientQte[e.client] = (clientQte[e.client] || 0) + e.qte;
   });
   Object.entries(saveurQte).forEach(([k, v]) => { if(v > maxS) { maxS = v; topSaveur = k; } });
   Object.entries(clientQte).forEach(([k, v]) => { if(v > maxC) { maxC = v; topClient = k; } });
 
-  const statsHtml = '<div class="stat-card"><div class="stat-label">Entrées</div><div class="stat-value">' + S.entries.length + '</div></div>' +
+  const statsHtml = '<div class="stat-card"><div class="stat-label">Entrées</div><div class="stat-value">' + periodEntries.length + '</div></div>' +
     '<div class="stat-card"><div class="stat-label">Top saveur</div><div class="stat-value">' + es(topSaveur) + '</div></div>' +
     '<div class="stat-card"><div class="stat-label">Top client</div><div class="stat-value">' + es(topClient) + '</div></div>';
   $('stats').innerHTML = statsHtml;
