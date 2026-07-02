@@ -319,7 +319,8 @@ function _buildData(){
     clients:S.clients,formats:S.formats,saveurs:S.saveurs,
     couleurs:S.couleurs,couleursBouchon:S.couleursBouchon,
     entries:S.entries,reappro:S.reappro,stock:S.stock,deletedIds:S.deletedIds,
-    filterClient:S.filterClient,filterSaveur:S.filterSaveur,filterFormat:S.filterFormat
+    filterClient:S.filterClient,filterSaveur:S.filterSaveur,filterFormat:S.filterFormat,
+    mig:S.mig
   };
 }
 
@@ -348,6 +349,30 @@ function _applyCloud(cloud){
   (cloud.reappro||[]).forEach(function(r){mr[String(r.id||r.ts)]=r;});
   (S.reappro||[]).forEach(function(r){var k=String(r.id||r.ts);if(!mr[k])mr[k]=r;});
   S.reappro=Object.values(mr).filter(function(r){return !del['reappro:'+String(r.id||r.ts)];});
+  // Migrations sur les données du cloud (cloud gagne pour le flag)
+  S.mig=Object.assign({},S.mig,cloud.mig);
+  if(_applyMigrations())_migApplied=true;
+}
+
+// Corrections ponctuelles des données, exécutées une seule fois (flag mig.v2 synchronisé)
+var _migApplied=false;
+function _applyMigrations(){
+  S.mig=S.mig||{};
+  if(S.mig.v2)return false;
+  var ren={};
+  // 1) Majuscule "Soft" dans les couleurs de bouchon (ex. "Rouge soft" → "Rouge Soft")
+  S.couleursBouchon=(S.couleursBouchon||[]).map(function(c){
+    var n=c.replace(/ soft$/i,' Soft');
+    if(n!==c)ren[c]=n;
+    return n;
+  }).filter(function(v,i,a){return a.indexOf(v)===i;});
+  // cascade sur les saisies et les arrivées de stock
+  (S.entries||[]).forEach(function(e){if(e.couleur&&ren[e.couleur])e.couleur=ren[e.couleur];});
+  (S.reappro||[]).forEach(function(r){if(r.couleur&&ren[r.couleur])r.couleur=ren[r.couleur];});
+  // 2) Retirer le format "1L" (garde "1L Rhum" et "1L Soft")
+  S.formats=(S.formats||[]).filter(function(f){return f!=='1L';});
+  S.mig.v2=true;
+  return true;
 }
 
 function _rebuildUI(){
@@ -418,6 +443,7 @@ function _pull(rebuild){
     try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
     if(rebuild)_rebuildUI();
     setSyncSt('ok');
+    if(_migApplied){_migApplied=false;saveLS();}
   }).catch(function(){_pulling=false;});
 }
 
@@ -432,7 +458,7 @@ setInterval(function(){
     if(rows[0].updated_at!==_cloudTs)_pull(true);
   }).catch(function(){});
 },10000);
-const FORMATS_INIT = ['33cl','1L','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
+const FORMATS_INIT = ['33cl','1L Rhum','1L Soft','BIB 3L','BIB générique 3L'];
 const SAVEURS_INIT = ['Pomme','Poire','Cassis','Fraise','Framboise','Myrtille','Abricot','Coing','Rhubarbe'];
 const CLIENTS_INIT = ['VDP','PRESTA BEAURAINVILLE','PRESTA BENARDERIE','PRESTA MARTINE','PRESTA MOISMONT'];
 const COULEURS_INIT = ['Blanc','Noir','Rouge'];
@@ -458,7 +484,8 @@ const S = {
   filterSaveur: 'Toutes',
   filterFormat: 'Tous',
   filterDateFrom: '',
-  filterDateTo: ''
+  filterDateTo: '',
+  mig: {}
 };
 
 let modalCB = null;
@@ -864,7 +891,7 @@ function buildStock(){
   htmlA += '<table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--brd)">Couleur</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Entré</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Consommé</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--brd)">Restant</th></tr></thead><tbody>';
 
   S.couleursBouchon.forEach(couleur => {
-    const entree = totalEntree('bouchon_' + couleur, couleur);
+    const entree = totalEntree('bouchon', couleur);
     const conso = calcConsomme('bouchon', couleur);
     const rest = entree - conso;
     const cls = rest < 0 ? 'color:var(--gr);font-weight:700' : (entree > 0 && rest / entree > 0.2 ? 'color:#27ae60;font-weight:700' : '');
@@ -1136,6 +1163,7 @@ document.addEventListener('DOMContentLoaded',function(){
       S.entries=d.entries||[];
       S.reappro=d.reappro||[];
       S.deletedIds=d.deletedIds||[];
+      if(d.mig)S.mig=d.mig;
       if(d.stock)S.stock=d.stock;
       if(d.filterClient)S.filterClient=d.filterClient;
       if(d.filterSaveur)S.filterSaveur=d.filterSaveur;
