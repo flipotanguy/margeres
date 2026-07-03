@@ -860,7 +860,6 @@ function buildStock(){
   // Calcul de la consommation par type (pour les formats de bouteilles, ou par couleur pour bouchons)
   function calcConsomme(type, format){
     if(type === 'b33') return S.entries.filter(e => e.format === '33cl').reduce((a, e) => a + e.qte, 0);
-    if(type === 'b1L') return S.entries.filter(e => e.format === '1L').reduce((a, e) => a + e.qte, 0);
     if(type === 'b1Lrhum') return S.entries.filter(e => e.format === '1L Rhum').reduce((a, e) => a + e.qte, 0);
     if(type === 'b1Lsoft') return S.entries.filter(e => e.format === '1L Soft').reduce((a, e) => a + e.qte, 0);
     if(type === 'bib') return S.entries.filter(e => e.format === 'BIB 3L').reduce((a, e) => a + e.qte, 0);
@@ -872,7 +871,6 @@ function buildStock(){
 
   const STOCK_BOTTLES = [
     {type:'b33', label:'Bouteilles 33cl'},
-    {type:'b1L', label:'Bouteilles 1L'},
     {type:'b1Lrhum', label:'Bouteilles 1L Rhum'},
     {type:'b1Lsoft', label:'Bouteilles 1L Soft'},
     {type:'bib', label:'BIBs 3L'},
@@ -926,16 +924,19 @@ function buildStock(){
   const gnrDate = S.stock.gnrDate ? 'Saisi le ' + S.stock.gnrDate : 'Jamais saisi';
   const ibcPommeDate = S.stock.ibcPommeDate ? 'Saisi le ' + S.stock.ibcPommeDate : 'Jamais saisi';
   const ibcPoireDate = S.stock.ibcPoireDate ? 'Saisi le ' + S.stock.ibcPoireDate : 'Jamais saisi';
+  const gazDate = S.stock.gazDate ? 'Saisi le ' + S.stock.gazDate : 'Jamais saisi';
   let htmlC = '<div class="stock-section"><div class="stock-section-title">C — Produits spéciaux</div>';
   htmlC += '<div class="stock-row"><div class="stock-label">GNR (%)</div><div class="stock-input-group"><input type="number" min="0" max="100" step="0.1" id="stock-gnr" value="' + (S.stock.gnr||0) + '" onchange="updateSpecial(\'gnr\')"></div></div>';
   htmlC += '<div class="stock-date" id="gnr-date">' + gnrDate + '</div>';
   htmlC += '<div class="stock-row"><div class="stock-label">IBC Pomme (L)</div><div class="stock-input-group"><input type="number" min="0" step="10" id="stock-ibcPomme" value="' + (S.stock.ibcPomme||0) + '" onchange="updateSpecial(\'ibcPomme\')"></div></div>';
   htmlC += '<div class="stock-date" id="ibcPomme-date">' + ibcPommeDate + '</div>';
   htmlC += '<div class="stock-row"><div class="stock-label">IBC Poire (L)</div><div class="stock-input-group"><input type="number" min="0" step="10" id="stock-ibcPoire" value="' + (S.stock.ibcPoire||0) + '" onchange="updateSpecial(\'ibcPoire\')"></div></div>';
-  htmlC += '<div class="stock-date" id="ibcPoire-date">' + ibcPoireDate + '</div></div>';
+  htmlC += '<div class="stock-date" id="ibcPoire-date">' + ibcPoireDate + '</div>';
+  htmlC += '<div class="stock-row"><div class="stock-label">Bouteilles de gaz</div><div class="stock-input-group"><input type="number" min="0" step="1" id="stock-gaz" value="' + (S.stock.gaz||0) + '" onchange="updateSpecial(\'gaz\')"></div></div>';
+  htmlC += '<div class="stock-date" id="gaz-date">' + gazDate + '</div></div>';
 
   // Render section D — réapprovisionnements
-  const LABELS = {b33:'Bouteilles 33cl',b1L:'Bouteilles 1L',b1Lrhum:'Bouteilles 1L Rhum',b1Lsoft:'Bouteilles 1L Soft',bib:'BIBs 3L',bibGen:'BIBs générique 3L',bouchon:'Bouchons'};
+  const LABELS = {b33:'Bouteilles 33cl',b1Lrhum:'Bouteilles 1L Rhum',b1Lsoft:'Bouteilles 1L Soft',bib:'BIBs 3L',bibGen:'BIBs générique 3L',bouchon:'Bouchons'};
   const today = new Date().toISOString().split('T')[0];
   let htmlD = '<div class="stock-section"><div class="stock-section-title">D — Arrivées de stock</div>';
   htmlD += '<div class="form-row" style="margin-bottom:12px">';
@@ -1100,10 +1101,11 @@ function shareNow(type){
     html = '<div class="section-title">Stock bouteilles</div>';
     html += '<div style="margin-bottom:16px">';
     html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b33||0) + '</div><div class="stat-lbl">Bouteilles 33cl</div></div>';
-    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b1L||0) + '</div><div class="stat-lbl">Bouteilles 1L</div></div>';
+    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b1Lrhum||0) + '</div><div class="stat-lbl">Bouteilles 1L Rhum</div></div>';
+    html += '<div class="stat-box"><div class="stat-val">' + (S.stock.b1Lsoft||0) + '</div><div class="stat-lbl">Bouteilles 1L Soft</div></div>';
     html += '<div class="stat-box"><div class="stat-val">' + (S.stock.bouchon||0) + '</div><div class="stat-lbl">Bouchons</div></div>';
     html += '</div>';
-    plain = 'Stock Jus Flipo\n' + dt + '\n\n33cl : ' + (S.stock.b33||0) + '\n1L : ' + (S.stock.b1L||0) + '\nBouchons : ' + (S.stock.bouchon||0);
+    plain = 'Stock Jus Flipo\n' + dt + '\n\n33cl : ' + (S.stock.b33||0) + '\n1L Rhum : ' + (S.stock.b1Lrhum||0) + '\n1L Soft : ' + (S.stock.b1Lsoft||0) + '\nBouchons : ' + (S.stock.bouchon||0);
   } else if(S.tab === 'params'){
     title = 'Jus — Paramètres'; subject = 'Paramètres Jus Flipo — ' + dt;
     html = '<div class="section-title">Clients</div><table><thead><tr><th>Nom</th></tr></thead><tbody>';
