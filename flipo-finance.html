@@ -231,7 +231,7 @@ const DEFAULT_STRUCTURES=[
     {n:5,montant:92000,annuite:null,mensualite:1253.30,fin:'2031-12-15'}
    ],
    creditBails:[{nom:'Hervé',mensualite:1515.60},{nom:'Thomas',mensualite:1953.02}]},
-  {id:'f2t',nom:'F2T',totalAnnuel:169192.25,
+  {id:'f2t',nom:'F2T',totalAnnuel:76636.13,
    emprunts:[
     {n:1,montant:49000,annuite:null,mensualite:893.59,fin:'2030-06-15'},
     {n:2,montant:107000,annuite:null,mensualite:1437.58,fin:'2031-07-15'},
@@ -239,7 +239,7 @@ const DEFAULT_STRUCTURES=[
     {n:4,montant:95000,annuite:9773.21,mensualite:null,fin:'2034-12-15'},
     {n:5,montant:36400,annuite:null,mensualite:446.82,fin:'2028-10-15'}
    ],
-   creditBails:[{nom:'Tesla',mensualite:784.81},{nom:'Volvo',mensualite:1062},{nom:'Presse à jus',mensualite:6651.01},{nom:'Calibreuse',mensualite:1224},{nom:'Imprimante',mensualite:278.97}]},
+   creditBails:[{nom:'Tesla',mensualite:784.81},{nom:'Calibreuse',mensualite:1224},{nom:'Imprimante',mensualite:278.97}]},
   {id:'pv',nom:'PV',totalAnnuel:50073.36,
    emprunts:[
     {n:1,montant:55000,annuite:null,mensualite:694.28,fin:'2026-03-14'},
@@ -266,6 +266,7 @@ function loadStructures(){
   return DEFAULT_STRUCTURES;
 }
 function saveStructures(){
+  _recalcTotals();
   localStorage.setItem('flipo-finance-structs',JSON.stringify(STRUCTURES));
   supaSet('flipo-finance-structs',{structures:STRUCTURES});
 }
@@ -282,7 +283,17 @@ function calcTotaux(){
   });
   return {annuel:annuel,emprunts:emprunts};
 }
+// Total annuel réel d'une structure = somme des emprunts (annuité ou mensualité×12) + crédits-baux
+function structAnnuel(st){
+  var a=0;
+  (st.emprunts||[]).forEach(function(e){a+=e.annuite||((e.mensualite||0)*12);});
+  (st.creditBails||[]).forEach(function(cb){a+=(cb.mensualite||0)*12;});
+  return a;
+}
+// Recalcule le total figé de chaque structure à partir de ses emprunts/crédits-baux actuels
+function _recalcTotals(){STRUCTURES.forEach(function(st){st.totalAnnuel=structAnnuel(st);});}
 var STRUCTURES=loadStructures();
+_recalcTotals();
 var TOTAUX=calcTotaux();
 var TOTAL_ANNUEL=TOTAUX.annuel;
 var TOTAL_EMPRUNTS=TOTAUX.emprunts;
