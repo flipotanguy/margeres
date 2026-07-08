@@ -1229,7 +1229,7 @@ function buildSaisie(){
   const vars=S.entCult==='pomme'?pomVars:poiVars;
   const today=new Date();
   const todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0');
-  const kgDef=S.entCult==='pomme'?300:440;
+  const kgDef=S.entCult==='pomme'?360:440;
   let h=`<div class="cult-sel">
     <button class="cult-btn pom${S.entCult==='pomme'?' act':''}" onclick="setEntCult('pomme')">🍎 Pomme</button>
     <button class="cult-btn poi${S.entCult==='poire'?' act':''}" onclick="setEntCult('poire')">🍐 Poire</button>
