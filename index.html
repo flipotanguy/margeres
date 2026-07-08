@@ -50,6 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .card.emballage:hover{border-color:#e07020}.card.emballage .card-bar{background:#e07020}
 .card.commande:hover{border-color:#185FA5}.card.commande .card-bar{background:#185FA5}
 .card.finance:hover{border-color:#f59e0b}.card.finance .card-bar{background:#f59e0b}
+.card.materiel:hover{border-color:#4f46e5}.card.materiel .card-bar{background:#4f46e5}
 
 /* Footer */
 .footer{text-align:center;margin-top:48px;font-size:11px;color:var(--mu)}
@@ -117,7 +118,8 @@ var ALL_MODULES=[
   {id:'fraise',cls:'fraise',icon:'🍓',title:'Fraise',desc:'Récolte par chapelle et variété, rendement intérieur/extérieur, drainage irrigation, configuration saison.',url:'flipo-fraise.html'},
   {id:'jus',cls:'jus',icon:'🧃',title:'Jus',desc:'Embouteillage par saveur et format, suivi clients, stock bouteilles/bouchons/BIBs, IBC pomme et poire.',url:'flipo-jus.html'},
   {id:'emballage',cls:'emballage',icon:'📦',title:'Tri / Emballage',desc:'Saisie hebdomadaire du tri par variété, déduction du stock bâtiment et statistiques saison.',url:'flipo-emballage.html'},
-  {id:'finance',cls:'finance',icon:'💶',title:'Finance 🔒',desc:'Emprunts et crédit-bails par structure (SCEA, VDP, F2T, PV, SCI, THITAN), charges annuelles, échéances.',url:'flipo-finance.html'}
+  {id:'finance',cls:'finance',icon:'💶',title:'Finance 🔒',desc:'Emprunts et crédit-bails par structure (SCEA, VDP, F2T, PV, SCI, THITAN), charges annuelles, échéances.',url:'flipo-finance.html'},
+  {id:'materiel',cls:'materiel',icon:'🧰',title:'Suivi du matériel',desc:'Prêts de matériel aux salariés, retours, disponibilité par outil et tableau de bord qui détient quoi.',url:'flipo-materiel.html'}
 ];
 
 function hashCode(s){var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h)+s.charCodeAt(i);h|=0;}return(h>>>0).toString(16).padStart(8,'0');}
@@ -164,6 +166,12 @@ function initDefaultUsers(){
       structures:{enabled:true,stabs:[]},
       echeances:{enabled:true,stabs:[]},
       reglages:{enabled:true,stabs:[]}
+    }},
+    materiel:{enabled:true,tabs:{
+      dash:{enabled:true,stabs:[]},
+      materiel:{enabled:true,stabs:[]},
+      salaries:{enabled:true,stabs:[]},
+      prets:{enabled:true,stabs:[]}
     }}
   };
   var admin={id:Date.now(),nom:'Flipo',prenom:'Admin',codeHash:hashCode('09070812'),isAdmin:true,perms:allPerms};

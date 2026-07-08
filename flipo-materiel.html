@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flipo — Suivi du matériel</title>
+<style>
+:root{--gr:#4f46e5;--gd:#3730a3;--gl:#eef0ff;--bl:#185FA5;--am:#FFF3CD;--amb:#E6A817;--brd:#e0e0e0;--bg:#f7f7f5;--wh:#fff;--tx:#1a1a1a;--mu:#666;--mn:#d4edda;--mnd:#155724;--red:#c0392b;--rdb:#fff0f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;background:var(--bg);color:var(--tx)}
+.app{max-width:1300px;margin:0 auto;background:var(--wh);min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,.07)}
+.hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:2px solid var(--gr);background:var(--wh)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--gr);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.htxt h1{font-size:17px;font-weight:700;color:var(--gd)}.htxt p{font-size:11px;color:var(--mu)}
+.tabs{display:flex;padding:0 20px;background:var(--wh);border-bottom:1px solid var(--brd);flex-wrap:wrap}
+.tab{font-size:13px;padding:11px 18px;border:none;border-bottom:3px solid transparent;cursor:pointer;background:transparent;color:var(--mu);font-weight:500}
+.tab.act{color:var(--gr);border-bottom-color:var(--gr)}
+.content{padding:20px}
+.hidden{display:none!important}
+.btn{font-size:12px;padding:6px 14px;border-radius:7px;border:1px solid var(--brd);cursor:pointer;background:var(--wh);color:var(--tx);display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.btn:hover{background:var(--bg)}
+.btn.add{background:var(--gl);color:var(--gd);border-color:var(--gr)}.btn.add:hover{background:#e3e6ff}
+.btn.ok{background:var(--gr);color:#fff;border-color:var(--gd)}.btn.ok:hover{background:var(--gd)}
+.btn.del{background:#fff0f0;color:#c0392b;border-color:#f5c6c6;padding:3px 8px;font-size:11px}.btn.del:hover{background:#fde8e8}
+.btn.danger{background:#fff3f3;color:#c0392b;border-color:#f5c6c6}.btn.danger:hover{background:#fde8e8}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tw{overflow-x:auto;border:1px solid var(--brd);border-radius:10px;margin-bottom:10px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{background:#f2f2f0;padding:7px 10px;text-align:left;font-weight:600;border-bottom:1px solid var(--brd);white-space:nowrap}
+th.am{background:#FEF3CD} th.gr{background:var(--gl)}
+td{padding:6px 10px;border-bottom:1px solid #f0f0ee;white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+td.calc{background:#eef0ff!important;color:var(--gd);font-weight:600}
+td.f{background:var(--am)!important;color:#7a5200;font-weight:600}
+td input,td select{border:none;background:transparent;width:100%;font-size:12px;color:inherit;outline:none;padding:2px 3px}
+td input:focus,td select:focus{background:rgba(255,255,255,.9);border-radius:3px;outline:1px solid var(--gr)}
+input.w60{width:60px}input.w80{width:80px}
+/* KPIs */
+.sts{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.st{background:var(--bg);border-radius:10px;padding:12px 16px;flex:1;min-width:120px;border:1px solid var(--brd)}
+.sl{font-size:11px;color:var(--mu);margin-bottom:3px}.sv{font-size:22px;font-weight:700;line-height:1}.su{font-size:11px;color:var(--mu);margin-top:2px}
+.sv.en{color:var(--gr)}.sv.rn{color:#2d7a4a}
+.info{background:var(--gl);border-left:3px solid var(--gr);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--gd);margin-bottom:14px;line-height:1.5}
+.stitle{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--brd)}
+/* Search cards */
+.search-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.search-grid{grid-template-columns:1fr}}
+.search-card{background:var(--wh);border:1px solid var(--brd);border-radius:12px;padding:16px}
+.search-card h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gd);margin-bottom:12px}
+.search-card select{width:100%;padding:8px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh);margin-bottom:12px}
+.mini-st{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.mini-st .m{background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:8px 12px;flex:1;min-width:80px}
+.mini-st .ml{font-size:10px;color:var(--mu)}.mini-st .mv{font-size:17px;font-weight:700}
+.held-row{display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #f0f0ee;font-size:12px}
+.held-row:last-child{border-bottom:none}
+.held-q{font-weight:700;color:var(--gd)}
+.empty-journal{text-align:center;color:var(--mu);font-size:12px;padding:18px;background:var(--bg);border-radius:10px}
+/* Forms */
+.entry-form{background:var(--bg);border-radius:12px;padding:16px;border:1px solid var(--brd);margin-bottom:16px}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:11px;color:var(--mu);font-weight:500}
+.form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh);color:var(--tx);outline:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(79,70,229,.15)}
+/* Journal prêts */
+.journal-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
+.journal-row .jinfo{flex:1;font-size:12px;min-width:0}
+.journal-row .jinfo strong{font-size:13px}
+.journal-row .jsub{font-size:11px;color:var(--mu);margin-top:2px}
+.badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.b-en{background:#fff3cd;color:#856404}
+.b-rn{background:#d4edda;color:#155724}
+.chip-card{background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.sal-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+/* Share FAB */
+.share-fab{position:fixed;bottom:22px;right:18px;z-index:1000}
+.share-pill{display:flex;gap:8px;background:#fff;border-radius:99px;padding:7px 12px;box-shadow:0 3px 16px rgba(0,0,0,.2);border:1px solid var(--brd)}
+.share-pill-btn{border:none;background:transparent;cursor:pointer;padding:2px 6px;border-radius:99px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--mu)}
+.share-pill-btn:hover{background:var(--gl);color:var(--gd)}
+.share-pill-sep{width:1px;background:var(--brd);align-self:stretch}
+@media(max-width:600px){
+.app{box-shadow:none}
+.hdr{flex-wrap:wrap;gap:8px;padding:12px}
+.logo{width:32px;height:32px}
+.htxt h1{font-size:15px}
+.tabs{padding:0 10px}
+.tab{padding:10px 12px;font-size:12px}
+.content{padding:14px}
+.btn{min-height:40px}
+.form-field input,.form-field select{padding:8px 10px;font-size:14px}
+.form-row{flex-direction:column;align-items:stretch}
+.form-field{width:100%}
+table{font-size:11px}th,td{padding:6px 8px}
+.share-fab{bottom:16px;right:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <a href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0" title="Retour à l'accueil Flipo">
+    <div class="logo" style="flex-shrink:0">
+      <svg viewBox="0 0 28 32" fill="none" width="24" height="28">
+        <rect x="11" y="23" width="6" height="8" fill="#8B5E3C" rx="2"/>
+        <ellipse cx="14" cy="14" rx="12" ry="13" fill="#2d7a4a"/>
+        <circle cx="9" cy="11" r="2.2" fill="#e84a3f"/><circle cx="18" cy="9" r="2.2" fill="#e84a3f"/>
+        <circle cx="14" cy="18" r="2.2" fill="#f4a020"/>
+      </svg>
+    </div>
+    <span style="font-size:15px;font-weight:800;color:var(--gd);letter-spacing:-.2px">Flipo</span>
+  </a>
+  <div style="width:1px;height:28px;background:var(--brd);margin:0 6px;flex-shrink:0"></div>
+  <div class="htxt"><h1>🧰 Suivi du matériel</h1><p>Qui détient quoi — prêts & retours</p></div>
+  <span id="sync-st" title="État sync cloud" onclick="forcePush()" style="cursor:pointer;font-size:20px;padding:0 8px;margin-left:auto">☁️</span>
+</div>
+<div class="tabs">
+  <button id="tab-dash" class="tab act" onclick="setTab('dash',this)">📊 Tableau de bord</button>
+  <button id="tab-materiel" class="tab" onclick="setTab('materiel',this)">🧰 Matériel</button>
+  <button id="tab-salaries" class="tab" onclick="setTab('salaries',this)">👤 Salariés</button>
+  <button id="tab-prets" class="tab" onclick="setTab('prets',this)">🔄 Prêts</button>
+</div>
+<div class="content">
+  <div id="panel-dash"></div>
+  <div id="panel-materiel" class="hidden"></div>
+  <div id="panel-salaries" class="hidden"></div>
+  <div id="panel-prets" class="hidden"></div>
+</div>
+</div>
+<!-- Share FAB -->
+<div class="share-fab">
+  <div class="share-pill">
+    <button class="share-pill-btn" onclick="shareNow('email')" title="Envoyer par e-mail">📧 Email</button>
+    <div class="share-pill-sep"></div>
+    <button class="share-pill-btn" onclick="shareNow('sms')" title="Envoyer par SMS">📱 SMS</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════
+// DONNÉES PAR DÉFAUT (import Google Sheet "Matériel suivi")
+// ══════════════════════════════════════════════
+const SALARIES_INIT = [
+  {id:'sal1',prenom:'Annie',nom:'S'},
+  {id:'sal2',prenom:'Cédric',nom:'G'},
+  {id:'sal3',prenom:'Cyril',nom:'P'},
+  {id:'sal4',prenom:'Geoffrey',nom:'D'},
+  {id:'sal5',prenom:'Jeremy',nom:'L'},
+  {id:'sal6',prenom:'Julien',nom:'B'},
+  {id:'sal7',prenom:'Marc',nom:'G'},
+  {id:'sal8',prenom:'Marie-Jo',nom:'D'},
+  {id:'sal9',prenom:'Micka',nom:'V'},
+  {id:'sal10',prenom:'Typhaine',nom:'H'},
+  {id:'sal11',prenom:'Fabien',nom:'D'}
+];
+const MATERIELS_INIT = [
+  {id:'mat1',nom:'Balance',qte:6},
+  {id:'mat2',nom:'Binette classique',qte:4},
+  {id:'mat3',nom:'Binette électrique',qte:1},
+  {id:'mat4',nom:'Débrousailleuse',qte:1},
+  {id:'mat5',nom:'Epinette',qte:4},
+  {id:'mat6',nom:'Fourgon Compiègne',qte:1},
+  {id:'mat7',nom:'Motoculteur',qte:1},
+  {id:'mat8',nom:'Pelle',qte:2},
+  {id:'mat9',nom:'Pulvérisateur à dos',qte:2},
+  {id:'mat10',nom:'Sécateur électrique',qte:0},
+  {id:'mat11',nom:'Sécateur rouge manu',qte:6},
+  {id:'mat12',nom:'Sécateur vert',qte:2},
+  {id:'mat13',nom:'Tondeuse tracteur',qte:1},
+  {id:'mat14',nom:'Tronçonneuse élec',qte:2},
+  {id:'mat15',nom:'Marteau Tanguy',qte:1},
+  {id:'mat16',nom:'Clé Tanguy',qte:1},
+  {id:'mat17',nom:'Pince mult Tanguy',qte:1}
+];
+const PRETS_INIT = [
+  {id:'pret1',salarie:'Annie S',materiel:'Sécateur vert',qte:1,datePret:'20/06/2026',rendu:false,dateRetour:'',ts:'2026-06-20T08:00:00.000Z'},
+  {id:'pret2',salarie:'Fabien D',materiel:'Sécateur vert',qte:1,datePret:'20/06/2026',rendu:false,dateRetour:'',ts:'2026-06-20T08:01:00.000Z'},
+  {id:'pret3',salarie:'Annie S',materiel:'Sécateur rouge manu',qte:1,datePret:'20/06/2026',rendu:true,dateRetour:'',ts:'2026-06-20T08:02:00.000Z'},
+  {id:'pret4',salarie:'Marie-Jo D',materiel:'Sécateur rouge manu',qte:1,datePret:'20/06/2026',rendu:true,dateRetour:'',ts:'2026-06-20T08:03:00.000Z'},
+  {id:'pret5',salarie:'Jeremy L',materiel:'Fourgon Compiègne',qte:1,datePret:'22/06/2026',rendu:true,dateRetour:'',ts:'2026-06-22T08:00:00.000Z'},
+  {id:'pret6',salarie:'Jeremy L',materiel:'Fourgon Compiègne',qte:1,datePret:'24/06/2026',rendu:true,dateRetour:'',ts:'2026-06-24T08:00:00.000Z'},
+  {id:'pret7',salarie:'Marie-Jo D',materiel:'Epinette',qte:1,datePret:'26/06/2026',rendu:true,dateRetour:'',ts:'2026-06-26T08:00:00.000Z'},
+  {id:'pret8',salarie:'Annie S',materiel:'Epinette',qte:1,datePret:'26/06/2026',rendu:true,dateRetour:'',ts:'2026-06-26T08:01:00.000Z'},
+  {id:'pret9',salarie:'Typhaine H',materiel:'Binette classique',qte:2,datePret:'08/07/2026',rendu:true,dateRetour:'',ts:'2026-07-08T08:00:00.000Z'},
+  {id:'pret10',salarie:'Fabien D',materiel:'Clé Tanguy',qte:1,datePret:'08/07/2026',rendu:false,dateRetour:'',ts:'2026-07-08T08:01:00.000Z'},
+  {id:'pret11',salarie:'Fabien D',materiel:'Marteau Tanguy',qte:1,datePret:'08/07/2026',rendu:false,dateRetour:'',ts:'2026-07-08T08:02:00.000Z'},
+  {id:'pret12',salarie:'Fabien D',materiel:'Pince mult Tanguy',qte:1,datePret:'08/07/2026',rendu:false,dateRetour:'',ts:'2026-07-08T08:03:00.000Z'}
+];
+
+// ══════════════════════════════════════════════
+// LOCAL STORAGE + SYNC
+// ══════════════════════════════════════════════
+const LS_KEY = 'flipo-materiel-v1';
+var _deviceId = localStorage.getItem('flipo_device_id') ||
+  (function(){ var id='dev-'+Date.now()+'-'+Math.random().toString(36).substr(2,9); localStorage.setItem('flipo_device_id',id); return id; })();
+
+var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbGJma2RnYmVvam5hZGxjb3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDA2MjgsImV4cCI6MjA5MjAxNjYyOH0.joG_5bmBg2Ii-ev9o1XKmnCJWOL12pe0ustI39Mas6Y';
+function _supaH(x){var h={'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};if(x)Object.keys(x).forEach(function(k){h[k]=x[k];});return h;}
+
+var _cloudTs = null;
+var _pulling = false;
+
+function setSyncSt(s){
+  var el=document.getElementById('sync-st');
+  if(!el)return;
+  if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}
+  else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}
+  else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}
+}
+
+function _buildData(){
+  return {
+    salaries:S.salaries, materiels:S.materiels, prets:S.prets,
+    deletedIds:S.deletedIds, tab:S.tab
+  };
+}
+
+// Fusion union par ID pour une collection, en respectant les tombstones
+function _mergeCol(cloudArr, localArr, prefix, del){
+  var m={};
+  (cloudArr||[]).forEach(function(e){m[String(e.id)]=e;});
+  (localArr||[]).forEach(function(e){var k=String(e.id);if(!m[k])m[k]=e;});
+  return Object.values(m).filter(function(e){return !del[prefix+String(e.id)];});
+}
+
+function _applyCloud(cloud){
+  if(!cloud)return;
+  if(cloud.tab)S.tab=cloud.tab;
+  // Union des tombstones
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  // Les trois collections : union par ID + tombstones (jamais perdre une saisie)
+  S.salaries=_mergeCol(cloud.salaries,S.salaries,'sal:',del);
+  S.materiels=_mergeCol(cloud.materiels,S.materiels,'mat:',del);
+  S.prets=_mergeCol(cloud.prets,S.prets,'pret:',del);
+}
+
+// Fusionne uniquement les collections cloud sans écraser les ajouts locaux
+function _mergeFromCloud(cloud){
+  if(!cloud)return;
+  var del={};
+  (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
+  (S.deletedIds||[]).forEach(function(k){del[k]=1;});
+  S.deletedIds=Object.keys(del);
+  S.salaries=_mergeCol(cloud.salaries,S.salaries,'sal:',del);
+  S.materiels=_mergeCol(cloud.materiels,S.materiels,'mat:',del);
+  S.prets=_mergeCol(cloud.prets,S.prets,'pret:',del);
+}
+
+function _rebuildUI(){
+  var t=S.tab||'dash';
+  ['dash','materiel','salaries','prets'].forEach(function(n){
+    var p=document.getElementById('panel-'+n);
+    if(p)p.classList.toggle('hidden',n!==t);
+  });
+  document.querySelectorAll('.tabs .tab').forEach(function(b){b.classList.remove('act');});
+  var btn=document.getElementById('tab-'+t);
+  if(btn)btn.classList.add('act');
+  initDash();initMateriel();initSalaries();initPrets();
+}
+
+function saveLS(){
+  var ts=new Date().toISOString();
+  try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
+  setSyncSt('syncing');
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(rows&&rows.length)_mergeFromCloud(rows[0].data);
+    var data=_buildData();
+    try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
+    return fetch(SUPA_URL+'/rest/v1/flipo_sync',{
+      method:'POST',
+      headers:_supaH({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify({key:LS_KEY,data:data,updated_at:ts})
+    });
+  }).then(function(r){
+    if(r&&r.ok){setSyncSt('ok');_cloudTs=ts;var el=document.getElementById('sync-st');if(el)el.title='✅ Sync OK · '+new Date().toLocaleTimeString('fr-FR');}
+    else setSyncSt('err');
+  }).catch(function(){setSyncSt('err');});
+}
+
+function _pull(rebuild){
+  if(_pulling)return;
+  _pulling=true;
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data,updated_at',{headers:_supaH()})
+  .then(function(r){_pulling=false;return r.ok?r.json():[];})
+  .then(function(rows){
+    if(!rows||!rows.length){ // rien dans le cloud → on pousse nos données par défaut
+      if(rebuild)_rebuildUI();
+      saveLS();
+      return;
+    }
+    _cloudTs=rows[0].updated_at;
+    _applyCloud(rows[0].data);
+    try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
+    if(rebuild)_rebuildUI();
+    setSyncSt('ok');
+  }).catch(function(){_pulling=false;});
+}
+
+function forcePush(){saveLS();}
+
+setInterval(function(){
+  fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=updated_at',
+    {headers:{apikey:SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+  .then(function(r){return r.ok?r.json():[];})
+  .then(function(rows){
+    if(!rows||!rows.length)return;
+    if(rows[0].updated_at!==_cloudTs)_pull(true);
+  }).catch(function(){});
+},10000);
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const S = {
+  tab:'dash',
+  salaries:JSON.parse(JSON.stringify(SALARIES_INIT)),
+  materiels:JSON.parse(JSON.stringify(MATERIELS_INIT)),
+  prets:JSON.parse(JSON.stringify(PRETS_INIT)),
+  deletedIds:[]
+};
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function $(id){return document.getElementById(id);}
+function es(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function saveFocus(){const e=document.activeElement;return e?{id:e.id,s:e.selectionStart,en:e.selectionEnd}:null;}
+function restFocus(f){if(!f||!f.id)return;const e=$(f.id);if(e){e.focus();try{e.setSelectionRange(f.s,f.en);}catch(_){}}}
+function fullName(sal){return (String(sal.prenom||'').trim()+' '+String(sal.nom||'').trim()).trim();}
+function initials(sal){return((String(sal.prenom||'?').trim().charAt(0))+(String(sal.nom||'?').trim().charAt(0))).toUpperCase();}
+var AV_COLORS=['#4f46e5','#185FA5','#e07020','#8b5cf6','#e84a7a','#0f766e','#b45309','#0891b2'];
+function avColor(i){return AV_COLORS[i%AV_COLORS.length];}
+function todayStr(){var d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
+function salByName(name){return S.salaries.find(function(x){return fullName(x)===name;});}
+
+// Qté actuellement prêtée (en cours) d'un matériel
+function pretedQty(matNom){
+  return S.prets.filter(function(p){return p.materiel===matNom&&!p.rendu;})
+               .reduce(function(s,p){return s+(parseFloat(p.qte)||0);},0);
+}
+// Qté d'un matériel détenue en cours par un salarié
+function heldQty(salName,matNom){
+  return S.prets.filter(function(p){return p.salarie===salName&&p.materiel===matNom&&!p.rendu;})
+               .reduce(function(s,p){return s+(parseFloat(p.qte)||0);},0);
+}
+function matByName(nom){return S.materiels.find(function(m){return m.nom===nom;});}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function setTab(name,btn){
+  ['dash','materiel','salaries','prets'].forEach(function(t){var p=$('panel-'+t);if(p)p.classList.toggle('hidden',t!==name);});
+  document.querySelectorAll('.tabs .tab').forEach(function(b){b.classList.remove('act');});
+  if(btn)btn.classList.add('act');
+  S.tab=name;
+  if(name==='dash')initDash();
+  else if(name==='materiel')initMateriel();
+  else if(name==='salaries')initSalaries();
+  else if(name==='prets')initPrets();
+}
+
+// ══════════════════════════════════════════════
+// TABLEAU DE BORD
+// ══════════════════════════════════════════════
+var _dashSal='', _dashMat='';
+function initDash(){const el=$('panel-dash');if(el)el.innerHTML=buildDash();}
+function buildDash(){
+  var enCours=S.prets.filter(function(p){return !p.rendu;}).length;
+  var rendus=S.prets.filter(function(p){return p.rendu;}).length;
+  var h=`<div class="sts">
+    <div class="st"><div class="sl">Prêts en cours</div><div class="sv en">${enCours}</div><div class="su">non rendus</div></div>
+    <div class="st"><div class="sl">Prêts rendus</div><div class="sv rn">${rendus}</div><div class="su">clôturés</div></div>
+    <div class="st"><div class="sl">Types de matériel</div><div class="sv">${S.materiels.length}</div><div class="su">références</div></div>
+    <div class="st"><div class="sl">Salariés</div><div class="sv">${S.salaries.length}</div><div class="su">enregistrés</div></div>
+  </div>`;
+  h+=`<div class="search-grid">`;
+  // ─ Recherche par salarié
+  h+=`<div class="search-card">
+    <h3>🔎 Recherche par salarié</h3>
+    <select id="dash-sal" onchange="_dashSal=this.value;renderDashSal()">
+      <option value="">— Choisir un salarié —</option>
+      ${[...S.salaries].sort(function(a,b){return fullName(a).localeCompare(fullName(b),'fr');}).map(function(s){var n=fullName(s);return `<option value="${es(n)}"${_dashSal===n?' selected':''}>${es(n)}</option>`;}).join('')}
+    </select>
+    <div id="dash-sal-res"></div>
+  </div>`;
+  // ─ Recherche par matériel
+  h+=`<div class="search-card">
+    <h3>🔎 Recherche par matériel</h3>
+    <select id="dash-mat" onchange="_dashMat=this.value;renderDashMat()">
+      <option value="">— Choisir un matériel —</option>
+      ${[...S.materiels].sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');}).map(function(m){return `<option value="${es(m.nom)}"${_dashMat===m.nom?' selected':''}>${es(m.nom)}</option>`;}).join('')}
+    </select>
+    <div id="dash-mat-res"></div>
+  </div>`;
+  h+=`</div>`;
+  setTimeout(function(){renderDashSal();renderDashMat();},20);
+  return h;
+}
+function renderDashSal(){
+  var el=$('dash-sal-res');if(!el)return;
+  if(!_dashSal){el.innerHTML='<div class="empty-journal">Choisissez un salarié pour voir ce qu\'il détient.</div>';return;}
+  var enCours=S.prets.filter(function(p){return p.salarie===_dashSal&&!p.rendu;})
+                     .reduce(function(s,p){return s+(parseFloat(p.qte)||0);},0);
+  var held=[];
+  S.materiels.forEach(function(m){var q=heldQty(_dashSal,m.nom);if(q>0)held.push({nom:m.nom,q:q});});
+  var h=`<div class="mini-st"><div class="m"><div class="ml">Articles en cours</div><div class="mv" style="color:var(--gr)">${enCours}</div></div></div>`;
+  if(held.length){
+    h+=`<div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.3px;margin:8px 0 4px">Matériel détenu</div>`;
+    held.forEach(function(x){h+=`<div class="held-row"><span>${es(x.nom)}</span><span class="held-q">${x.q}</span></div>`;});
+  }else{
+    h+=`<div class="empty-journal">Aucun matériel en cours pour ${es(_dashSal)}.</div>`;
+  }
+  el.innerHTML=h;
+}
+function renderDashMat(){
+  var el=$('dash-mat-res');if(!el)return;
+  if(!_dashMat){el.innerHTML='<div class="empty-journal">Choisissez un matériel pour voir qui le détient.</div>';return;}
+  var m=matByName(_dashMat);var tot=m?(parseFloat(m.qte)||0):0;
+  var prete=pretedQty(_dashMat);var dispo=tot-prete;
+  var by=[];
+  S.salaries.forEach(function(s){var n=fullName(s);var q=heldQty(n,_dashMat);if(q>0)by.push({nom:n,q:q});});
+  var h=`<div class="mini-st">
+    <div class="m"><div class="ml">Qté totale</div><div class="mv">${tot}</div></div>
+    <div class="m"><div class="ml">Prêté</div><div class="mv" style="color:var(--gr)">${prete}</div></div>
+    <div class="m"><div class="ml">Disponible</div><div class="mv" style="color:${dispo<0?'#c0392b':'#2d7a4a'}">${dispo}</div></div>
+  </div>`;
+  if(by.length){
+    h+=`<div style="font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.3px;margin:8px 0 4px">Détenu par</div>`;
+    by.forEach(function(x){h+=`<div class="held-row"><span>${es(x.nom)}</span><span class="held-q">${x.q}</span></div>`;});
+  }else{
+    h+=`<div class="empty-journal">Aucun prêt en cours pour ce matériel.</div>`;
+  }
+  el.innerHTML=h;
+}
+
+// ══════════════════════════════════════════════
+// ONGLET MATÉRIEL
+// ══════════════════════════════════════════════
+function initMateriel(){const el=$('panel-materiel');if(el)el.innerHTML=buildMateriel();}
+function buildMateriel(){
+  var h=`<div class="info">Renseignez la <strong>quantité totale</strong> possédée. « Prêté » et « Disponible » se calculent tout seuls depuis le journal des prêts.</div>`;
+  h+=`<div class="tw"><table><thead><tr>
+    <th>Matériel</th><th>Qté totale</th><th class="gr">Prêté (en cours)</th><th class="gr">Disponible</th><th></th>
+  </tr></thead><tbody>`;
+  var sorted=[...S.materiels].sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');});
+  if(!sorted.length){
+    h+=`<tr><td colspan="5" style="color:var(--mu);font-style:italic;text-align:center;padding:14px">Aucun matériel — ajoutez-en ci-dessous</td></tr>`;
+  }else{
+    sorted.forEach(function(m){
+      var prete=pretedQty(m.nom);var dispo=(parseFloat(m.qte)||0)-prete;
+      h+=`<tr>
+        <td><input value="${es(m.nom)}" onchange="updMatNom('${es(m.id)}',this.value)" style="min-width:150px"></td>
+        <td><input class="w60" type="number" min="0" step="1" value="${m.qte}" onchange="updMatQte('${es(m.id)}',this.value)"></td>
+        <td class="calc">${prete}</td>
+        <td class="f">${dispo}</td>
+        <td><button class="btn del" onclick="delMateriel('${es(m.id)}')" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button></td>
+      </tr>`;
+    });
+  }
+  h+=`</tbody></table></div>`;
+  h+=`<div class="entry-form" style="max-width:520px;margin-top:12px">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter un matériel</p>
+    <div class="form-row">
+      <div class="form-field" style="flex:1"><label>Nom du matériel</label><input type="text" id="new-mat-nom" placeholder="Ex: Sécateur" style="width:100%"></div>
+      <div class="form-field"><label>Qté totale</label><input type="number" id="new-mat-qte" min="0" step="1" value="1" style="width:90px"></div>
+      <div class="form-field"><label>&nbsp;</label><button class="btn ok" onclick="addMateriel()">+ Ajouter</button></div>
+    </div>
+  </div>`;
+  return h;
+}
+function updMatNom(id,val){
+  var m=S.materiels.find(function(x){return x.id===id;});if(!m)return;
+  var oldNom=m.nom;var newNom=(val||'').trim();if(!newNom){initMateriel();return;}
+  // Renommer aussi les prêts liés pour garder la cohérence
+  S.prets.forEach(function(p){if(p.materiel===oldNom)p.materiel=newNom;});
+  m.nom=newNom;saveLS();
+}
+function updMatQte(id,val){
+  var m=S.materiels.find(function(x){return x.id===id;});if(!m)return;
+  m.qte=parseInt(val,10)||0;saveLS();
+  var f=saveFocus();initMateriel();restFocus(f);
+}
+function addMateriel(){
+  var nom=($('new-mat-nom')?$('new-mat-nom').value:'').trim();
+  var qte=parseInt($('new-mat-qte')?$('new-mat-qte').value:'0',10)||0;
+  if(!nom){alert('Saisissez un nom de matériel.');return;}
+  if(S.materiels.some(function(m){return m.nom.toLowerCase()===nom.toLowerCase();})){alert('Ce matériel existe déjà.');return;}
+  S.materiels.push({id:'m'+Date.now(),nom:nom,qte:qte});
+  saveLS();initMateriel();
+}
+function delMateriel(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  var m=S.materiels.find(function(x){return x.id===id;});if(!m)return;
+  if(!confirm('Supprimer le matériel "'+m.nom+'" ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('mat:'+id)<0)S.deletedIds.push('mat:'+id);
+  S.materiels=S.materiels.filter(function(x){return x.id!==id;});
+  saveLS();initMateriel();
+}
+
+// ══════════════════════════════════════════════
+// ONGLET SALARIÉS
+// ══════════════════════════════════════════════
+function initSalaries(){const el=$('panel-salaries');if(el)el.innerHTML=buildSalaries();}
+function buildSalaries(){
+  var h=`<div class="info">Ajoutez ici vos salariés. Ils apparaissent dans les listes déroulantes des prêts et du tableau de bord.</div>`;
+  h+=`<div class="sal-grid">`;
+  var sorted=[...S.salaries].sort(function(a,b){return fullName(a).localeCompare(fullName(b),'fr');});
+  sorted.forEach(function(s,i){
+    var enCours=S.prets.filter(function(p){return p.salarie===fullName(s)&&!p.rendu;}).length;
+    h+=`<div class="chip-card">
+      <div class="sal-av" style="background:${avColor(i)}">${es(initials(s))}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${es(fullName(s))}</div>
+        <div style="font-size:11px;color:var(--mu)">${enCours} prêt${enCours>1?'s':''} en cours</div>
+      </div>
+      <button class="btn del" onclick="delSalarie('${es(s.id)}')" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>✕</button>
+    </div>`;
+  });
+  h+=`</div>`;
+  h+=`<div class="entry-form" style="max-width:480px">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter un salarié</p>
+    <div class="form-row">
+      <div class="form-field" style="flex:1"><label>Prénom</label><input type="text" id="new-sal-prenom" placeholder="Jean" style="width:100%"></div>
+      <div class="form-field" style="flex:1"><label>Nom</label><input type="text" id="new-sal-nom" placeholder="Dupont" style="width:100%"></div>
+      <div class="form-field"><label>&nbsp;</label><button class="btn ok" onclick="addSalarie()">+ Ajouter</button></div>
+    </div>
+  </div>`;
+  return h;
+}
+function addSalarie(){
+  var prenom=($('new-sal-prenom')?$('new-sal-prenom').value:'').trim();
+  var nom=($('new-sal-nom')?$('new-sal-nom').value:'').trim();
+  if(!prenom&&!nom){alert('Saisissez au moins un prénom ou un nom.');return;}
+  var nc=(prenom+' '+nom).trim();
+  if(S.salaries.some(function(s){return fullName(s).toLowerCase()===nc.toLowerCase();})){alert('Ce salarié existe déjà.');return;}
+  S.salaries.push({id:'s'+Date.now(),prenom:prenom,nom:nom});
+  saveLS();initSalaries();
+}
+function delSalarie(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  var s=S.salaries.find(function(x){return x.id===id;});if(!s)return;
+  if(!confirm('Supprimer le salarié "'+fullName(s)+'" ?\nSes prêts passés restent dans le journal.'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('sal:'+id)<0)S.deletedIds.push('sal:'+id);
+  S.salaries=S.salaries.filter(function(x){return x.id!==id;});
+  saveLS();initSalaries();
+}
+
+// ══════════════════════════════════════════════
+// ONGLET PRÊTS
+// ══════════════════════════════════════════════
+var _pretFilter='all'; // all | en | rn
+function initPrets(){const el=$('panel-prets');if(el)el.innerHTML=buildPrets();}
+function buildPrets(){
+  var salOpts=[...S.salaries].sort(function(a,b){return fullName(a).localeCompare(fullName(b),'fr');})
+    .map(function(s){var n=fullName(s);return `<option value="${es(n)}">${es(n)}</option>`;}).join('');
+  var matOpts=[...S.materiels].sort(function(a,b){return a.nom.localeCompare(b.nom,'fr');})
+    .map(function(m){return `<option value="${es(m.nom)}">${es(m.nom)}</option>`;}).join('');
+  var h=`<div class="entry-form">
+    <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Enregistrer un prêt</p>
+    <div class="form-row">
+      <div class="form-field"><label>Salarié</label><select id="pr-sal" style="min-width:150px">${salOpts}</select></div>
+      <div class="form-field"><label>Matériel</label><select id="pr-mat" style="min-width:160px">${matOpts}</select></div>
+      <div class="form-field"><label>Quantité</label><input type="number" id="pr-qte" min="1" step="1" value="1" style="width:80px"></div>
+      <div class="form-field"><label>Date de prêt</label><input type="text" id="pr-date" value="${todayStr()}" placeholder="JJ/MM/AAAA" style="width:120px"></div>
+      <div class="form-field"><label>&nbsp;</label><button class="btn ok" onclick="addPret()">+ Prêter</button></div>
+    </div>
+  </div>`;
+  // Filtres
+  var enCours=S.prets.filter(function(p){return !p.rendu;}).length;
+  var rendus=S.prets.filter(function(p){return p.rendu;}).length;
+  h+=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div class="btns" style="margin-top:0">
+      <button class="btn${_pretFilter==='all'?' add':''}" onclick="setPretFilter('all')">Tous (${S.prets.length})</button>
+      <button class="btn${_pretFilter==='en'?' add':''}" onclick="setPretFilter('en')">🟡 En cours (${enCours})</button>
+      <button class="btn${_pretFilter==='rn'?' add':''}" onclick="setPretFilter('rn')">🟢 Rendus (${rendus})</button>
+    </div>
+    ${(S.prets.length>0&&FLIPO_CAN_DELETE)?`<button class="btn danger" onclick="if(confirm('Supprimer TOUS les prêts ?'))clearPrets()" style="font-size:11px">🗑 Tout effacer</button>`:''}
+  </div>`;
+  var list=S.prets.filter(function(p){return _pretFilter==='all'||(_pretFilter==='en'&&!p.rendu)||(_pretFilter==='rn'&&p.rendu);});
+  // Tri : en cours d'abord, puis par ts décroissant
+  list=list.slice().sort(function(a,b){
+    if((!a.rendu)!==(!b.rendu))return a.rendu?1:-1;
+    return String(b.ts||'').localeCompare(String(a.ts||''));
+  });
+  if(!list.length){
+    h+=`<div class="empty-journal">Aucun prêt à afficher.</div>`;
+  }else{
+    list.forEach(function(p){
+      h+=`<div class="journal-row">
+        <span class="badge ${p.rendu?'b-rn':'b-en'}">${p.rendu?'Rendu':'En cours'}</span>
+        <div class="jinfo">
+          <strong>${es(p.materiel)}${(parseFloat(p.qte)||0)>1?' × '+p.qte:''}</strong> — ${es(p.salarie)}
+          <div class="jsub">Prêté le ${es(p.datePret||'—')}${p.rendu&&p.dateRetour?' · rendu le '+es(p.dateRetour):''}</div>
+        </div>
+        <button class="btn" onclick="toggleRendu('${es(p.id)}')">${p.rendu?'↩︎ Rouvrir':'✓ Rendu'}</button>
+        <button class="btn del" onclick="delPret('${es(p.id)}')" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button>
+      </div>`;
+    });
+  }
+  return h;
+}
+function setPretFilter(f){_pretFilter=f;initPrets();}
+function addPret(){
+  var sal=($('pr-sal')?$('pr-sal').value:'')||'';
+  var mat=($('pr-mat')?$('pr-mat').value:'')||'';
+  var qte=parseInt($('pr-qte')?$('pr-qte').value:'1',10)||0;
+  var date=($('pr-date')?$('pr-date').value:'').trim();
+  if(!sal||!mat||qte<=0){alert('Choisissez un salarié, un matériel et une quantité (> 0).');return;}
+  if(!date)date=todayStr();
+  S.prets.unshift({id:'p'+Date.now(),salarie:sal,materiel:mat,qte:qte,datePret:date,rendu:false,dateRetour:'',ts:new Date().toISOString()});
+  saveLS();initPrets();
+}
+function toggleRendu(id){
+  var p=S.prets.find(function(x){return x.id===id;});if(!p)return;
+  p.rendu=!p.rendu;
+  p.dateRetour=p.rendu?todayStr():'';
+  saveLS();initPrets();
+}
+function delPret(id){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  if(!confirm('Supprimer ce prêt ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('pret:'+id)<0)S.deletedIds.push('pret:'+id);
+  S.prets=S.prets.filter(function(x){return x.id!==id;});
+  saveLS();initPrets();
+}
+function clearPrets(){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  S.deletedIds=S.deletedIds||[];
+  S.prets.forEach(function(p){var k='pret:'+String(p.id);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
+  S.prets=[];saveLS();initPrets();
+}
+
+// ══════════════════════════════════════════════
+// PARTAGE (email / SMS) — état des prêts en cours
+// ══════════════════════════════════════════════
+function shareNow(type){
+  var dt=new Date().toLocaleDateString('fr-FR');
+  var enCours=S.prets.filter(function(p){return !p.rendu;})
+    .sort(function(a,b){return a.salarie.localeCompare(b.salarie,'fr');});
+  var body='Suivi du matériel — Prêts en cours\n'+dt+'\n\n';
+  if(!enCours.length){body+='Aucun prêt en cours.\n';}
+  else{
+    var bySal={};
+    enCours.forEach(function(p){(bySal[p.salarie]=bySal[p.salarie]||[]).push(p);});
+    Object.keys(bySal).sort(function(a,b){return a.localeCompare(b,'fr');}).forEach(function(sal){
+      body+=sal+' :\n';
+      bySal[sal].forEach(function(p){body+='  - '+p.materiel+((parseFloat(p.qte)||0)>1?' × '+p.qte:'')+' (depuis le '+(p.datePret||'?')+')\n';});
+    });
+  }
+  body+='\n— Flipo';
+  if(type==='sms'){window.open('sms:?body='+encodeURIComponent(body),'_blank');}
+  else{
+    var sub=encodeURIComponent('Suivi du matériel — Prêts en cours — '+dt);
+    window.open('https://mail.google.com/mail/u/0/?view=cm&fs=1&to=flipotanguy%40gmail.com&su='+sub+'&body='+encodeURIComponent(body),'_blank');
+  }
+}
+
+// ══════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════
+var FLIPO_CAN_DELETE=false;
+function _checkAuth(){
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.href='flipo-login.html';return;}
+  var mp=sess.perms&&sess.perms['materiel'];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.href='index.html';return;}
+  FLIPO_CAN_DELETE=sess.isAdmin||(sess.canDelete===true);
+  if(sess.isAdmin)return;
+  var tabs=mp.tabs||{};
+  var tabIds=['dash','materiel','salaries','prets'];
+  var first=null;
+  tabIds.forEach(function(tid){
+    var tp=tabs[tid];
+    if(!tp||!tp.enabled){
+      var b=$('tab-'+tid);if(b)b.style.display='none';
+      var p=$('panel-'+tid);if(p)p.classList.add('hidden');
+    }else{if(!first)first=tid;}
+  });
+  if(first){S.tab=first;document.querySelectorAll('.tabs .tab').forEach(function(x){x.classList.remove('act');});var btn=$('tab-'+first);if(btn)btn.classList.add('act');
+    ['dash','materiel','salaries','prets'].forEach(function(n){var pnl=$('panel-'+n);if(pnl)pnl.classList.toggle('hidden',n!==first);});
+  }
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function _doInit(){initDash();initMateriel();initSalaries();initPrets();
+  // Afficher le bon panneau
+  var t=S.tab||'dash';
+  ['dash','materiel','salaries','prets'].forEach(function(n){var p=$('panel-'+n);if(p)p.classList.toggle('hidden',n!==t);});
+}
+
+(function(){
+  _checkAuth();
+  var cached=localStorage.getItem(LS_KEY);
+  if(cached){
+    try{
+      var d=JSON.parse(cached);
+      if(d.salaries&&d.salaries.length)S.salaries=d.salaries;
+      if(d.materiels&&d.materiels.length)S.materiels=d.materiels;
+      if(d.prets)S.prets=d.prets;
+      if(d.deletedIds)S.deletedIds=d.deletedIds;
+      // On ne restaure pas S.tab depuis le cache pour respecter les permissions (_checkAuth)
+    }catch(e){}
+  }
+  _doInit();
+  _pull(true);
+})();
+</script>
+</body>
+</html>
