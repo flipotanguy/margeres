@@ -925,6 +925,7 @@ function buildStock(){
   const ibcPommeDate = S.stock.ibcPommeDate ? 'Saisi le ' + S.stock.ibcPommeDate : 'Jamais saisi';
   const ibcPoireDate = S.stock.ibcPoireDate ? 'Saisi le ' + S.stock.ibcPoireDate : 'Jamais saisi';
   const gazDate = S.stock.gazDate ? 'Saisi le ' + S.stock.gazDate : 'Jamais saisi';
+  const benneMethaDate = S.stock.benneMethaDate ? 'Saisi le ' + S.stock.benneMethaDate : 'Jamais saisi';
   let htmlC = '<div class="stock-section"><div class="stock-section-title">C — Produits spéciaux</div>';
   htmlC += '<div class="stock-row"><div class="stock-label">GNR (%)</div><div class="stock-input-group"><input type="number" min="0" max="100" step="0.1" id="stock-gnr" value="' + (S.stock.gnr||0) + '" onchange="updateSpecial(\'gnr\')"></div></div>';
   htmlC += '<div class="stock-date" id="gnr-date">' + gnrDate + '</div>';
@@ -933,7 +934,9 @@ function buildStock(){
   htmlC += '<div class="stock-row"><div class="stock-label">IBC Poire (L)</div><div class="stock-input-group"><input type="number" min="0" step="10" id="stock-ibcPoire" value="' + (S.stock.ibcPoire||0) + '" onchange="updateSpecial(\'ibcPoire\')"></div></div>';
   htmlC += '<div class="stock-date" id="ibcPoire-date">' + ibcPoireDate + '</div>';
   htmlC += '<div class="stock-row"><div class="stock-label">Bouteilles de gaz</div><div class="stock-input-group"><input type="number" min="0" step="1" id="stock-gaz" value="' + (S.stock.gaz||0) + '" onchange="updateSpecial(\'gaz\')"></div></div>';
-  htmlC += '<div class="stock-date" id="gaz-date">' + gazDate + '</div></div>';
+  htmlC += '<div class="stock-date" id="gaz-date">' + gazDate + '</div>';
+  htmlC += '<div class="stock-row"><div class="stock-label">Benne métha (%)</div><div class="stock-input-group"><input type="number" min="0" max="100" step="0.1" id="stock-benneMetha" value="' + (S.stock.benneMetha||0) + '" onchange="updateSpecial(\'benneMetha\')"></div></div>';
+  htmlC += '<div class="stock-date" id="benneMetha-date">' + benneMethaDate + '</div></div>';
 
   // Render section D — réapprovisionnements
   const LABELS = {b33:'Bouteilles 33cl',b1Lrhum:'Bouteilles 1L Rhum',b1Lsoft:'Bouteilles 1L Soft',bib:'BIBs 3L',bibGen:'BIBs générique 3L',bouchon:'Bouchons'};
