@@ -222,11 +222,15 @@ function _buildData(){
   };
 }
 
-// Fusion union par ID pour une collection, en respectant les tombstones
+// Fusion union par ID pour une collection, en respectant les tombstones.
+// « Dernière modif gagne » : à id égal, on garde la version au horodatage `upd` le plus récent
+// (à égalité, le local gagne) → une édition locale (ex. passage en "rendu") n'est jamais
+// écrasée par une copie cloud plus ancienne.
 function _mergeCol(cloudArr, localArr, prefix, del){
   var m={};
-  (cloudArr||[]).forEach(function(e){m[String(e.id)]=e;});
-  (localArr||[]).forEach(function(e){var k=String(e.id);if(!m[k])m[k]=e;});
+  function put(e){var k=String(e.id);var ex=m[k];if(!ex||String(e.upd||'')>=String(ex.upd||''))m[k]=e;}
+  (cloudArr||[]).forEach(put); // cloud d'abord
+  (localArr||[]).forEach(put); // puis local (gagne à égalité d'horodatage)
   return Object.values(m).filter(function(e){return !del[prefix+String(e.id)];});
 }
 
@@ -484,12 +488,13 @@ function updMatNom(id,val){
   var m=S.materiels.find(function(x){return x.id===id;});if(!m)return;
   var oldNom=m.nom;var newNom=(val||'').trim();if(!newNom){initMateriel();return;}
   // Renommer aussi les prêts liés pour garder la cohérence
-  S.prets.forEach(function(p){if(p.materiel===oldNom)p.materiel=newNom;});
-  m.nom=newNom;saveLS();
+  var _now=new Date().toISOString();
+  S.prets.forEach(function(p){if(p.materiel===oldNom){p.materiel=newNom;p.upd=_now;}});
+  m.nom=newNom;m.upd=_now;saveLS();
 }
 function updMatQte(id,val){
   var m=S.materiels.find(function(x){return x.id===id;});if(!m)return;
-  m.qte=parseInt(val,10)||0;saveLS();
+  m.qte=parseInt(val,10)||0;m.upd=new Date().toISOString();saveLS();
   var f=saveFocus();initMateriel();restFocus(f);
 }
 function addMateriel(){
@@ -497,7 +502,7 @@ function addMateriel(){
   var qte=parseInt($('new-mat-qte')?$('new-mat-qte').value:'0',10)||0;
   if(!nom){alert('Saisissez un nom de matériel.');return;}
   if(S.materiels.some(function(m){return m.nom.toLowerCase()===nom.toLowerCase();})){alert('Ce matériel existe déjà.');return;}
-  S.materiels.push({id:'m'+Date.now(),nom:nom,qte:qte});
+  S.materiels.push({id:'m'+Date.now(),nom:nom,qte:qte,upd:new Date().toISOString()});
   saveLS();initMateriel();
 }
 function delMateriel(id){
@@ -546,7 +551,7 @@ function addSalarie(){
   if(!prenom&&!nom){alert('Saisissez au moins un prénom ou un nom.');return;}
   var nc=(prenom+' '+nom).trim();
   if(S.salaries.some(function(s){return fullName(s).toLowerCase()===nc.toLowerCase();})){alert('Ce salarié existe déjà.');return;}
-  S.salaries.push({id:'s'+Date.now(),prenom:prenom,nom:nom});
+  S.salaries.push({id:'s'+Date.now(),prenom:prenom,nom:nom,upd:new Date().toISOString()});
   saveLS();initSalaries();
 }
 function delSalarie(id){
@@ -621,13 +626,15 @@ function addPret(){
   var date=($('pr-date')?$('pr-date').value:'').trim();
   if(!sal||!mat||qte<=0){alert('Choisissez un salarié, un matériel et une quantité (> 0).');return;}
   if(!date)date=todayStr();
-  S.prets.unshift({id:'p'+Date.now(),salarie:sal,materiel:mat,qte:qte,datePret:date,rendu:false,dateRetour:'',ts:new Date().toISOString()});
+  var _now=new Date().toISOString();
+  S.prets.unshift({id:'p'+Date.now(),salarie:sal,materiel:mat,qte:qte,datePret:date,rendu:false,dateRetour:'',ts:_now,upd:_now});
   saveLS();initPrets();
 }
 function toggleRendu(id){
   var p=S.prets.find(function(x){return x.id===id;});if(!p)return;
   p.rendu=!p.rendu;
   p.dateRetour=p.rendu?todayStr():'';
+  p.upd=new Date().toISOString();
   saveLS();initPrets();
 }
 function delPret(id){
