@@ -66,6 +66,7 @@ input.w60{width:60px}input.w80{width:80px}
 .form-field label{font-size:11px;color:var(--mu);font-weight:500}
 .form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh);color:var(--tx);outline:none}
 .form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(79,70,229,.15)}
+.form-field input[type="date"]{-webkit-appearance:none;appearance:none;min-height:36px;font-size:16px;text-align:left}
 /* Journal prêts */
 .journal-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
 .journal-row .jinfo{flex:1;font-size:12px;min-width:0}
@@ -347,6 +348,9 @@ function initials(sal){return((String(sal.prenom||'?').trim().charAt(0))+(String
 var AV_COLORS=['#4f46e5','#185FA5','#e07020','#8b5cf6','#e84a7a','#0f766e','#b45309','#0891b2'];
 function avColor(i){return AV_COLORS[i%AV_COLORS.length];}
 function todayStr(){var d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
+// ─── Dates : calendrier natif (valeur ISO) ↔ stockage JJ/MM/AAAA ───
+function isoToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function normJMA(v){v=String(v==null?'':v).trim();var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(m)return m[3]+'/'+m[2]+'/'+m[1];m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v);if(m)return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0')+'/'+m[3];return '';}
 function salByName(name){return S.salaries.find(function(x){return fullName(x)===name;});}
 
 // Qté actuellement prêtée (en cours) d'un matériel
@@ -580,7 +584,7 @@ function buildPrets(){
       <div class="form-field"><label>Salarié</label><select id="pr-sal" style="min-width:150px">${salOpts}</select></div>
       <div class="form-field"><label>Matériel</label><select id="pr-mat" style="min-width:160px">${matOpts}</select></div>
       <div class="form-field"><label>Quantité</label><input type="number" id="pr-qte" min="1" step="1" value="1" style="width:80px"></div>
-      <div class="form-field"><label>Date de prêt</label><input type="text" id="pr-date" value="${todayStr()}" placeholder="JJ/MM/AAAA" style="width:120px"></div>
+      <div class="form-field"><label>Date de prêt</label><input type="date" id="pr-date" value="${isoToday()}" style="width:150px"></div>
       <div class="form-field"><label>&nbsp;</label><button class="btn ok" onclick="addPret()">+ Prêter</button></div>
     </div>
   </div>`;
@@ -623,7 +627,7 @@ function addPret(){
   var sal=($('pr-sal')?$('pr-sal').value:'')||'';
   var mat=($('pr-mat')?$('pr-mat').value:'')||'';
   var qte=parseInt($('pr-qte')?$('pr-qte').value:'1',10)||0;
-  var date=($('pr-date')?$('pr-date').value:'').trim();
+  var date=normJMA($('pr-date')?$('pr-date').value:'');
   if(!sal||!mat||qte<=0){alert('Choisissez un salarié, un matériel et une quantité (> 0).');return;}
   if(!date)date=todayStr();
   var _now=new Date().toISOString();

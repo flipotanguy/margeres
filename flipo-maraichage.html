@@ -64,6 +64,7 @@ input.w48{width:48px} input.w60{width:60px} input.w80{width:80px} input.w100{wid
 .form-field label{font-size:11px;color:var(--mu);font-weight:500}
 .form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh);color:var(--tx);outline:none}
 .form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(224,125,32,.15)}
+.form-field input[type="date"]{-webkit-appearance:none;appearance:none;min-height:36px;font-size:16px;text-align:left}
 .journal-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
 .journal-row .jicon{font-size:18px}
 .journal-row .jinfo{flex:1;font-size:12px}
@@ -325,6 +326,9 @@ const S = {
 // ══════════════════════════════════════════════
 function R2(v){return Math.round(v*100)/100;}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+// ─── Dates : calendrier natif (valeur ISO) ↔ stockage JJ/MM ───
+function isoToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function normJM(v){v=String(v||'').trim();let m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(m)return m[3]+'/'+m[2];m=/^(\d{1,2})\/(\d{1,2})$/.exec(v);if(m)return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0');return '';}
 function $(id){return document.getElementById(id);}
 function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveFocus(){const e=document.activeElement;return e?{id:e.id,s:e.selectionStart,en:e.selectionEnd}:null;}
@@ -729,8 +733,6 @@ function buildCVw(){return S.cvw==='saisie'?buildSaisie():buildVueGlobale();}
 
 // ─── SAISIE ──────────────────────────────────
 function buildSaisie(){
-  const today=new Date();
-  const todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0');
   let h=`<div class="entry-form">
     <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Enregistrer une récolte</p>
     <div class="form-row">
@@ -741,8 +743,8 @@ function buildSaisie(){
         </select>
       </div>
       <div class="form-field">
-        <label>Date (JJ/MM)</label>
-        <input type="text" id="ent-date" value="${todayStr}" placeholder="15/09" style="width:90px">
+        <label>Date</label>
+        <input type="date" id="ent-date" value="${isoToday()}" style="width:150px">
       </div>
       <div class="form-field" style="flex:1">
         <label>Variété (optionnel)</label>
@@ -798,12 +800,11 @@ function addEntry(){
   const cultEl=$('ent-cult'),dateEl=$('ent-date'),varEl=$('ent-var'),qteEl=$('ent-qte'),unitEl=$('ent-unit');
   if(!cultEl || !dateEl || !qteEl) return;
   const cult=cultEl.value||'';
-  const date=(dateEl.value||'').trim();
+  const date=normJM(dateEl.value);
   const variete=(varEl?varEl.value:'').trim();
   const qte=parseFloat(qteEl.value)||0;
   const unite=(unitEl?unitEl.value:'').trim();
   if(!cult||!date||qte<=0){alert('Renseignez la culture, la date et la quantité (> 0).');return;}
-  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
   const entry={id:Date.now(),cult,date,variete,qte,unite,ts:new Date().toISOString()};
   S.entries.unshift(entry);
   // Sort alphabetically by culture then date

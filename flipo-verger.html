@@ -87,6 +87,7 @@ select.wsel{border:none;background:transparent;font-size:12px;color:inherit;outl
 .form-field input,.form-field select{padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:16px;background:var(--wh);color:var(--tx);outline:none}
 .form-field input:focus,.form-field select:focus{border-color:var(--gr);box-shadow:0 0 0 2px rgba(29,158,117,.15)}
 .form-field input.fw{width:100%}
+.form-field input[type="date"]{-webkit-appearance:none;appearance:none;min-height:36px;font-size:16px;text-align:left}
 .journal-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--wh);margin-bottom:6px}
 .journal-row .jicon{font-size:18px}
 .journal-row .jinfo{flex:1;font-size:12px}
@@ -582,6 +583,9 @@ function eau(s){return Math.ceil(500*parseFloat(s||0)/50)*50;}
 function sm(a){return a.reduce((x,y)=>x+(parseFloat(y)||0),0);}
 function fr(n){return (parseFloat(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:2});}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+// ─── Dates : calendrier natif (valeur ISO) ↔ stockage JJ/MM ───
+function isoToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function normJM(v){v=String(v||'').trim();let m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(m)return m[3]+'/'+m[2];m=/^(\d{1,2})\/(\d{1,2})$/.exec(v);if(m)return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0');return '';}
 function $(id){return document.getElementById(id);}
 function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveFocus(){const e=document.activeElement;return e?{id:e.id,v:e.value,s:e.selectionStart,en:e.selectionEnd}:null;}
@@ -1227,8 +1231,6 @@ function buildSaisie(){
   const pomVars=S.pomR.map(r=>r.v);
   const poiVars=S.poiR.map(r=>r.v);
   const vars=S.entCult==='pomme'?pomVars:poiVars;
-  const today=new Date();
-  const todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0');
   const kgDef=S.entCult==='pomme'?360:440;
   let h=`<div class="cult-sel">
     <button class="cult-btn pom${S.entCult==='pomme'?' act':''}" onclick="setEntCult('pomme')">🍎 Pomme</button>
@@ -1238,8 +1240,8 @@ function buildSaisie(){
     <p style="font-weight:600;font-size:13px;margin-bottom:12px;color:var(--gd)">Ajouter une récolte</p>
     <div class="form-row">
       <div class="form-field">
-        <label>Date (JJ/MM)</label>
-        <input type="text" id="ent-date" value="${todayStr}" placeholder="15/09" style="width:90px">
+        <label>Date</label>
+        <input type="date" id="ent-date" value="${isoToday()}" style="width:150px">
       </div>
       <div class="form-field" style="flex:2">
         <label>Variété</label>
@@ -1322,7 +1324,7 @@ function updFrigoSelect(){
 }
 function addEntry(){
   const dateEl=$('ent-date'),varEl=$('ent-var'),paloxEl=$('ent-palox'),kgEl=$('ent-kg'),newVarEl=$('ent-newvar');
-  const date=(dateEl?dateEl.value:'').trim();
+  const date=normJM(dateEl?dateEl.value:'');
   const varSel=varEl?varEl.value:'';
   const variete=varSel==='__new__'?(newVarEl?newVarEl.value.trim():''):varSel;
   const palox=parseFloat(paloxEl?paloxEl.value:0)||0;
@@ -1330,7 +1332,6 @@ function addEntry(){
   const batId=$('ent-bat')?$('ent-bat').value:'';
   const friId=$('ent-fri')?$('ent-fri').value:'';
   if(!date||!variete||palox<=0){alert('Renseignez la date, la variété et le nombre de palox (> 0).');return;}
-  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
 
   const cult=S.entCult;
   const dates=cult==='pomme'?DATES_POM:DATES_POI;
@@ -1915,8 +1916,8 @@ function buildStockCfg(){
         <input type="text" id="ae-var" placeholder="Ex: Fuji" style="width:120px">
       </div>
       <div class="form-field">
-        <label>Date (JJ/MM)</label>
-        <input type="text" id="ae-date" placeholder="15/09" style="width:80px">
+        <label>Date</label>
+        <input type="date" id="ae-date" value="${isoToday()}" style="width:150px">
       </div>
       <div class="form-field">
         <label>Palox</label>
@@ -2000,13 +2001,12 @@ function addAchatExt(){
   if(!cultEl||!varEl||!dateEl||!paloxEl||!batEl)return;
   const cult=cultEl.value||'pomme';
   const variete=(varEl.value||'').trim();
-  const date=(dateEl.value||'').trim();
+  const date=normJM(dateEl.value);
   const palox=parseFloat(paloxEl.value)||0;
   const batIdx=parseInt(batEl.value)||0;
   const friIdx=frigoEl.value?parseInt(frigoEl.value):null;
 
   if(!variete||!date||palox<=0){alert('Renseignez la variété, la date et le nombre de palox (> 0).');return;}
-  if(!/^\d{2}\/\d{2}$/.test(date)){alert('Format de date invalide. Utilisez JJ/MM (ex: 15/09)');return;}
 
   const bat=S.bats[batIdx];
   const batId=bat?bat.id:null;
