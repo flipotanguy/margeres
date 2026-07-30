@@ -333,9 +333,63 @@ function $(id){return document.getElementById(id);}
 function setText(id,v){const e=$(id);if(e)e.textContent=v;}
 function saveFocus(){const e=document.activeElement;return e?{id:e.id,s:e.selectionStart,en:e.selectionEnd}:null;}
 function restFocus(f){if(!f||!f.id)return;const e=$(f.id);if(e){e.focus();try{e.setSelectionRange(f.s,f.en);}catch(_){}}}
+// ─── Icônes de cultures ───────────────────────────────────────────
+// Reconnaissance souple : insensible aux accents, majuscules, tirets et pluriels.
+// Le nom le plus long qui correspond gagne ("Chou-fleur" avant "Chou").
+const CULT_ICONS = {
+  // Fruits-légumes
+  'tomate cerise':'🍅','tomate':'🍅','poivron':'🫑','piment':'🌶️','aubergine':'🍆',
+  'courgette':'🥒','concombre':'🥒','cornichon':'🥒',
+  'courge':'🎃','potiron':'🎃','citrouille':'🎃','butternut':'🎃','potimarron':'🎃','patisson':'🎃',
+  'melon':'🍈','pasteque':'🍉','mais':'🌽','physalis':'🍅',
+  // Feuilles
+  'salade':'🥬','laitue':'🥬','batavia':'🥬','sucrine':'🥬','romaine':'🥬','feuille de chene':'🥬',
+  'mesclun':'🥬','mache':'🥬','roquette':'🥬','epinard':'🥬','cresson':'🥬','endive':'🥬',
+  'blette':'🥬','bette':'🥬','poiree':'🥬','oseille':'🥬','pak choi':'🥬','pourpier':'🥬',
+  // Choux
+  'chou de bruxelles':'🥦','chou fleur':'🥦','chou brocoli':'🥦','brocoli':'🥦',
+  'chou rave':'🥬','chou kale':'🥬','chou rouge':'🥬','chou chinois':'🥬','chou':'🥬',
+  // Racines
+  'carotte':'🥕','navet':'🥕','radis':'🥕','betterave':'🥕','panais':'🥕','rutabaga':'🥕',
+  'celeri rave':'🥕','salsifis':'🥕','raifort':'🥕',
+  'pomme de terre':'🥔','patate douce':'🍠','patate':'🥔','topinambour':'🥔',
+  'gingembre':'🫚','curcuma':'🫚',
+  // Alliacées
+  'oignon':'🧅','echalote':'🧅','poireau':'🧅','ciboule':'🧅','ail':'🧄',
+  // Légumineuses
+  'haricot vert':'🫛','haricot beurre':'🫛','haricot':'🫘','flageolet':'🫘','feve':'🫘',
+  'pois gourmand':'🫛','petit pois':'🫛','pois chiche':'🫘','pois':'🫛','lentille':'🫘','soja':'🫘',
+  // Tiges / divers
+  'artichaut':'🌿','asperge':'🌿','fenouil':'🌿','celeri':'🌿','rhubarbe':'🌿','champignon':'🍄',
+  // Aromatiques
+  'basilic':'🌿','persil':'🌿','coriandre':'🌿','menthe':'🌿','thym':'🌿','romarin':'🌿',
+  'ciboulette':'🌿','aneth':'🌿','estragon':'🌿','sauge':'🌿','laurier':'🌿','verveine':'🌿',
+  // Fruits
+  'fraise':'🍓','framboise':'🫐','myrtille':'🫐','cassis':'🫐','groseille':'🫐','mure':'🫐',
+  'raisin':'🍇','pomme':'🍎','poire':'🍐','coing':'🍐','cerise':'🍒',
+  'peche':'🍑','nectarine':'🍑','abricot':'🍑','prune':'🍑','quetsche':'🍑','mirabelle':'🍑',
+  'kiwi':'🥝','figue':'🫒','olive':'🫒','noix':'🌰','noisette':'🌰','chataigne':'🌰','amande':'🌰',
+  // Grandes cultures / couverts
+  'ble':'🌾','orge':'🌾','avoine':'🌾','seigle':'🌾','triticale':'🌾','sarrasin':'🌾',
+  'colza':'🌻','tournesol':'🌻','luzerne':'🌱','trefle':'🌱','moutarde':'🌱','phacelie':'🌱',
+  'fleur':'🌸','semis':'🌱','plant':'🌱','jachere':'🌱'
+};
+const _CULT_KEYS = Object.keys(CULT_ICONS).sort((a,b)=>b.length-a.length);
+function _normCult(c){
+  return String(c||'')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // enlève les accents
+    .replace(/[^a-z0-9]+/g,' ')                       // tirets, apostrophes, ponctuation → espace
+    .replace(/s\b/g,'')                               // pluriels
+    .replace(/\s+/g,' ').trim();
+}
 function getCultIcon(c){
-  const m={'Tomate':'🍅','Poivron':'🫑','Salade':'🥬','Courgette':'🥒','Courge':'🎃','Aubergine':'🍆','Chou de Bruxelles':'🥦','Poireau':'🌿'};
-  return m[c]||'🌿';
+  const n = _normCult(c);
+  if(!n) return '🌿';
+  for(let i=0;i<_CULT_KEYS.length;i++){
+    if(n.indexOf(_normCult(_CULT_KEYS[i])) !== -1) return CULT_ICONS[_CULT_KEYS[i]];
+  }
+  return '🌿';
 }
 function doseBidon(doseHa){return R2((parseFloat(doseHa)||0)*VOL_BIDON/VOL_EAU_HA);}
 
