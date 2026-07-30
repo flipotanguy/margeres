@@ -523,6 +523,14 @@ function fmtL(v){
   if(!v) return '—';
   return Math.round(v).toLocaleString('fr-FR') + ' L';
 }
+// '2026-09-15' → 'mardi 15 septembre 2026'
+function fmtDateFR(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
+  if(!m) return String(iso||'');
+  const d = new Date(+m[1], +m[2]-1, +m[3]);
+  if(isNaN(d)) return String(iso);
+  return d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
 function R2(v){ return Math.round(v*100)/100; }
 
 function saveFocus(){ return document.activeElement?.id; }
@@ -1082,7 +1090,11 @@ function openSharePreview(moduleTitle,accentColor,contentHTML,emailSubject,email
     +'.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin:18px 0 8px;padding-top:14px;border-top:1px solid #eee}'
     +'.stat-box{display:inline-block;text-align:center;padding:12px 18px;background:#f5f5f5;border-radius:8px;margin:0 8px 10px 0}'
     +'.stat-val{font-size:20px;font-weight:700;color:'+accentColor+'}.stat-lbl{font-size:11px;color:#666;margin-top:2px}'
-    +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}}</style>'
+    +'.filters-line{font-size:12px;color:#555;background:#f5f7fa;border-left:3px solid '+accentColor+';padding:8px 12px;margin-bottom:14px;border-radius:0 6px 6px 0}'
+    +'.day-title{font-size:13px;font-weight:700;color:'+accentColor+';margin:16px 0 4px}'
+    +'.pagebreak{page-break-before:always;break-before:page;border-top:2px dashed #ddd;margin-top:26px;padding-top:4px}'
+    +'@media print{.toolbar{display:none!important}.page{padding:0}body{background:#fff}'
+    +'.pagebreak{border-top:none;margin-top:0}table{page-break-inside:auto}tr{page-break-inside:avoid}}</style>'
     +'</head><body><div class="page">'
     +'<div class="toolbar">'
     +'<button class="tbtn tbtn-print" onclick="window.print()">🖨️ Imprimer / Sauvegarder PDF</button>'
@@ -1103,25 +1115,83 @@ function shareNow(type){
   const dt = new Date().toLocaleDateString('fr-FR');
   let html = '', plain = '', title = 'Jus — ' + S.saison, subject = 'Jus Flipo ' + S.saison + ' — ' + dt;
   if(S.tab === 'resume' || S.tab === 'saisie'){
-    // Tableau par saveur × format
-    const pivot = {}; S.saveurs.forEach(s=>{ pivot[s]={}; S.formats.forEach(f=>{ pivot[s][f]=0; }); });
-    S.entries.forEach(e=>{ if(pivot[e.saveur]!==undefined&&e.format) pivot[e.saveur][e.format]=(pivot[e.saveur][e.format]||0)+(e.qte||0); });
-    const totFormat = {}; S.formats.forEach(f=>{ totFormat[f]=0; });
-    html = '<div class="section-title">Production par saveur — Saison ' + S.saison + '</div>';
-    html += '<table><thead><tr><th>Saveur</th>' + S.formats.map(f=>'<th class="tar">'+es(f)+'</th>').join('') + '<th class="tar">Total (L)</th></tr></thead><tbody>';
-    plain = 'Jus Flipo — Saison ' + S.saison + '\n' + dt + '\n\n';
-    S.saveurs.forEach(s=>{
-      const row = pivot[s]; let rowUnits = 0;
-      S.formats.forEach(f=>{ totFormat[f]+=(row[f]||0); rowUnits+=(row[f]||0); });
-      if(rowUnits===0) return;
-      const rowL = litresRow(row);
-      html += '<tr><td>'+es(s)+'</td>' + S.formats.map(f=>'<td class="tar">'+(row[f]||0)+'</td>').join('') + '<td class="tar"><strong>'+fmtL(rowL)+'</strong></td></tr>';
-      plain += s + ' : ' + fmtL(rowL) + '\n';
+    // ── Les mêmes filtres que le Résumé à l'écran (client, saveur, format, période)
+    const sel = S.entries.filter(e =>
+      (S.filterClient === 'Tous'   || e.client === S.filterClient) &&
+      (S.filterSaveur === 'Toutes' || e.saveur === S.filterSaveur) &&
+      (S.filterFormat === 'Tous'   || e.format === S.filterFormat) &&
+      inDateRange(e.date)
+    );
+    const cli = (S.filterClient && S.filterClient !== 'Tous') ? S.filterClient : null;
+    title   = 'Jus — ' + S.saison + (cli ? ' — ' + cli : '');
+    subject = 'Jus Flipo ' + S.saison + (cli ? ' — ' + cli : '') + ' — ' + dt;
+
+    // Rappel des filtres appliqués
+    const crit = [];
+    crit.push('Client : ' + (cli || 'tous'));
+    if(S.filterSaveur !== 'Toutes') crit.push('Saveur : ' + S.filterSaveur);
+    if(S.filterFormat !== 'Tous')   crit.push('Format : ' + S.filterFormat);
+    if(S.filterDateFrom || S.filterDateTo)
+      crit.push('Période : ' + (S.filterDateFrom ? fmtDateFR(S.filterDateFrom) : 'début') + ' → ' + (S.filterDateTo ? fmtDateFR(S.filterDateTo) : 'aujourd’hui'));
+
+    plain = 'Jus Flipo — Saison ' + S.saison + '\n' + dt + '\n' + crit.join(' | ') + '\n\n';
+
+    // ── PAGE 1 : total par référence (saveur × format), les références à 0 sont masquées
+    const refs = {};
+    sel.forEach(e => {
+      if(!e.format || !e.saveur) return;
+      const k = e.saveur + ' ||| ' + e.format;
+      if(!refs[k]) refs[k] = { saveur:e.saveur, format:e.format, qte:0 };
+      refs[k].qte += (e.qte || 0);
     });
-    let totUnits = 0; S.formats.forEach(f=>{ totUnits += (totFormat[f]||0); });
-    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('')
-         + '<td class="tar"><strong>'+fmtL(litresRow(totFormat))+'</strong><br><span style="font-weight:500;font-size:11px;opacity:.75">'+(totUnits?totUnits.toLocaleString('fr-FR')+' u.':'—')+'</span></td></tr>';
-    html += '</tbody></table>';
+    const refList = Object.keys(refs).map(k=>refs[k]).filter(r => r.qte > 0).sort((a,b) =>
+      a.saveur.localeCompare(b.saveur,'fr') || (S.formats.indexOf(a.format) - S.formats.indexOf(b.format))
+    );
+
+    html  = '<div class="filters-line">' + es(crit.join('  •  ')) + '</div>';
+    html += '<div class="section-title">Récapitulatif par référence — Saison ' + S.saison + '</div>';
+    if(!refList.length){
+      html += '<p style="color:#888;font-size:12px">Aucune entrée pour cette sélection.</p>';
+      plain += 'Aucune entrée pour cette sélection.\n';
+    } else {
+      html += '<table><thead><tr><th>Saveur</th><th>Format</th><th class="tar">Quantité</th><th class="tar">Litres</th></tr></thead><tbody>';
+      let totQ = 0, totL = 0;
+      refList.forEach(r => {
+        const l = r.qte * formatLitres(r.format);
+        totQ += r.qte; totL += l;
+        html += '<tr><td>'+es(r.saveur)+'</td><td>'+es(r.format)+'</td>'
+             +  '<td class="tar">'+r.qte.toLocaleString('fr-FR')+'</td>'
+             +  '<td class="tar">'+fmtL(l)+'</td></tr>';
+        plain += r.saveur + ' • ' + r.format + ' : ' + r.qte + ' (' + fmtL(l) + ')\n';
+      });
+      html += '<tr class="tr"><td colspan="2">TOTAL</td><td class="tar">'+totQ.toLocaleString('fr-FR')+'</td><td class="tar">'+fmtL(totL)+'</td></tr>';
+      html += '</tbody></table>';
+      plain += '\nTOTAL : ' + totQ + ' unités — ' + fmtL(totL) + '\n';
+    }
+
+    // ── PAGES SUIVANTES : le détail des entrées, jour par jour
+    const byDay = {};
+    sel.forEach(e => { (byDay[e.date] = byDay[e.date] || []).push(e); });
+    const days = Object.keys(byDay).sort().reverse();
+    if(days.length){
+      html += '<div class="pagebreak"></div>';
+      html += '<div class="section-title">Détail des entrées par jour</div>';
+      plain += '\n— Détail par jour —\n';
+      days.forEach(d => {
+        const list = byDay[d].slice().sort((a,b) => String(a.saveur).localeCompare(String(b.saveur),'fr'));
+        const dQte = list.reduce((t,e)=>t+(e.qte||0),0);
+        const dL   = list.reduce((t,e)=>t+(e.qte||0)*formatLitres(e.format),0);
+        html += '<div class="day-title">' + es(fmtDateFR(d)) + ' — ' + dQte.toLocaleString('fr-FR') + ' u. / ' + fmtL(dL) + '</div>';
+        html += '<table><thead><tr><th>Saveur</th><th>Format</th><th>Bouchon</th><th>Client</th><th class="tar">Qté</th></tr></thead><tbody>';
+        plain += '\n' + fmtDateFR(d) + ' (' + dQte + ' u.)\n';
+        list.forEach(e => {
+          html += '<tr><td>'+es(e.saveur)+'</td><td>'+es(e.format)+'</td><td>'+es(e.couleur||'—')+'</td>'
+               +  '<td>'+es(e.client||'—')+'</td><td class="tar">'+(e.qte||0)+'</td></tr>';
+          plain += '  ' + e.saveur + ' • ' + e.format + ' × ' + (e.qte||0) + ' — ' + (e.client||'') + '\n';
+        });
+        html += '</tbody></table>';
+      });
+    }
   } else if(S.tab === 'stock'){
     title = 'Jus — Stock'; subject = 'Stock Jus Flipo — ' + dt;
     html = '<div class="section-title">Stock bouteilles</div>';
