@@ -504,6 +504,25 @@ var FLIPO_CAN_DELETE = false;
 
 function $(id){ return document.getElementById(id); }
 function es(s){ const div = document.createElement('div'); div.textContent = s; return div.innerHTML; }
+
+// ─── Contenance d'un format, en litres (33cl → 0.33, 1L → 1, BIB 3L → 3) ───
+function formatLitres(f){
+  const s = String(f || '').toLowerCase().replace(',', '.');
+  let m = s.match(/(\d+(?:\.\d+)?)\s*ml\b/);   if(m) return parseFloat(m[1]) / 1000;
+  m = s.match(/(\d+(?:\.\d+)?)\s*cl\b/);       if(m) return parseFloat(m[1]) / 100;
+  m = s.match(/(\d+(?:\.\d+)?)\s*(?:l\b|litres?\b)/); if(m) return parseFloat(m[1]);
+  return 1; // format sans contenance identifiable : compté pour 1 L
+}
+// Somme en litres d'une ligne {format: quantité}
+function litresRow(row){
+  let t = 0;
+  S.formats.forEach(f => { t += (row[f] || 0) * formatLitres(f); });
+  return t;
+}
+function fmtL(v){
+  if(!v) return '—';
+  return v.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' L';
+}
 function R2(v){ return Math.round(v*100)/100; }
 
 function saveFocus(){ return document.activeElement?.id; }
@@ -623,31 +642,28 @@ function buildResume(){
 
   let html = '<thead><tr><th>Saveur</th>';
   S.formats.forEach(f => { html += '<th>' + es(f) + '</th>'; });
-  html += '<th class="total-col">TOTAL</th></tr></thead><tbody>';
+  html += '<th class="total-col">TOTAL (L)</th></tr></thead><tbody>';
 
   let totalsFormat = {};
   S.formats.forEach(f => { totalsFormat[f] = 0; });
 
   S.saveurs.forEach(s => {
-    let lineTotal = 0;
     html += '<tr><td><strong>' + es(s) + '</strong></td>';
     S.formats.forEach(f => {
       const v = pivot[s][f] || 0;
-      lineTotal += v;
       totalsFormat[f] += v;
       html += '<td class="total-col">' + (v ? v : '—') + '</td>';
     });
-    html += '<td class="total-col"><strong>' + (lineTotal ? lineTotal : '—') + '</strong></td></tr>';
+    // Total de la ligne : en litres (les unités ne sont pas additionnables entre formats)
+    html += '<td class="total-col"><strong>' + fmtL(litresRow(pivot[s])) + '</strong></td></tr>';
   });
 
-  let grandTotal = 0;
   html += '<tr class="total-row"><td><strong>TOTAL</strong></td>';
   S.formats.forEach(f => {
     const v = totalsFormat[f] || 0;
-    grandTotal += v;
     html += '<td><strong>' + (v ? v : '—') + '</strong></td>';
   });
-  html += '<td><strong>' + (grandTotal ? grandTotal : '—') + '</strong></td></tr></tbody>';
+  html += '<td><strong>' + fmtL(litresRow(totalsFormat)) + '</strong></td></tr></tbody>';
 
   $('pivot-table').innerHTML = html;
 
@@ -1085,19 +1101,18 @@ function shareNow(type){
     const pivot = {}; S.saveurs.forEach(s=>{ pivot[s]={}; S.formats.forEach(f=>{ pivot[s][f]=0; }); });
     S.entries.forEach(e=>{ if(pivot[e.saveur]!==undefined&&e.format) pivot[e.saveur][e.format]=(pivot[e.saveur][e.format]||0)+(e.qte||0); });
     const totFormat = {}; S.formats.forEach(f=>{ totFormat[f]=0; });
-    let grandTot = 0;
     html = '<div class="section-title">Production par saveur — Saison ' + S.saison + '</div>';
-    html += '<table><thead><tr><th>Saveur</th>' + S.formats.map(f=>'<th class="tar">'+es(f)+'</th>').join('') + '<th class="tar">Total</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th>Saveur</th>' + S.formats.map(f=>'<th class="tar">'+es(f)+'</th>').join('') + '<th class="tar">Total (L)</th></tr></thead><tbody>';
     plain = 'Jus Flipo — Saison ' + S.saison + '\n' + dt + '\n\n';
     S.saveurs.forEach(s=>{
-      const row = pivot[s]; let rowTot = 0;
-      S.formats.forEach(f=>{ totFormat[f]+=(row[f]||0); rowTot+=(row[f]||0); });
-      grandTot += rowTot;
-      if(rowTot===0) return;
-      html += '<tr><td>'+es(s)+'</td>' + S.formats.map(f=>'<td class="tar">'+(row[f]||0)+'</td>').join('') + '<td class="tar"><strong>'+rowTot+'</strong></td></tr>';
-      plain += s + ' : ' + rowTot + '\n';
+      const row = pivot[s]; let rowUnits = 0;
+      S.formats.forEach(f=>{ totFormat[f]+=(row[f]||0); rowUnits+=(row[f]||0); });
+      if(rowUnits===0) return;
+      const rowL = litresRow(row);
+      html += '<tr><td>'+es(s)+'</td>' + S.formats.map(f=>'<td class="tar">'+(row[f]||0)+'</td>').join('') + '<td class="tar"><strong>'+fmtL(rowL)+'</strong></td></tr>';
+      plain += s + ' : ' + fmtL(rowL) + '\n';
     });
-    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('') + '<td class="tar">'+grandTot+'</td></tr>';
+    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('') + '<td class="tar">'+fmtL(litresRow(totFormat))+'</td></tr>';
     html += '</tbody></table>';
   } else if(S.tab === 'stock'){
     title = 'Jus — Stock'; subject = 'Stock Jus Flipo — ' + dt;
