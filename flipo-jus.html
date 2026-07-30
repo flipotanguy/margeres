@@ -521,7 +521,7 @@ function litresRow(row){
 }
 function fmtL(v){
   if(!v) return '—';
-  return v.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' L';
+  return Math.round(v).toLocaleString('fr-FR') + ' L';
 }
 function R2(v){ return Math.round(v*100)/100; }
 
@@ -658,12 +658,18 @@ function buildResume(){
     html += '<td class="total-col"><strong>' + fmtL(litresRow(pivot[s])) + '</strong></td></tr>';
   });
 
+  let totalUnits = 0;
   html += '<tr class="total-row"><td><strong>TOTAL</strong></td>';
   S.formats.forEach(f => {
     const v = totalsFormat[f] || 0;
+    totalUnits += v;
     html += '<td><strong>' + (v ? v : '—') + '</strong></td>';
   });
-  html += '<td><strong>' + fmtL(litresRow(totalsFormat)) + '</strong></td></tr></tbody>';
+  // Case en bas à droite : total en litres + total en unités
+  html += '<td><strong>' + fmtL(litresRow(totalsFormat)) + '</strong>'
+       +  '<br><span style="font-weight:500;font-size:11px;opacity:.75">'
+       +  (totalUnits ? totalUnits.toLocaleString('fr-FR') + ' u.' : '—')
+       +  '</span></td></tr></tbody>';
 
   $('pivot-table').innerHTML = html;
 
@@ -1112,7 +1118,9 @@ function shareNow(type){
       html += '<tr><td>'+es(s)+'</td>' + S.formats.map(f=>'<td class="tar">'+(row[f]||0)+'</td>').join('') + '<td class="tar"><strong>'+fmtL(rowL)+'</strong></td></tr>';
       plain += s + ' : ' + fmtL(rowL) + '\n';
     });
-    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('') + '<td class="tar">'+fmtL(litresRow(totFormat))+'</td></tr>';
+    let totUnits = 0; S.formats.forEach(f=>{ totUnits += (totFormat[f]||0); });
+    html += '<tr class="tr"><td>Total</td>' + S.formats.map(f=>'<td class="tar">'+totFormat[f]+'</td>').join('')
+         + '<td class="tar"><strong>'+fmtL(litresRow(totFormat))+'</strong><br><span style="font-weight:500;font-size:11px;opacity:.75">'+(totUnits?totUnits.toLocaleString('fr-FR')+' u.':'—')+'</span></td></tr>';
     html += '</tbody></table>';
   } else if(S.tab === 'stock'){
     title = 'Jus — Stock'; subject = 'Stock Jus Flipo — ' + dt;
