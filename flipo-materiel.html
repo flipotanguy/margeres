@@ -100,6 +100,34 @@ table{font-size:11px}th,td{padding:6px 8px}
 .share-fab{bottom:16px;right:12px}
 }
 </style>
+<!-- ══ Garde des droits — exécutée AVANT le premier rendu ══
+     Masque les onglets non autorisés par CSS avant que la page ne s'affiche,
+     pour qu'ils ne « clignotent » pas le temps que le gros script se charge. -->
+<script>
+(function(){
+  var MOD='materiel', TABS=["dash", "materiel", "salaries", "prets"], SEL=["#tab-{i}", "#panel-{i}"];
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.replace('flipo-login.html');return;}
+  var mp=sess.perms&&sess.perms[MOD];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.replace('index.html');return;}
+  var ok=TABS.slice();
+  if(!sess.isAdmin){
+    var t=(mp&&mp.tabs)||{};
+    ok=TABS.filter(function(id){return t[id]&&t[id].enabled;});
+    if(!ok.length)ok=TABS.slice();
+  }
+  window.FLIPO_TABS_OK=ok;
+  window.FLIPO_TAB_FIRST=ok[0]||TABS[0];
+  var ko=TABS.filter(function(id){return ok.indexOf(id)<0;});
+  if(!ko.length)return;
+  var css=[];
+  ko.forEach(function(id){SEL.forEach(function(s){css.push(s.replace(/\{i\}/g,id));});});
+  var st=document.createElement('style');
+  st.textContent=css.join(',')+'{display:none!important}';
+  (document.head||document.documentElement).appendChild(st);
+})();
+</script>
 </head>
 <body>
 <div class="app">
@@ -261,8 +289,13 @@ function _mergeFromCloud(cloud){
   S.prets=_mergeCol(cloud.prets,S.prets,'pret:',del);
 }
 
+// Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
+function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexOf(t)>=0;}
+
 function _rebuildUI(){
   var t=S.tab||'dash';
+  // L'onglet mémorisé vient du cloud : ne jamais l'afficher s'il n'est pas autorisé
+  if(!_tabOK(t)){t=window.FLIPO_TAB_FIRST||t;S.tab=t;}
   ['dash','materiel','salaries','prets'].forEach(function(n){
     var p=document.getElementById('panel-'+n);
     if(p)p.classList.toggle('hidden',n!==t);

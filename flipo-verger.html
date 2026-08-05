@@ -140,6 +140,34 @@ select.wsel{border:none;background:transparent;font-size:12px;color:inherit;outl
 }
 function setSyncSt(s){var el=document.getElementById('sync-st');if(!el)return;if(s==='ok'){el.textContent='☁️';el.style.color='#2d7a4a';}else if(s==='syncing'){el.textContent='🔄';el.style.color='#e07020';}else if(s==='err'){el.textContent='⚠️';el.style.color='#e03030';}else{el.textContent='☁️';el.style.color='#bbb';}}
 </style>
+<!-- ══ Garde des droits — exécutée AVANT le premier rendu ══
+     Masque les onglets non autorisés par CSS avant que la page ne s'affiche,
+     pour qu'ils ne « clignotent » pas le temps que le gros script se charge. -->
+<script>
+(function(){
+  var MOD='verger', TABS=["trait", "cueill", "historique", "stock", "phyto"], SEL=["#tab-{i}", "#panel-{i}"];
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.replace('flipo-login.html');return;}
+  var mp=sess.perms&&sess.perms[MOD];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.replace('index.html');return;}
+  var ok=TABS.slice();
+  if(!sess.isAdmin){
+    var t=(mp&&mp.tabs)||{};
+    ok=TABS.filter(function(id){return t[id]&&t[id].enabled;});
+    if(!ok.length)ok=TABS.slice();
+  }
+  window.FLIPO_TABS_OK=ok;
+  window.FLIPO_TAB_FIRST=ok[0]||TABS[0];
+  var ko=TABS.filter(function(id){return ok.indexOf(id)<0;});
+  if(!ko.length)return;
+  var css=[];
+  ko.forEach(function(id){SEL.forEach(function(s){css.push(s.replace(/\{i\}/g,id));});});
+  var st=document.createElement('style');
+  st.textContent=css.join(',')+'{display:none!important}';
+  (document.head||document.documentElement).appendChild(st);
+})();
+</script>
 </head>
 <body>
 <div class="app">
@@ -485,8 +513,13 @@ function _rebuildMatrix(){
   });
 }
 
+// Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
+function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexOf(t)>=0;}
+
 function _rebuildUI(){
   var t=S.tab||'trait';
+  // L'onglet mémorisé vient du cloud : ne jamais l'afficher s'il n'est pas autorisé
+  if(!_tabOK(t)){t=window.FLIPO_TAB_FIRST||t;S.tab=t;}
   document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('act');});
   var btn=document.getElementById('tab-'+t);
   if(btn)btn.classList.add('act');
@@ -583,6 +616,51 @@ function eau(s){return Math.ceil(500*parseFloat(s||0)/50)*50;}
 function sm(a){return a.reduce((x,y)=>x+(parseFloat(y)||0),0);}
 function fr(n){return (parseFloat(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:2});}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+// ─── Poids des palox ──────────────────────────────────────
+// Poids par défaut si la saisie ne précise pas de kg/palox.
+var KG_DEF={pomme:360,poire:440};
+function kgDefaut(cult){return KG_DEF[cult]||0;}
+// Poids d'une saisie : le kg/palox saisi l'emporte toujours sur le défaut.
+function entKg(e){
+  if(!e)return 0;
+  var p=parseFloat(e.palox)||0;
+  var k=parseFloat(e.kgPalox)||0;
+  return p*(k>0?k:kgDefaut(e.cult));
+}
+// Poids total d'une culture ('pomme' / 'poire'), variété optionnelle.
+function totKg(cult,variete){
+  var v=variete?String(variete).toLowerCase():null;
+  var kg=0,vus=0;
+  (S.entries||[]).forEach(function(e){
+    if(!e||e.cult!==cult||e.vardef)return;
+    if(v&&String(e.variete||'').toLowerCase()!==v)return;
+    kg+=entKg(e);
+    vus+=parseFloat(e.palox)||0;
+  });
+  // Palox présents dans la matrice mais sans saisie correspondante → poids par défaut
+  var rows=(cult==='pomme'?S.pomR:S.poiR)||[];
+  var tot=0;
+  rows.forEach(function(r){
+    if(v&&String(r.v||'').toLowerCase()!==v)return;
+    tot+=sm(r.d||[]);
+  });
+  if(tot>vus)kg+=(tot-vus)*kgDefaut(cult);
+  return Math.round(kg);
+}
+// Poids d'une cellule variété × date (fallback poids par défaut si pas de saisie)
+function kgCell(cult,variete,date,palox){
+  var v=String(variete||'').toLowerCase(),kg=0,vus=0;
+  (S.entries||[]).forEach(function(e){
+    if(!e||e.cult!==cult||e.vardef)return;
+    if(String(e.variete||'').toLowerCase()!==v||e.date!==date)return;
+    kg+=entKg(e);vus+=parseFloat(e.palox)||0;
+  });
+  var p=parseFloat(palox)||0;
+  if(p>vus)kg+=(p-vus)*kgDefaut(cult);
+  return Math.round(kg);
+}
+function fkg(n){return Math.round(n||0).toLocaleString('fr-FR');}
 // ─── Dates : calendrier natif (valeur ISO) ↔ stockage JJ/MM ───
 function isoToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function normJM(v){v=String(v||'').trim();let m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(m)return m[3]+'/'+m[2];m=/^(\d{1,2})\/(\d{1,2})$/.exec(v);if(m)return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0');return '';}
@@ -852,15 +930,15 @@ function buildShareHTML(){
     if(pomHasData){
       html+='<div class="section-title">🍎 Pomme par variété</div>';
       html+='<table><thead><tr><th>Variété</th><th class="tar">Palox</th><th class="tar">Poids (kg)</th></tr></thead><tbody>';
-      S.pomR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=(t*(S.pxPom||300)).toLocaleString('fr-FR');html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
-      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPom+'</td><td class="tar">'+((tPom*(S.pxPom||300)).toLocaleString('fr-FR'))+'</td></tr>';
+      S.pomR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=fkg(totKg('pomme',r.v));html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
+      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPom+'</td><td class="tar">'+fkg(totKg('pomme'))+'</td></tr>';
       html+='</tbody></table>';
     }
     if(poiHasData){
       html+='<div class="section-title">🍐 Poire par variété</div>';
       html+='<table><thead><tr><th>Variété</th><th class="tar">Palox</th><th class="tar">Poids (kg)</th></tr></thead><tbody>';
-      S.poiR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=(t*(S.pxPoi||440)).toLocaleString('fr-FR');html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
-      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPoi+'</td><td class="tar">'+((tPoi*(S.pxPoi||440)).toLocaleString('fr-FR'))+'</td></tr>';
+      S.poiR.forEach(r=>{const t=r.d.reduce((a,b)=>a+b,0);if(t>0){const kg=fkg(totKg('poire',r.v));html+='<tr><td>'+es(r.v)+'</td><td class="tar">'+t+'</td><td class="tar">'+kg+'</td></tr>';plain+=r.v+' : '+t+' palox\n';}});
+      html+='<tr class="tr"><td>Total</td><td class="tar">'+tPoi+'</td><td class="tar">'+fkg(totKg('poire'))+'</td></tr>';
       html+='</tbody></table>';
     }
     return {html,plain:plain+'\n— Flipo',title:'Verger — Cueillette',subject:'Cueillette Verger — '+dt};
@@ -1197,9 +1275,9 @@ function buildCueill(){
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
   let h=`<div class="sts">
     <div class="st"><div class="sl">Total pommes</div><div class="sv" id="sp">${tP}</div><div class="su">palox</div></div>
-    <div class="st"><div class="sl">Poids pommes</div><div class="sv" id="swp" style="font-size:16px">${(tP*300).toLocaleString('fr-FR')}</div><div class="su">kg</div></div>
+    <div class="st"><div class="sl">Poids pommes</div><div class="sv" id="swp" style="font-size:16px">${fkg(totKg('pomme'))}</div><div class="su">kg</div></div>
     <div class="st"><div class="sl">Total poires</div><div class="sv" id="sq">${tQ}</div><div class="su">palox</div></div>
-    <div class="st"><div class="sl">Poids poires</div><div class="sv" id="swq" style="font-size:16px">${(tQ*440).toLocaleString('fr-FR')}</div><div class="su">kg</div></div>
+    <div class="st"><div class="sl">Poids poires</div><div class="sv" id="swq" style="font-size:16px">${fkg(totKg('poire'))}</div><div class="su">kg</div></div>
     <div class="st" style="border-left:3px solid var(--gr)"><div class="sl">Total général</div><div class="sv" id="stot" style="font-size:16px">${tP+tQ}</div><div class="su">palox</div></div>
   </div>`;
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -1221,8 +1299,8 @@ function buildCVw(){
 function updCeilStats(){
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
-  setText('sp',tP);setText('swp',(tP*300).toLocaleString('fr-FR'));
-  setText('sq',tQ);setText('swq',(tQ*440).toLocaleString('fr-FR'));
+  setText('sp',tP);setText('swp',fkg(totKg('pomme')));
+  setText('sq',tQ);setText('swq',fkg(totKg('poire')));
   setText('stot',tP+tQ);
 }
 
@@ -1231,7 +1309,7 @@ function buildSaisie(){
   const pomVars=S.pomR.map(r=>r.v);
   const poiVars=S.poiR.map(r=>r.v);
   const vars=S.entCult==='pomme'?pomVars:poiVars;
-  const kgDef=S.entCult==='pomme'?360:440;
+  const kgDef=kgDefaut(S.entCult);
   let h=`<div class="cult-sel">
     <button class="cult-btn pom${S.entCult==='pomme'?' act':''}" onclick="setEntCult('pomme')">🍎 Pomme</button>
     <button class="cult-btn poi${S.entCult==='poire'?' act':''}" onclick="setEntCult('poire')">🍐 Poire</button>
@@ -1293,7 +1371,8 @@ function buildSaisie(){
     h+=`<div style="max-height:400px;overflow-y:auto">`;
     journal.forEach(e=>{
       const icon=e.cult==='pomme'?'🍎':'🍐';
-      const kg=e.palox*(e.kgPalox||0);
+      const kgU=(parseFloat(e.kgPalox)||0)||kgDefaut(e.cult);
+      const kg=entKg(e);
       const tsStr=e.ts?new Date(e.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
       const batObj=e.bat?S.bats.find(b=>b.id===e.bat):null;
       const friObj=batObj&&e.fri?batObj.frigos.find(f=>f.id===e.fri):null;
@@ -1302,7 +1381,7 @@ function buildSaisie(){
         <span class="jicon">${icon}</span>
         <div class="jinfo">
           <strong>${es(e.date)} — ${es(e.variete)}</strong>
-          <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.palox} palox · ${kg>0?kg.toLocaleString('fr-FR')+' kg':e.kgPalox+' kg/palox'}${destStr}</span>
+          <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.palox} palox · ${kgU} kg/palox${kg>0?' · '+fkg(kg)+' kg':''}${destStr}</span>
           ${tsStr?`<div class="jdate">Saisi le ${tsStr}</div>`:''}
         </div>
         <button class="btn del" onclick="deleteEntry(${e.id})">🗑</button>
@@ -1466,7 +1545,7 @@ function buildCeilTable(type){
   }
 
   h+=`<div class="tw fh"><table><thead><tr><th style="min-width:32px"></th><th style="min-width:110px">Variété</th><th class="am" style="min-width:60px">Total</th>`;
-  if(type==='pom')h+=`<th class="am" style="min-width:72px">Poids (kg)</th>`;
+  h+=`<th class="am" style="min-width:72px">Poids (kg)</th>`;
   activeCols.forEach(ci=>h+=`<th style="min-width:40px;font-size:10px">${dates[ci]}</th>`);
   h+=`</tr></thead><tbody>`;
   rows.forEach((row,ri)=>{
@@ -1475,7 +1554,7 @@ function buildCeilTable(type){
     h+=`<tr><td><button class="btn del" style="padding:2px 5px;font-size:12px;min-height:28px" onclick="deleteVar('${type}',${ri})">🗑</button></td>`;
     h+=`<td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
     h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
-    if(type==='pom')h+=`<td class="f" id="${type}k-${ri}">${(Math.round(tot)*300).toLocaleString('fr-FR')}</td>`;
+    h+=`<td class="f" id="${type}k-${ri}">${fkg(totKg(type==='pom'?'pomme':'poire',row.v))}</td>`;
     activeCols.forEach(ci=>h+=`<td><input class="w48" id="${type}c-${ri}-${ci}" value="${row.d[ci]||''}" onchange="updC('${type}',${ri},${ci},this.value)"></td>`);
     h+=`</tr>`;
   });
@@ -1644,10 +1723,16 @@ function _buildHistoriqueContent(arc){
 
   // ── Cartes totaux ──
   h+='<div class="sts" style="margin-bottom:16px">';
+  // Poids archivés si disponibles, sinon repli sur les poids par défaut
+  const kgPomV=arc.kgPomV||{},kgPoiV=arc.kgPoiV||{};
+  const arcKg=function(map,v,tot,cult){var k=map[v];return (k!==undefined&&k!==null)?k:Math.round(tot*kgDefaut(cult));};
+  const kP=(arc.kgPom!==undefined&&arc.kgPom!==null)?arc.kgPom:Math.round(tP*kgDefaut('pomme'));
+  const kQ=(arc.kgPoi!==undefined&&arc.kgPoi!==null)?arc.kgPoi:Math.round(tQ*kgDefaut('poire'));
+
   h+='<div class="st"><div class="sl">Pommes</div><div class="sv">'+tP+'</div><div class="su">palox</div></div>';
-  h+='<div class="st"><div class="sl">Poids pommes</div><div class="sv" style="font-size:16px">'+((tP*300).toLocaleString('fr-FR'))+'</div><div class="su">kg</div></div>';
+  h+='<div class="st"><div class="sl">Poids pommes</div><div class="sv" style="font-size:16px">'+fkg(kP)+'</div><div class="su">kg</div></div>';
   h+='<div class="st"><div class="sl">Poires</div><div class="sv">'+tQ+'</div><div class="su">palox</div></div>';
-  h+='<div class="st"><div class="sl">Poids poires</div><div class="sv" style="font-size:16px">'+((tQ*440).toLocaleString('fr-FR'))+'</div><div class="su">kg</div></div>';
+  h+='<div class="st"><div class="sl">Poids poires</div><div class="sv" style="font-size:16px">'+fkg(kQ)+'</div><div class="su">kg</div></div>';
   h+='<div class="st" style="border-left:3px solid var(--gr)"><div class="sl">Total général</div><div class="sv" style="font-size:16px">'+(tP+tQ)+'</div><div class="su">palox</div></div>';
   h+='</div>';
 
@@ -1658,14 +1743,14 @@ function _buildHistoriqueContent(arc){
   pomR.forEach(function(r){
     const tot=Math.round(r.d.reduce(function(a,v){return a+(parseFloat(v)||0);},0));
     if(tot===0)return;
-    h+='<tr><td>🍎 Pomme</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+((tot*300).toLocaleString('fr-FR'))+'</td></tr>';
+    h+='<tr><td>🍎 Pomme</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+fkg(arcKg(kgPomV,r.v,tot,'pomme'))+'</td></tr>';
   });
   poiR.forEach(function(r){
     const tot=Math.round(r.d.reduce(function(a,v){return a+(parseFloat(v)||0);},0));
     if(tot===0)return;
-    h+='<tr><td>🍐 Poire</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+((tot*440).toLocaleString('fr-FR'))+'</td></tr>';
+    h+='<tr><td>🍐 Poire</td><td>'+es(r.v)+'</td><td style="text-align:right">'+tot+'</td><td style="text-align:right">'+fkg(arcKg(kgPoiV,r.v,tot,'poire'))+'</td></tr>';
   });
-  h+='<tr style="font-weight:700;border-top:2px solid #eee"><td colspan="2">Total</td><td style="text-align:right">'+(tP+tQ)+'</td><td style="text-align:right">'+((tP*300+tQ*440).toLocaleString('fr-FR'))+'</td></tr>';
+  h+='<tr style="font-weight:700;border-top:2px solid #eee"><td colspan="2">Total</td><td style="text-align:right">'+(tP+tQ)+'</td><td style="text-align:right">'+fkg(kP+kQ)+'</td></tr>';
   h+='</tbody></table></div>';
 
   // ── Graphique palox par jour ──
@@ -1760,7 +1845,8 @@ function cloturerAnnee(){
   const saison=S.saison||'2026/2027';
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
-  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${(tP*300).toLocaleString('fr-FR')} kg\n• Poires : ${tQ} palox — ${(tQ*440).toLocaleString('fr-FR')} kg\n\nCette action va :\n✓ Archiver la saison dans l'onglet Historique\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
+  const kgP=totKg('pomme'),kgQ=totKg('poire');
+  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${fkg(kgP)} kg\n• Poires : ${tQ} palox — ${fkg(kgQ)} kg\n\nCette action va :\n✓ Archiver la saison dans l'onglet Historique\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
   if(!ok)return;
   const ok2=confirm(`Dernière confirmation : clôturer définitivement la saison ${saison} ?`);
   if(!ok2)return;
@@ -1774,6 +1860,11 @@ function cloturerAnnee(){
       poiR: JSON.parse(JSON.stringify(S.poiR)),
       datesPom: DATES_POM.slice(),
       datesPoi: DATES_POI.slice(),
+      // Poids réels (kg/palox saisis) figés à la clôture — sinon l'historique retomberait sur les poids par défaut
+      kgPom: kgP,
+      kgPoi: kgQ,
+      kgPomV: (function(){var o={};S.pomR.forEach(function(r){var k=totKg('pomme',r.v);if(k)o[r.v]=k;});return o;})(),
+      kgPoiV: (function(){var o={};S.poiR.forEach(function(r){var k=totKg('poire',r.v);if(k)o[r.v]=k;});return o;})(),
       closedAt: new Date().toISOString().slice(0,10)
     });
   }
@@ -1781,11 +1872,11 @@ function cloturerAnnee(){
   // Générer CSV
   let csv=`\uFEFFSaison ${saison} — Récapitulatif Cueillette Flipo\n\n`;
   csv+=`Culture,Variété,Date,Palox,Poids estimé (kg)\n`;
-  DATES_POM.forEach((date,di)=>{S.pomR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Pomme,"${row.v}",${date},${row.d[di]},${row.d[di]*300}\n`;});});
-  DATES_POI.forEach((date,di)=>{S.poiR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Poire,"${row.v}",${date},${row.d[di]},${row.d[di]*440}\n`;});});
-  csv+=`\nTOTAL,Pomme,,${tP},${tP*300}\n`;
-  csv+=`TOTAL,Poire,,${tQ},${tQ*440}\n`;
-  csv+=`TOTAL,Général,,${tP+tQ},${tP*300+tQ*440}\n`;
+  DATES_POM.forEach((date,di)=>{S.pomR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Pomme,"${row.v}",${date},${row.d[di]},${kgCell('pomme',row.v,date,row.d[di])}\n`;});});
+  DATES_POI.forEach((date,di)=>{S.poiR.forEach(row=>{if((row.d[di]||0)>0)csv+=`Poire,"${row.v}",${date},${row.d[di]},${kgCell('poire',row.v,date,row.d[di])}\n`;});});
+  csv+=`\nTOTAL,Pomme,,${tP},${kgP}\n`;
+  csv+=`TOTAL,Poire,,${tQ},${kgQ}\n`;
+  csv+=`TOTAL,Général,,${tP+tQ},${kgP+kgQ}\n`;
 
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);

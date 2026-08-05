@@ -521,6 +521,34 @@
       text-align: center;
     }
   </style>
+<!-- ══ Garde des droits — exécutée AVANT le premier rendu ══
+     Masque les onglets non autorisés par CSS avant que la page ne s'affiche,
+     pour qu'ils ne « clignotent » pas le temps que le gros script se charge. -->
+<script>
+(function(){
+  var MOD='fraise', TABS=["resume", "saisie", "saison", "drainage", "trait"], SEL=['[data-tab="{i}"]', '#{i}-pane'];
+  var sess=null;
+  try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!sess){location.replace('flipo-login.html');return;}
+  var mp=sess.perms&&sess.perms[MOD];
+  if(!sess.isAdmin&&(!mp||!mp.enabled)){location.replace('index.html');return;}
+  var ok=TABS.slice();
+  if(!sess.isAdmin){
+    var t=(mp&&mp.tabs)||{};
+    ok=TABS.filter(function(id){return t[id]&&t[id].enabled;});
+    if(!ok.length)ok=TABS.slice();
+  }
+  window.FLIPO_TABS_OK=ok;
+  window.FLIPO_TAB_FIRST=ok[0]||TABS[0];
+  var ko=TABS.filter(function(id){return ok.indexOf(id)<0;});
+  if(!ko.length)return;
+  var css=[];
+  ko.forEach(function(id){SEL.forEach(function(s){css.push(s.replace(/\{i\}/g,id));});});
+  var st=document.createElement('style');
+  st.textContent=css.join(',')+'{display:none!important}';
+  (document.head||document.documentElement).appendChild(st);
+})();
+</script>
 </head>
 <body>
   <div class="hdr">
@@ -816,11 +844,16 @@
       S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
     }
 
+// Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
+function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexOf(t)>=0;}
+
     function _rebuildUI(){
       var hdr=document.getElementById('saison-hdr');
       if(hdr)hdr.textContent='Saison '+S.saison;
       rebuildTraitProdList();
       var t=S.tab||'resume';
+  // L'onglet mémorisé vient du cloud : ne jamais l'afficher s'il n'est pas autorisé
+  if(!_tabOK(t)){t=window.FLIPO_TAB_FIRST||t;S.tab=t;}
       document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
       document.querySelectorAll('[data-tab="'+t+'"]').forEach(function(b){b.classList.add('active');});
       document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});
