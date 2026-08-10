@@ -790,6 +790,7 @@ function buildSaisie(){
       '<div class="journal-entry-txt">' +
       '<strong>' + es(e.saveur) + ' • ' + es(e.format) + ' × ' + e.qte + '</strong>' +
       '<span style="color:var(--mu);font-size:12px">' + es(e.client) + ' • bouchon ' + es(e.couleur) + ' • ' + e.date + '</span>' +
+      saisiLine(e) +
       '</div>' +
       '</div>' +
       '<button class="btn btn-del" onclick="deleteEntry(\'' + e.id + '\')" ' + (FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"') + '>✕</button>' +
@@ -819,7 +820,7 @@ function addEntry(){
   }
 
   const id = 'e-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  S.entries.push({ id, date, saveur, format, client, couleur, qte, ts: Date.now() });
+  S.entries.push({ id, date, saveur, format, client, couleur, qte, ts: Date.now(), u: FLIPO_AUTHOR });
   S.entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const qteResetEl = $('entry-qte');
@@ -1029,7 +1030,7 @@ function buildStock(){
       }
       htmlD += '<div class="journal-entry"><div class="journal-entry-main"><span style="font-size:18px">📦</span>';
       htmlD += '<div class="journal-entry-txt"><strong>' + label + ' × ' + r.qte + '</strong>';
-      htmlD += '<span style="color:var(--mu);font-size:12px">' + r.date + '</span></div></div>';
+      htmlD += '<span style="color:var(--mu);font-size:12px">' + r.date + '</span>' + saisiLine(r) + '</div></div>';
       htmlD += '<button class="btn btn-del" onclick="deleteReappro(\'' + r.id + '\')" ' + (FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"') + '>✕</button></div>';
     });
     htmlD += '</div>';
@@ -1268,7 +1269,7 @@ function addReappro(){
   if(type === 'bouchon' && !couleur){ alert('Veuillez sélectionner une couleur'); return; }
 
   const id = 'r-' + Date.now() + '-' + Math.random().toString(36).substr(2,6);
-  const reappro = {id, type, date, qte};
+  const reappro = {id, type, date, qte, ts: Date.now(), u: FLIPO_AUTHOR};
   if(couleur) reappro.couleur = couleur;
   S.reappro.push(reappro);
   saveLS();
@@ -1318,6 +1319,29 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ─── Auth ────────────────────────────────────────────────
+// ─── Auteur des saisies ──────────────────────────────
+// FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)
+var FLIPO_AUTHOR='';
+(function(){
+  var s=null;try{s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!s)return;
+  var p=String(s.prenom||'').trim(),n=String(s.nom||'').trim();
+  FLIPO_AUTHOR=(p+(n?' '+n.charAt(0).toUpperCase()+'.':'')).trim();
+})();
+// Retourne " · Prénom N." si l'auteur est connu, sinon '' (anciennes saisies)
+function authTxt(o,sep){
+  var u=(o&&o.u)?String(o.u).trim():'';
+  if(!u)return '';
+  return (sep===undefined?' · ':sep)+(typeof es==='function'?es(u):u);
+}
+// Ligne discrète « Saisi le JJ/MM HH:MM · Prénom N. » — vide si rien à afficher
+function saisiLine(o,cls){
+  var t='',u=(o&&o.u)?String(o.u).trim():'';
+  if(o&&o.ts){var d=new Date(o.ts);if(!isNaN(d.getTime()))t=d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+  if(!t&&!u)return '';
+  var a=cls?' class="'+cls+'"':' style="font-size:11px;color:var(--mu);margin-top:2px"';
+  return '<div'+a+'>'+(t?'Saisi le '+t:'Saisi')+authTxt(o)+'</div>';
+}
 function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}

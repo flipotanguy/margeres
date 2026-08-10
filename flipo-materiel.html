@@ -647,6 +647,7 @@ function buildPrets(){
         <div class="jinfo">
           <strong>${es(p.materiel)}${(parseFloat(p.qte)||0)>1?' × '+p.qte:''}</strong> — ${es(p.salarie)}
           <div class="jsub">Prêté le ${es(p.datePret||'—')}${p.rendu&&p.dateRetour?' · rendu le '+es(p.dateRetour):''}</div>
+          ${saisiLine(p,'jsub')}
         </div>
         <button class="btn" onclick="toggleRendu('${es(p.id)}')">${p.rendu?'↩︎ Rouvrir':'✓ Rendu'}</button>
         <button class="btn del" onclick="delPret('${es(p.id)}')" ${FLIPO_CAN_DELETE?'':'disabled title="Suppression réservée aux administrateurs"'}>🗑</button>
@@ -664,7 +665,7 @@ function addPret(){
   if(!sal||!mat||qte<=0){alert('Choisissez un salarié, un matériel et une quantité (> 0).');return;}
   if(!date)date=todayStr();
   var _now=new Date().toISOString();
-  S.prets.unshift({id:'p'+Date.now(),salarie:sal,materiel:mat,qte:qte,datePret:date,rendu:false,dateRetour:'',ts:_now,upd:_now});
+  S.prets.unshift({id:'p'+Date.now(),salarie:sal,materiel:mat,qte:qte,datePret:date,rendu:false,dateRetour:'',ts:_now,upd:_now,u:FLIPO_AUTHOR});
   saveLS();initPrets();
 }
 function toggleRendu(id){
@@ -718,6 +719,29 @@ function shareNow(type){
 // AUTH
 // ══════════════════════════════════════════════
 var FLIPO_CAN_DELETE=false;
+// ─── Auteur des saisies ──────────────────────────────
+// FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)
+var FLIPO_AUTHOR='';
+(function(){
+  var s=null;try{s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!s)return;
+  var p=String(s.prenom||'').trim(),n=String(s.nom||'').trim();
+  FLIPO_AUTHOR=(p+(n?' '+n.charAt(0).toUpperCase()+'.':'')).trim();
+})();
+// Retourne " · Prénom N." si l'auteur est connu, sinon '' (anciennes saisies)
+function authTxt(o,sep){
+  var u=(o&&o.u)?String(o.u).trim():'';
+  if(!u)return '';
+  return (sep===undefined?' · ':sep)+(typeof es==='function'?es(u):u);
+}
+// Ligne discrète « Saisi le JJ/MM HH:MM · Prénom N. » — vide si rien à afficher
+function saisiLine(o,cls){
+  var t='',u=(o&&o.u)?String(o.u).trim():'';
+  if(o&&o.ts){var d=new Date(o.ts);if(!isNaN(d.getTime()))t=d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+  if(!t&&!u)return '';
+  var a=cls?' class="'+cls+'"':' style="font-size:11px;color:var(--mu);margin-top:2px"';
+  return '<div'+a+'>'+(t?'Saisi le '+t:'Saisi')+authTxt(o)+'</div>';
+}
 function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}

@@ -1386,7 +1386,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
             const barq = e.barquettes || 0;
             const kg = R2(barq * 0.5);
             html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--brd)">';
-            html += '<span style="font-size:13px">Chapelle ' + e.chapelle + ' (' + es(v) + ') — ' + barq + ' barquettes (' + kg + ' kg)</span>';
+            html += '<div style="font-size:13px">Chapelle ' + e.chapelle + ' (' + es(v) + ') — ' + barq + ' barquettes (' + kg + ' kg)' + saisiLine(e) + '</div>';
             html += '<button class="btn delete" onclick="deleteEntry(' + e.id + ')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">X</button>';
             html += '</div>';
           });
@@ -1419,7 +1419,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
           const ch = S.chapelles.find(c => c.n === chap);
           const varieté = ch ? ch.v : '';
           const id = Date.now() + Math.random();
-          entriesToAdd.push({id, date, chapelle: chap, variete: varieté, barquettes});
+          entriesToAdd.push({id, date, chapelle: chap, variete: varieté, barquettes, ts: new Date().toISOString(), u: FLIPO_AUTHOR});
         }
       });
 
@@ -1913,6 +1913,29 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
 
 // ─── Auth ────────────────────────────────────────────────
 var FLIPO_CAN_DELETE=false;
+// ─── Auteur des saisies ──────────────────────────────
+// FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)
+var FLIPO_AUTHOR='';
+(function(){
+  var s=null;try{s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
+  if(!s)return;
+  var p=String(s.prenom||'').trim(),n=String(s.nom||'').trim();
+  FLIPO_AUTHOR=(p+(n?' '+n.charAt(0).toUpperCase()+'.':'')).trim();
+})();
+// Retourne " · Prénom N." si l'auteur est connu, sinon '' (anciennes saisies)
+function authTxt(o,sep){
+  var u=(o&&o.u)?String(o.u).trim():'';
+  if(!u)return '';
+  return (sep===undefined?' · ':sep)+(typeof es==='function'?es(u):u);
+}
+// Ligne discrète « Saisi le JJ/MM HH:MM · Prénom N. » — vide si rien à afficher
+function saisiLine(o,cls){
+  var t='',u=(o&&o.u)?String(o.u).trim():'';
+  if(o&&o.ts){var d=new Date(o.ts);if(!isNaN(d.getTime()))t=d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+  if(!t&&!u)return '';
+  var a=cls?' class="'+cls+'"':' style="font-size:11px;color:var(--mu);margin-top:2px"';
+  return '<div'+a+'>'+(t?'Saisi le '+t:'Saisi')+authTxt(o)+'</div>';
+}
 function _checkAuth(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
