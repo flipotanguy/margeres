@@ -446,7 +446,11 @@ function getStockMap(){
       if(!type||!v||pal<=0)return;
       var key;
       if(!e.bat||e.bat===MARG_ID||e.bat===margKey||knownBatIds.indexOf(e.bat)<0){
-        key=margKey; // Margères, virtuel, ou ancien bâtiment supprimé → margKey
+        // Margères, virtuel, ou ancien bâtiment supprimé → margKey
+        // …mais si la saisie a un frigo qui existe bien à Margères, on conserve le détail par frigo
+        var margFri=(margBat&&margBat.frigos)?margBat.frigos:[];
+        var friOK=e.fri&&margFri.some(function(f){return f.id===e.fri;});
+        key=friOK?margKey+'|'+e.fri:margKey;
       } else {
         key=e.fri?e.bat+'|'+e.fri:e.bat;
       }
