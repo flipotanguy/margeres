@@ -387,13 +387,13 @@ function _pull(rebuild){
     {headers:_supaH()})
   .then(function(r){_pulling=false;return r.ok?r.json():[];})
   .then(function(rows){
-    if(!rows||!rows.length)return;
+    if(!rows||!rows.length){if(rebuild)_initUI();return;}
     _cloudTs=rows[0].updated_at;
     _applyCloud(rows[0].data);
     try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
-    if(rebuild)_rebuildUI();
+    if(rebuild)_initUI();
     setSyncSt('ok');
-  }).catch(function(){_pulling=false;});
+  }).catch(function(){_pulling=false;if(rebuild)_initUI();});
 }
 
 function forcePush(){_pull(false);setTimeout(function(){saveLS();},200);}
@@ -515,6 +515,14 @@ function _rebuildMatrix(){
 
 // Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
 function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexOf(t)>=0;}
+
+// L'UI a-t-elle déjà été construite ? (évite d'afficher un écran vide si le 1er pull échoue)
+var _uiReady=false;
+function _initUI(){
+  if(_uiReady){_rebuildUI();return;}
+  _uiReady=true;
+  _doInit();
+}
 
 function _rebuildUI(){
   var t=S.tab||'trait';
@@ -2233,10 +2241,12 @@ function _doInit(){
       if(d.entries)S.entries=d.entries;
       if(d.facPom)S.facPom=d.facPom;
       if(d.facPoi)S.facPoi=d.facPoi;
-      _doInit();
+      _initUI();
     }catch(e){}
   }
-  _pull(!cached);
+  // Toujours reconstruire l'affichage après le 1er pull : sinon les données du cloud
+  // étaient appliquées en mémoire mais jamais réaffichées (il fallait rouvrir la page).
+  _pull(true);
 })();
 </script>
 </body>
