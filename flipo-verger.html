@@ -1859,7 +1859,7 @@ function cloturerAnnee(){
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
   const kgP=totKg('pomme'),kgQ=totKg('poire');
-  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${fkg(kgP)} kg\n• Poires : ${tQ} palox — ${fkg(kgQ)} kg\n\nCette action va :\n✓ Archiver la saison dans l'onglet Historique\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n⚠️ Action irréversible. Continuer ?`);
+  const ok=confirm(`🗓 Clôturer la saison ${saison} ?\n\nRécapitulatif :\n• Pommes : ${tP} palox — ${fkg(kgP)} kg\n• Poires : ${tQ} palox — ${fkg(kgQ)} kg\n\nCette action va :\n✓ Archiver la saison dans l'onglet Historique\n✓ Télécharger un fichier CSV récapitulatif\n✓ Réinitialiser les données pour la nouvelle saison\n\n💡 Pensez d'abord à télécharger le récapitulatif Tri / Emballage (module Emballage → onglet 📊 Stats) : tri, ventes extérieures et départs jus.\n\n⚠️ Action irréversible. Continuer ?`);
   if(!ok)return;
   const ok2=confirm(`Dernière confirmation : clôturer définitivement la saison ${saison} ?`);
   if(!ok2)return;

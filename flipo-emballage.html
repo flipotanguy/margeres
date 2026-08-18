@@ -56,6 +56,14 @@
     .hidden{display:none}
     .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600}
     .badge.pom{background:#fff0e0;color:#a85010}.badge.poi{background:#e8f0ff;color:#1855a8}
+    .badge.vente{background:#e6f4ea;color:#2d7a4a}.badge.jus{background:#fdf3d8;color:#8a6508}
+    .seg{display:inline-flex;border:1px solid var(--brd);border-radius:9px;overflow:hidden;background:var(--wh)}
+    .seg button{border:none;background:var(--wh);cursor:pointer;font-size:13px;font-weight:700;padding:9px 16px;color:var(--mu);display:flex;align-items:center;gap:6px;min-height:40px;white-space:nowrap}
+    .seg button+button{border-left:1px solid var(--brd)}
+    .seg button.act.vente{background:#2d7a4a;color:#fff}
+    .seg button.act.jus{background:#b8860b;color:#fff}
+    .blk-title{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:var(--gd);margin:18px 0 8px}
+    .blk-title .tot{font-size:12px;font-weight:700;color:var(--mu)}
     /* Stock */
     .bat-card{border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin-bottom:14px}
     .bat-hdr{background:var(--gd);color:#fff;padding:10px 16px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between}
@@ -87,6 +95,8 @@
       .form-field input,.form-field select{font-size:16px;padding:8px}
       .btn{font-size:11px;padding:6px 10px;min-height:44px}
       .btn.ok.sm,.btn.del.sm{min-height:40px}
+      .seg button{font-size:11px;padding:8px 10px;min-height:44px}
+      .blk-title{font-size:12px;margin:14px 0 6px}
       .stabs{gap:4px;margin-bottom:10px}
       .stab{font-size:11px;padding:4px 10px}
       .pal-input{font-size:16px}
@@ -197,7 +207,7 @@ var S={
   stockSub:'bilan',stockFilter:'',
   batCulture:'',batVar:'',
   bilanVar:'',
-  sessions:[],transfers:[],achatsExt:[],deletedIds:[],
+  sessions:[],transfers:[],achatsExt:[],sorties:[],deletedIds:[],
   varList:{pomme:[],poire:[]},
   frigoPrio:{} // ordre des frigos Margères par variété : clé "type|variété" -> [friId, ...] (hors frigo jaune, toujours en dernier)
 };
@@ -212,6 +222,11 @@ function isoFirstOfMonth(){var d=new Date();return d.getFullYear()+'-'+(d.getMon
 function isoLastMonth(){var d=new Date(new Date().getFullYear(),new Date().getMonth()-1,1);return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-01';}
 function showBanner(msg){var b=$('info-banner');b.textContent=msg;b.style.opacity='1';setTimeout(function(){b.style.opacity='0';},2500);}
 function numFr(n){return(+n||0).toLocaleString('fr-FR');}
+
+// ─── Tri « saisies les plus récentes en haut » ───────────
+function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
+function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
+function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
 
 // ─── Supabase Sync ────────────────────────────────────────
 var SUPA_URL='https://lglbfkdgbeojnadlcoqh.supabase.co';
@@ -232,7 +247,7 @@ function setSyncSt(s){
 function _buildData(){
   return {
     sessions:S.sessions,transfers:S.transfers,
-    achatsExt:S.achatsExt,varList:S.varList,deletedIds:S.deletedIds,
+    achatsExt:S.achatsExt,sorties:S.sorties,varList:S.varList,deletedIds:S.deletedIds,
     frigoPrio:S.frigoPrio,
     tab:S.tab,pommeSub:S.pommeSub,poireSub:S.poireSub,
     stockSub:S.stockSub,stockFilter:S.stockFilter,
@@ -262,6 +277,11 @@ function _applyCloud(cloud){
   (cloud.achatsExt||[]).forEach(function(a){ma[String(a.id)]=a;});
   (S.achatsExt||[]).forEach(function(a){if(!ma[String(a.id)])ma[String(a.id)]=a;});
   S.achatsExt=Object.values(ma).filter(function(a){return !del['achatsExt:'+String(a.id)];});
+  // Sorties (vente extérieure / jus) : union par ID, puis on retire les éléments marqués supprimés
+  var mo={};
+  (cloud.sorties||[]).forEach(function(o){mo[String(o.id)]=o;});
+  (S.sorties||[]).forEach(function(o){if(!mo[String(o.id)])mo[String(o.id)]=o;});
+  S.sorties=Object.values(mo).filter(function(o){return !del['sorties:'+String(o.id)];});
   // Config : cloud gagne
   if(cloud.varList)S.varList=cloud.varList;
   if(cloud.frigoPrio)S.frigoPrio=cloud.frigoPrio;
@@ -321,6 +341,10 @@ function _mergeColsFromCloud(cloud){
   (cloud.achatsExt||[]).forEach(function(a){ma[String(a.id)]=a;});
   (S.achatsExt||[]).forEach(function(a){if(!ma[String(a.id)])ma[String(a.id)]=a;});
   S.achatsExt=Object.values(ma).filter(function(a){return !del['achatsExt:'+String(a.id)];});
+  var mo={};
+  (cloud.sorties||[]).forEach(function(o){mo[String(o.id)]=o;});
+  (S.sorties||[]).forEach(function(o){if(!mo[String(o.id)])mo[String(o.id)]=o;});
+  S.sorties=Object.values(mo).filter(function(o){return !del['sorties:'+String(o.id)];});
 }
 function saveLS(){
   var ts = new Date().toISOString();
@@ -546,7 +570,39 @@ function getStockMap(){
       if(remaining<=0)break;
     }
   });
+
+  // 5. Sorties hors tri (vente extérieure / jus) — même cascade que le tri :
+  //    on vide les frigos de Margères dans l'ordre configuré, le frigo JAUNE en dernier.
+  (S.sorties||[]).forEach(function(o){
+    var pal=+(o.palox||0);if(pal<=0)return;
+    var keys=_triLocOrder(o.type,o.variete);
+    var remaining=pal;
+    for(var i=0;i<keys.length;i++){
+      var k=keys[i];
+      var isLast=(i===keys.length-1);
+      if(isLast){add(k,o.type,o.variete,-remaining);remaining=0;break;}
+      var avail=(map[k]&&map[k][o.type]&&map[k][o.type][o.variete])||0;
+      if(avail<=0)continue;
+      var take=Math.min(avail,remaining);
+      add(k,o.type,o.variete,-take);
+      remaining-=take;
+      if(remaining<=0)break;
+    }
+  });
   return map;
+}
+
+// ─── Sorties hors tri : helpers ──────────────────────────
+var SENS_DEF={vente:{icon:'🏷️',l:'Vente extérieure',pl:'Ventes extérieures',cls:'vente'},
+              jus:{icon:'🧃',l:'Jus',pl:'Départs jus',cls:'jus'}};
+function sortiesOf(type,sens){
+  return (S.sorties||[]).filter(function(o){return o.type===type&&(!sens||o.sens===sens);});
+}
+function totSorties(type,sens,variete){
+  return sortiesOf(type,sens).reduce(function(a,o){
+    if(variete&&o.variete!==variete)return a;
+    return a+(+(o.palox||0));
+  },0);
 }
 
 // ─── Navigation ──────────────────────────────────────────
@@ -567,7 +623,7 @@ function rebuildTab(type){var p=$('panel-'+type);if(p)p.innerHTML=buildTab(type)
 
 function buildTab(type){
   var sub=S[type+'Sub'];
-  var allSubs=[{id:'saisie',l:'📝 Saisie'},{id:'histo',l:'📋 Historique'}];
+  var allSubs=[{id:'saisie',l:'📝 Saisie'},{id:'histo',l:'📋 Historique'},{id:'sorties',l:'🚚 Vente ext. / Jus'}];
   var ok=FLIPO_STABS[type];
   var subs=ok&&ok.length?allSubs.filter(function(t){return ok.indexOf(t.id)>=0;}):allSubs;
   if(!subs.length)subs=allSubs;
@@ -576,7 +632,7 @@ function buildTab(type){
   var h='<div class="stabs">';
   subs.forEach(function(t){h+='<button class="stab'+(sub===t.id?' act':'')+'" onclick="setSub(\''+type+'\',\''+t.id+'\')">'+t.l+'</button>';});
   h+='</div>';
-  return h+(sub==='saisie'?buildSaisie(type):buildHistorique(type));
+  return h+(sub==='saisie'?buildSaisie(type):sub==='sorties'?buildSorties(type):buildHistorique(type));
 }
 
 // ─── Saisie ───────────────────────────────────────────────
@@ -751,6 +807,169 @@ function delSess(id,type){
   S.deletedIds=S.deletedIds||[];
   if(S.deletedIds.indexOf('sessions:'+String(id))<0)S.deletedIds.push('sessions:'+String(id));
   S.sessions=S.sessions.filter(function(s){return s.id!==id;});
+  saveLS();rebuildTab(type||S.tab);
+}
+
+
+// ═════════════════════════════════════════════════════════
+// SORTIES HORS TRI — vente extérieure / jus
+// Même principe que le tri : les palox sont déduits du stock,
+// mais ils ne comptent PAS comme des palox triés.
+// ═════════════════════════════════════════════════════════
+var _sortieSens='vente'; // 'vente' | 'jus' — non synchronisé (choix du moment)
+function setSortieSens(type,v){_sortieSens=v;rebuildTab(type);}
+
+function buildSorties(type){
+  var list=S.varList[type];
+  var allVars=getVergerVarieties(type);
+  var map=getStockMap();
+  var sens=SENS_DEF[_sortieSens]||SENS_DEF.vente;
+
+  // Stock total disponible pour une variété (tous emplacements confondus)
+  function dispo(v){
+    var t=0;
+    Object.keys(map).forEach(function(k){
+      var n=(map[k]&&map[k][type]&&map[k][type][v])||0;t+=n;
+    });
+    return Math.round(t);
+  }
+
+  var h='<div class="info-box">Enregistrez ici les palox qui <b>ne passent pas par le tri</b> : vendus à l\'extérieur ou partis au jus. Ils sont déduits du stock exactement comme une session de tri, mais ne sont pas comptés dans les palox triés.</div>';
+
+  // En-tête : type de sortie + période + saisie hors liste
+  h+='<div class="form-hdr">';
+  h+='<div class="form-row" style="margin-bottom:10px">';
+  h+='<div class="form-field" style="min-width:auto;flex:0 0 auto"><label>Type de sortie</label><div class="seg">';
+  h+='<button class="vente'+(_sortieSens==='vente'?' act':'')+'" onclick="setSortieSens(\''+type+'\',\'vente\')">🏷️ Vente extérieure</button>';
+  h+='<button class="jus'+(_sortieSens==='jus'?' act':'')+'" onclick="setSortieSens(\''+type+'\',\'jus\')">🧃 Jus</button>';
+  h+='</div></div>';
+  h+='<div class="form-field"><label>Du</label><input type="date" id="so-from-'+type+'" value="'+isoMonday()+'"></div>';
+  h+='<div class="form-field"><label>Au</label><input type="date" id="so-to-'+type+'" value="'+isoToday()+'"></div>';
+  h+='</div>';
+
+  var qVarOpts='<option value="">— Variété —</option>';
+  allVars.forEach(function(v){qVarOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
+  qVarOpts+='<option value="__new__">✏️ Autre...</option>';
+  h+='<div class="form-row">';
+  h+='<div class="form-field wide"><label>Saisie hors liste — Variété</label><select id="so-qvar-'+type+'" onchange="toggleSoQNew(\''+type+'\',this.value)">'+qVarOpts+'</select></div>';
+  h+='<div id="so-qnewwrap-'+type+'" class="hidden form-field wide"><input type="text" id="so-qnew-'+type+'" placeholder="Nom variété..."></div>';
+  h+='<div class="form-field"><label>Palox</label><input class="pal-input" type="number" id="so-qpal-'+type+'" min="1" step="1" placeholder="0" style="width:80px"></div>';
+  h+='<div class="form-field" style="min-width:auto;flex:0 0 auto"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="saveSortieQuick(\''+type+'\')">✅</button></div>';
+  h+='</div></div>';
+
+  // Tableau de la liste permanente (même liste que la Saisie du tri)
+  h+='<div class="tw"><table><thead><tr>';
+  h+='<th style="width:42%">Variété</th>';
+  h+='<th class="r">Stock dispo</th>';
+  h+='<th class="r">Palox sortis</th>';
+  h+='<th class="ctr" style="width:80px">Enreg.</th>';
+  h+='</tr></thead><tbody>';
+  if(!list.length){
+    h+='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:22px;font-style:italic">Liste vide — ajoutez des variétés depuis l\'onglet 📝 Saisie, ou utilisez la saisie hors liste ci-dessus.</td></tr>';
+  } else {
+    list.forEach(function(item,i){
+      var d=dispo(item.v);
+      h+='<tr>';
+      h+='<td style="font-weight:700;font-size:14px">'+es(item.v)+'</td>';
+      h+='<td class="r" style="color:var(--mu)">'+(d<0?'<span class="neg">'+numFr(d)+'</span>':numFr(d))+'</td>';
+      h+='<td class="r"><input class="pal-input" type="number" id="so-pal-'+type+'-'+i+'" min="0" step="1" placeholder="—"></td>';
+      h+='<td class="ctr"><button class="btn ok sm" onclick="saveSortieRow(\''+type+'\','+i+')">✅</button></td>';
+      h+='</tr>';
+    });
+  }
+  h+='</tbody>';
+  h+='<tfoot><tr><td colspan="4"><div class="add-var-row">';
+  h+='<span style="font-size:12px;color:var(--mu)">Enregistrement en <b>'+sens.icon+' '+es(sens.l)+'</b> — la liste de variétés est celle de l\'onglet 📝 Saisie.</span>';
+  if(list.length>0)h+='<button class="btn ok" style="margin-left:auto" onclick="saveSortieAll(\''+type+'\')">✅ Tout enregistrer</button>';
+  h+='</div></td></tr></tfoot></table></div>';
+
+  h+=_blocSorties(type,'vente');
+  h+=_blocSorties(type,'jus');
+  return h;
+}
+
+function _blocSorties(type,sens){
+  var def=SENS_DEF[sens];
+  var list=sortiesOf(type,sens).slice().sort(_cmpRec);
+  var tot=list.reduce(function(a,o){return a+(+(o.palox||0));},0);
+  var h='<div class="blk-title"><span>'+def.icon+' '+def.pl+'</span><span class="tot">'+numFr(tot)+' palox</span></div>';
+  if(!list.length)return h+'<div class="empty">Aucune sortie enregistrée.</div>';
+  h+='<div class="tw"><table><thead><tr>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th style="width:36px"></th>';
+  h+='</tr></thead><tbody>';
+  list.forEach(function(o){
+    h+='<tr>';
+    h+='<td>'+es(fmtD(o.dateFrom))+(o.dateTo&&o.dateTo!==o.dateFrom?' → '+es(fmtD(o.dateTo)):'')+saisiLine(o)+'</td>';
+    h+='<td style="font-weight:600">'+es(o.variete)+'</td>';
+    h+='<td class="r" style="font-weight:700">'+numFr(o.palox||0)+'</td>';
+    h+='<td class="ctr"><button class="btn del sm" onclick="delSortie('+JSON.stringify(String(o.id))+',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
+    h+='</tr>';
+  });
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td></td></tr>';
+  h+='</tbody></table></div>';
+  return h;
+}
+
+function toggleSoQNew(type,val){
+  var w=$('so-qnewwrap-'+type);if(w)w.classList.toggle('hidden',val!=='__new__');
+}
+function _getSoHeader(type){
+  var fromEl=$('so-from-'+type),toEl=$('so-to-'+type);
+  var from=fromEl?fromEl.value:'';
+  if(!from){alert('Veuillez saisir la date de début.');return null;}
+  return{from:from,to:(toEl?toEl.value:'')||from};
+}
+function _pushSortie(type,variete,pal,hd,n){
+  S.sorties.push({id:'so'+Date.now()+'-'+(n||0)+'-'+Math.random().toString(36).slice(2,6),
+    type:type,sens:_sortieSens,variete:variete,palox:pal,
+    dateFrom:hd.from,dateTo:hd.to,ts:new Date().toISOString(),u:FLIPO_AUTHOR});
+}
+function saveSortieQuick(type){
+  var hd=_getSoHeader(type);if(!hd)return;
+  var sel=$('so-qvar-'+type);
+  var variete=sel?sel.value:'';
+  if(variete==='__new__'){var inp=$('so-qnew-'+type);variete=inp?(inp.value||'').trim():'';}
+  var palEl=$('so-qpal-'+type);
+  var pal=palEl?+(palEl.value||0):0;
+  if(!variete){alert('Veuillez choisir ou saisir une variété.');return;}
+  if(pal<=0){alert('Saisissez un nombre de palox.');return;}
+  _pushSortie(type,variete,pal,hd,0);
+  saveLS();
+  showBanner(numFr(pal)+' palox '+es(variete)+' — '+SENS_DEF[_sortieSens].l);
+  rebuildTab(type);
+}
+function saveSortieRow(type,i){
+  var hd=_getSoHeader(type);if(!hd)return;
+  var item=S.varList[type][i];if(!item)return;
+  var palEl=$('so-pal-'+type+'-'+i);
+  var pal=palEl?+(palEl.value||0):0;
+  if(pal<=0){alert('Saisissez un nombre de palox pour cette ligne.');return;}
+  _pushSortie(type,item.v,pal,hd,i);
+  saveLS();
+  showBanner(numFr(pal)+' palox '+es(item.v)+' — '+SENS_DEF[_sortieSens].l);
+  rebuildTab(type);
+}
+function saveSortieAll(type){
+  var hd=_getSoHeader(type);if(!hd)return;
+  var saved=0;
+  S.varList[type].forEach(function(item,i){
+    var palEl=$('so-pal-'+type+'-'+i);
+    var pal=palEl?+(palEl.value||0):0;
+    if(pal<=0)return;
+    _pushSortie(type,item.v,pal,hd,i);
+    saved++;
+  });
+  if(!saved){alert('Aucun palox saisi. Remplissez au moins une ligne.');return;}
+  saveLS();
+  showBanner(saved+(saved>1?' sorties enregistrées':' sortie enregistrée'));
+  rebuildTab(type);
+}
+function delSortie(id,type){
+  if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
+  if(!confirm('Supprimer cette sortie ?'))return;
+  S.deletedIds=S.deletedIds||[];
+  if(S.deletedIds.indexOf('sorties:'+String(id))<0)S.deletedIds.push('sorties:'+String(id));
+  S.sorties=S.sorties.filter(function(o){return String(o.id)!==String(id);});
   saveLS();rebuildTab(type||S.tab);
 }
 
@@ -1326,6 +1545,55 @@ function buildStats(){
   });
   h+='</div>';
 
+  // ── Sorties hors tri : vente extérieure / jus ──
+  h+='<div class="stat-card"><div class="stat-title">🚚 Sorties hors tri — vente extérieure &amp; jus</div>';
+  var anySo=false;
+  ['pomme','poire'].forEach(function(type){
+    var ss=sortiesOf(type);
+    if(!ss.length)return;
+    anySo=true;
+    var bv={};ss.forEach(function(o){
+      if(!bv[o.variete])bv[o.variete]={vente:0,jus:0};
+      bv[o.variete][o.sens==='jus'?'jus':'vente']+=(+(o.palox||0));
+    });
+    h+='<div style="font-weight:600;margin:8px 0 6px">'+(type==='pomme'?'🍎 Pomme':'🍐 Poire')+'</div>';
+    h+='<div class="tw"><table><thead><tr><th>Variété</th><th class="r">🏷️ Vente ext.</th><th class="r">🧃 Jus</th><th class="r">Total sorti</th></tr></thead><tbody>';
+    var tv=0,tj=0;
+    Object.keys(bv).sort().forEach(function(v){
+      var a=bv[v].vente,b=bv[v].jus;tv+=a;tj+=b;
+      h+='<tr><td style="font-weight:600">'+es(v)+'</td>';
+      h+='<td class="r">'+(a?numFr(a):'—')+'</td>';
+      h+='<td class="r">'+(b?numFr(b):'—')+'</td>';
+      h+='<td class="r" style="font-weight:700">'+numFr(a+b)+'</td></tr>';
+    });
+    h+='<tr class="tr-tot"><td>Total</td><td class="r">'+numFr(tv)+'</td><td class="r">'+numFr(tj)+'</td><td class="r">'+numFr(tv+tj)+'</td></tr>';
+    h+='</tbody></table></div>';
+  });
+  if(!anySo)h+='<div class="empty">Aucune vente extérieure ni départ jus enregistré.</div>';
+  h+='</div>';
+
+  h+='<div class="stat-card"><div class="stat-title">🗓️ Dernières sorties (vente / jus)</div>';
+  var recSo=_sortRec(S.sorties).slice(0,20);
+  if(!recSo.length){h+='<div class="empty">Aucune sortie.</div>';}
+  else{
+    h+='<div class="tw"><table><thead><tr><th>Période</th><th>Fruit</th><th>Sortie</th><th>Variété</th><th class="r">Palox</th></tr></thead><tbody>';
+    recSo.forEach(function(o){
+      var def=SENS_DEF[o.sens]||SENS_DEF.vente;
+      h+='<tr><td>'+es(fmtD(o.dateFrom))+(o.dateTo&&o.dateTo!==o.dateFrom?' → '+es(fmtD(o.dateTo)):'')+'</td>';
+      h+='<td><span class="badge '+(o.type==='pomme'?'pom':'poi')+'">'+(o.type==='pomme'?'🍎':'🍐')+'</span></td>';
+      h+='<td><span class="badge '+def.cls+'">'+def.icon+' '+es(def.l)+'</span></td>';
+      h+='<td style="font-weight:600">'+es(o.variete)+'</td>';
+      h+='<td class="r" style="font-weight:700">'+numFr(o.palox||0)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+
+  h+='<div class="stat-card"><div class="stat-title">🗓 Clôture de saison</div>';
+  h+='<div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5">Télécharge un récapitulatif complet de la saison : sessions de tri, ventes extérieures, départs jus, achats extérieurs et transferts. À conserver avant la clôture de la saison au Verger.</div>';
+  h+='<button class="btn ok" onclick="exportSaisonCSV()">⬇️ Télécharger le récapitulatif (CSV)</button>';
+  h+='</div>';
+
   h+='<div class="stat-card"><div class="stat-title">🗓️ Dernières sessions</div>';
   var rec=S.sessions.slice().sort(function(a,b){return b.id-a.id;}).slice(0,20);
   if(!rec.length){h+='<div class="empty">Aucune session.</div>';}
@@ -1388,6 +1656,66 @@ function runCmp(){
   h+='<td class="r"><span '+(td>0?'class="pos"':td<0?'class="neg"':'')+'>'+(td>=0?'+':'')+numFr(td)+'</span></td></tr>';
   h+='</tbody></table></div>';
   res.innerHTML=h;
+}
+
+
+// ─── Récapitulatif de saison (CSV) ───────────────────────
+// Sessions de tri + sorties hors tri (vente / jus) + achats extérieurs + transferts.
+function exportSaisonCSV(){
+  function q(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}
+  var saison=(function(){var p=document.querySelector('.htxt p');var m=p?String(p.textContent).match(/(\d{4})\/(\d{4})/):null;return m?m[0]:String(new Date().getFullYear());})();
+  var csv='\uFEFFSaison '+saison+' — Récapitulatif Tri / Emballage Flipo\n\n';
+
+  csv+='SESSIONS DE TRI\n';
+  csv+='Fruit,Variété,Du,Au,Palox,Destination,Saisi par\n';
+  var totTri={pomme:0,poire:0};
+  _sortRec(S.sessions).slice().reverse().forEach(function(x){
+    var dest=x.toBatNom||'';if(x.toFriNom)dest+=(dest?' / ':'')+x.toFriNom;
+    totTri[x.type]=(totTri[x.type]||0)+(+(x.palox||0));
+    csv+=[q(x.type==='pomme'?'Pomme':'Poire'),q(x.variete),q(fmtD(x.dateFrom)),q(fmtD(x.dateTo||x.dateFrom)),(+(x.palox||0)),q(dest),q(x.u||'')].join(',')+'\n';
+  });
+  csv+='TOTAL,Pomme,,,'+(totTri.pomme||0)+',,\n';
+  csv+='TOTAL,Poire,,,'+(totTri.poire||0)+',,\n\n';
+
+  csv+='SORTIES HORS TRI (vente extérieure / jus)\n';
+  csv+='Fruit,Type de sortie,Variété,Du,Au,Palox,Saisi par\n';
+  var totSo={'pomme|vente':0,'pomme|jus':0,'poire|vente':0,'poire|jus':0};
+  _sortRec(S.sorties).slice().reverse().forEach(function(o){
+    var sens=o.sens==='jus'?'Jus':'Vente extérieure';
+    totSo[o.type+'|'+(o.sens==='jus'?'jus':'vente')]+=(+(o.palox||0));
+    csv+=[q(o.type==='pomme'?'Pomme':'Poire'),q(sens),q(o.variete),q(fmtD(o.dateFrom)),q(fmtD(o.dateTo||o.dateFrom)),(+(o.palox||0)),q(o.u||'')].join(',')+'\n';
+  });
+  ['pomme','poire'].forEach(function(t){
+    csv+='TOTAL,'+(t==='pomme'?'Pomme':'Poire')+' — vente extérieure,,,,'+totSo[t+'|vente']+',\n';
+    csv+='TOTAL,'+(t==='pomme'?'Pomme':'Poire')+' — jus,,,,'+totSo[t+'|jus']+',\n';
+  });
+  csv+='\n';
+
+  csv+='ACHATS EXTÉRIEURS\n';
+  csv+='Fruit,Variété,Date,Palox,Bâtiment,Frigo\n';
+  var bats=getVergerBats();
+  (S.achatsExt||[]).forEach(function(a){
+    var bat=bats.find(function(b){return b.id===a.batId;});
+    var fri=(bat&&bat.frigos&&a.frigoId)?bat.frigos.find(function(fx){return fx.id===a.frigoId;}):null;
+    csv+=[q(a.cult==='pomme'?'Pomme':'Poire'),q(a.variete),q(fmtD(a.date)),(+(a.palox||0)),q(bat?bat.nom:''),q(fri?fri.nom:'')].join(',')+'\n';
+  });
+  csv+='\n';
+
+  csv+='TRANSFERTS\n';
+  csv+='Fruit,Variété,Date,Palox,Depuis,Vers\n';
+  (S.transfers||[]).forEach(function(t){
+    csv+=[q(t.type==='pomme'?'Pomme':'Poire'),q(t.variete),q(fmtD(t.date)),(+(t.palox||0)),
+          q((t.fromBatNom||'')+(t.fromFriNom?' / '+t.fromFriNom:'')),
+          q((t.toBatNom||'')+(t.toFriNom?' / '+t.toFriNom:''))].join(',')+'\n';
+  });
+
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;
+  a.download='Flipo_Emballage_'+String(saison).replace('/','_')+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  showBanner('Récapitulatif CSV téléchargé');
 }
 
 // ─── Partage ─────────────────────────────────────────────
@@ -1475,6 +1803,7 @@ function _doInit(){
       if(d.sessions)S.sessions=d.sessions;
       if(d.transfers)S.transfers=d.transfers;
       if(d.achatsExt)S.achatsExt=d.achatsExt;
+      if(d.sorties)S.sorties=d.sorties;
       if(d.deletedIds)S.deletedIds=d.deletedIds;
       if(d.varList)S.varList=d.varList;
       if(d.frigoPrio)S.frigoPrio=d.frigoPrio;
