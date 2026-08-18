@@ -255,6 +255,12 @@ function _buildData(){
   };
 }
 
+// Garantit que S.varList a bien ses deux clés (une varList héritée du cloud peut en manquer une)
+function _normVarList(){
+  if(!S.varList||typeof S.varList!=='object')S.varList={};
+  if(!Array.isArray(S.varList.pomme))S.varList.pomme=[];
+  if(!Array.isArray(S.varList.poire))S.varList.poire=[];
+}
 function _applyCloud(cloud){
   if(!cloud)return;
   // Marqueurs de suppression (tombstones) : union, pour que les suppressions se propagent
@@ -284,15 +290,10 @@ function _applyCloud(cloud){
   S.sorties=Object.values(mo).filter(function(o){return !del['sorties:'+String(o.id)];});
   // Config : cloud gagne
   if(cloud.varList)S.varList=cloud.varList;
+  _normVarList();
   if(cloud.frigoPrio)S.frigoPrio=cloud.frigoPrio;
-  if(cloud.tab)S.tab=cloud.tab;
-  if(cloud.pommeSub)S.pommeSub=cloud.pommeSub;
-  if(cloud.poireSub)S.poireSub=cloud.poireSub;
-  if(cloud.stockSub)S.stockSub=cloud.stockSub;
-  if(cloud.stockFilter)S.stockFilter=cloud.stockFilter;
-  if(cloud.batCulture)S.batCulture=cloud.batCulture;
-  if(cloud.batVar)S.batVar=cloud.batVar;
-  if(cloud.bilanVar)S.bilanVar=cloud.bilanVar;
+// Vue locale (onglet actif, sous-onglets, filtres) : volontairement NON reprise du cloud —
+// sinon l'écran saute sur l'onglet d'un autre appareil à chaque synchro (10 s).
 }
 
 // Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
@@ -319,7 +320,7 @@ function _rebuildUI(){
   if(t==='pomme'||t==='poire')rebuildTab(t);
   else if(t==='stock')initStock();
   else if(t==='transfert')initTransfert();
-  else if(t==='stats'){var ps=document.getElementById('panel-stats');if(ps&&typeof buildStats==='function')ps.innerHTML=buildStats();}
+  else if(t==='stats'){if(typeof buildStats==='function')buildStats();} // buildStats() remplit lui-même #panel-stats et ne renvoie rien
 }
 
 // Fusionne UNIQUEMENT sessions/transferts/achats du cloud (union par id + tombstones), sans toucher à la config locale
@@ -352,7 +353,12 @@ function saveLS(){
   setSyncSt('syncing');
   // 1) récupérer le cloud et fusionner ses sessions/transferts/achats (ne JAMAIS écraser ceux des autres) ; 2) pousser l'union
   fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
-  .then(function(r){return r.ok?r.json():[];})
+  .then(function(r){
+    // Si la relecture du cloud échoue, on N'ENVOIE RIEN : pousser l'état local
+    // écraserait la ligne et ferait disparaître les saisies des autres appareils.
+    if(!r.ok)throw new Error('GET '+r.status);
+    return r.json();
+  })
   .then(function(rows){
     if(rows&&rows.length)_mergeColsFromCloud(rows[0].data);
     var data=_buildData();
@@ -375,6 +381,11 @@ function saveLS(){
   }).catch(function(){setSyncSt('err');});
 }
 
+// Comparaison de timestamps cloud tolérante au format (Postgres renvoie « …+00:00 », on envoie « …Z »)
+function _tsEq(a,b){if(a===b)return true;if(!a||!b)return false;var x=Date.parse(a),y=Date.parse(b);return !isNaN(x)&&!isNaN(y)&&x===y;}
+// Signature des données affichées : évite de reconstruire l'écran quand le cloud n'a rien changé
+function _dataSig(){try{return JSON.stringify(_buildData());}catch(e){return null;}}
+
 function _pull(rebuild){
   if(_pulling)return;
   _pulling=true;
@@ -384,9 +395,11 @@ function _pull(rebuild){
   .then(function(rows){
     if(!rows||!rows.length){if(rebuild)_initUI();return;}
     _cloudTs=rows[0].updated_at;
+    var _sigBefore=_dataSig();
     _applyCloud(rows[0].data);
     try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
-    if(rebuild)_initUI();
+    // Ne reconstruire l'écran que si le cloud a réellement changé quelque chose
+    if(rebuild&&(!_uiReady||_dataSig()!==_sigBefore))_initUI();
     setSyncSt('ok');
   }).catch(function(){_pulling=false;if(rebuild)_initUI();});
 }
@@ -399,7 +412,7 @@ setInterval(function(){
   .then(function(r){return r.ok?r.json():[];})
   .then(function(rows){
     if(!rows||!rows.length)return;
-    if(rows[0].updated_at!==_cloudTs)_pull(true);
+    if(!_tsEq(rows[0].updated_at,_cloudTs))_pull(true);
   }).catch(function(){});
   // Suivre aussi les nouvelles récoltes saisies dans le Verger
   _pullVerger(function(changed){if(changed&&_uiReady)_rebuildUI();});
@@ -532,7 +545,7 @@ function getStockMap(){
 
   // 2. Transferts — AVANT la fusion Margères pour que tout soit visible
   S.transfers.forEach(function(t){
-    var pal=+(t.palox||0);if(pal<=0)return;
+    var pal=+(t.palox||0);if(!(pal>0))return;
     var fBat=t.fromBat===MARG_ID?margKey:t.fromBat;
     var tBat=t.toBat===MARG_ID?margKey:t.toBat;
     add(t.fromFri?fBat+'|'+t.fromFri:fBat,t.type,t.variete,-pal);
@@ -541,7 +554,7 @@ function getStockMap(){
 
   // 2b. Achats extérieurs — ajoutés directement au bâtiment de destination
   (S.achatsExt||[]).forEach(function(a){
-    var pal=+(a.palox||0);if(pal<=0)return;
+    var pal=+(a.palox||0);if(!(pal>0))return;
     var key=a.frigoId?a.batId+'|'+a.frigoId:a.batId;
     add(key,a.cult,a.variete,pal);
   });
@@ -567,7 +580,7 @@ function getStockMap(){
   // 4. Tri → déduit de la même variété dans les frigos de Margères :
   //    on vide les frigos dans l'ordre défini par variété, le frigo JAUNE en dernier (qui peut passer en négatif).
   S.sessions.forEach(function(s){
-    var pal=+(s.palox||0);if(pal<=0)return;
+    var pal=+(s.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
     var keys=_triLocOrder(s.type,s.variete);
     var remaining=pal;
     for(var i=0;i<keys.length;i++){
@@ -590,7 +603,7 @@ function getStockMap(){
   // 5. Sorties hors tri (vente extérieure / jus) — même cascade que le tri :
   //    on vide les frigos de Margères dans l'ordre configuré, le frigo JAUNE en dernier.
   (S.sorties||[]).forEach(function(o){
-    var pal=+(o.palox||0);if(pal<=0)return;
+    var pal=+(o.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
     var keys=_triLocOrder(o.type,o.variete);
     var remaining=pal;
     for(var i=0;i<keys.length;i++){
@@ -654,6 +667,7 @@ function buildTab(type){
 // ─── Saisie ───────────────────────────────────────────────
 // Liste permanente : toujours visible, saisie par ligne ou globale
 function buildSaisie(type){
+  _normVarList();
   var list=S.varList[type];
   var allVars=getAllVarieties(type);
 
@@ -778,6 +792,7 @@ function saveSessRow(type,i){
 // Enregistre TOUTES les lignes avec palox > 0
 function saveSessAll(type){
   var h=_getSaiHeader(type);if(!h)return;
+  _normVarList();
   var list=S.varList[type];
   var saved=0,now=Date.now();
   list.forEach(function(item,i){
@@ -833,9 +848,14 @@ function delSess(id,type){
 // mais ils ne comptent PAS comme des palox triés.
 // ═════════════════════════════════════════════════════════
 var _sortieSens='vente'; // 'vente' | 'jus' — non synchronisé (choix du moment)
-function setSortieSens(type,v){_sortieSens=v;rebuildTab(type);}
+function setSortieSens(type,v){
+  var f=$('so-from-'+type),t=$('so-to-'+type);
+  var hd=(f&&f.value)?{from:f.value,to:(t&&t.value)||f.value}:null;
+  _sortieSens=v;rebuildTab(type);_restoreSoHeader(type,hd);
+}
 
 function buildSorties(type){
+  _normVarList();
   var list=S.varList[type];
   var allVars=getAllVarieties(type);
   var map=getStockMap();
@@ -935,6 +955,14 @@ function _getSoHeader(type){
   if(!from){alert('Veuillez saisir la date de début.');return null;}
   return{from:from,to:(toEl?toEl.value:'')||from};
 }
+// Après un rebuild, on remet la période que l'opérateur avait saisie (sinon elle
+// repasse à « lundi → aujourd'hui » et la ligne suivante part avec de mauvaises dates).
+function _restoreSoHeader(type,hd){
+  if(!hd)return;
+  var f=$('so-from-'+type),t=$('so-to-'+type);
+  if(f)f.value=hd.from;
+  if(t)t.value=hd.to;
+}
 function _pushSortie(type,variete,pal,hd,n){
   S.sorties.push({id:'so'+Date.now()+'-'+(n||0)+'-'+Math.random().toString(36).slice(2,6),
     type:type,sens:_sortieSens,variete:variete,palox:pal,
@@ -952,7 +980,7 @@ function saveSortieQuick(type){
   _pushSortie(type,variete,pal,hd,0);
   saveLS();
   showBanner(numFr(pal)+' palox '+es(variete)+' — '+SENS_DEF[_sortieSens].l);
-  rebuildTab(type);
+  rebuildTab(type);_restoreSoHeader(type,hd);
 }
 function saveSortieRow(type,i){
   var hd=_getSoHeader(type);if(!hd)return;
@@ -963,7 +991,7 @@ function saveSortieRow(type,i){
   _pushSortie(type,item.v,pal,hd,i);
   saveLS();
   showBanner(numFr(pal)+' palox '+es(item.v)+' — '+SENS_DEF[_sortieSens].l);
-  rebuildTab(type);
+  rebuildTab(type);_restoreSoHeader(type,hd);
 }
 function saveSortieAll(type){
   var hd=_getSoHeader(type);if(!hd)return;
@@ -978,7 +1006,7 @@ function saveSortieAll(type){
   if(!saved){alert('Aucun palox saisi. Remplissez au moins une ligne.');return;}
   saveLS();
   showBanner(saved+(saved>1?' sorties enregistrées':' sortie enregistrée'));
-  rebuildTab(type);
+  rebuildTab(type);_restoreSoHeader(type,hd);
 }
 function delSortie(id,type){
   if(!FLIPO_CAN_DELETE){alert('Suppression réservée aux administrateurs');return;}
@@ -1826,14 +1854,16 @@ function _checkAuth(){
 }
 
 function _doInit(){
-  if(!S.selCult&&S.cultures)S.selCult=S.cultures[0];
   var f=S.tab||'pomme';
+  if(!_tabOK(f))f=window.FLIPO_TAB_FIRST||'pomme'; // onglet mémorisé devenu interdit
+  S.tab=f;
   var b=document.getElementById('tab-'+f);
   if(b)setTab(f,b);
   else rebuildTab('pomme');
 }
 
 (function(){
+  _checkAuth(); // AVANT toute construction d'écran : sinon on affiche un onglet interdit puis plus rien
   var cached=localStorage.getItem(LS_KEY);
   if(cached){
     try{
@@ -1844,12 +1874,12 @@ function _doInit(){
       if(d.sorties)S.sorties=d.sorties;
       if(d.deletedIds)S.deletedIds=d.deletedIds;
       if(d.varList)S.varList=d.varList;
+      _normVarList();
       if(d.frigoPrio)S.frigoPrio=d.frigoPrio;
       if(d.tab)S.tab=d.tab;
       _initUI();
     }catch(e){}
   }
-  _checkAuth();
   // Rafraîchir le cache Verger puis toujours réafficher après le 1er pull
   _pullVerger(function(changed){if(changed&&_uiReady)_rebuildUI();});
   _pull(true);

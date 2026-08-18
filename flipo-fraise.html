@@ -539,6 +539,7 @@
     if(!ok.length)ok=TABS.slice();
   }
   window.FLIPO_TABS_OK=ok;
+  window.FLIPO_TABS_ALL=TABS.slice();
   window.FLIPO_TAB_FIRST=ok[0]||TABS[0];
   var ko=TABS.filter(function(id){return ok.indexOf(id)<0;});
   if(!ko.length)return;
@@ -757,7 +758,12 @@
       setSyncSt('syncing');
       // 1) récupérer le cloud et fusionner ses saisies (ne JAMAIS écraser celles des autres appareils) ; 2) pousser l'union
       fetch(SUPA_URL+'/rest/v1/flipo_sync?key=eq.'+encodeURIComponent(LS_KEY)+'&select=data',{headers:_supaH()})
-      .then(function(r){return r.ok?r.json():[];})
+      .then(function(r){
+        // Si la relecture du cloud échoue, on N'ENVOIE RIEN : pousser l'état local
+        // écraserait la ligne et ferait disparaître les saisies des autres appareils.
+        if(!r.ok)throw new Error('GET '+r.status);
+        return r.json();
+      })
       .then(function(rows){
         if(rows&&rows.length)_mergeEntriesFromCloud(rows[0].data);
         var data=_buildData();
@@ -780,6 +786,12 @@
       }).catch(function(){setSyncSt('err');});
     }
 
+    // Comparaison de timestamps cloud tolérante au format (Postgres renvoie « …+00:00 », on envoie « …Z »)
+    function _tsEq(a,b){if(a===b)return true;if(!a||!b)return false;var x=Date.parse(a),y=Date.parse(b);return !isNaN(x)&&!isNaN(y)&&x===y;}
+    // Signature des données affichées : évite de reconstruire l'écran quand le cloud n'a rien changé
+    var _uiOnce=false; // l'écran a-t-il déjà été construit une fois ?
+    function _dataSig(){try{return JSON.stringify(_buildData());}catch(e){return null;}}
+
     function _pull(rebuild){
       if(_pulling)return;
       _pulling=true;
@@ -787,13 +799,15 @@
         {headers:_supaH()})
       .then(function(r){_pulling=false;return r.ok?r.json():[];})
       .then(function(rows){
-        if(!rows||!rows.length)return;
+        if(!rows||!rows.length){if(rebuild&&!_uiOnce){_uiOnce=true;_rebuildUI();}return;}
         _cloudTs=rows[0].updated_at;
+        var _sigBefore=_dataSig();
         _applyCloud(rows[0].data);
         try{localStorage.setItem(LS_KEY,JSON.stringify(_buildData()));}catch(e){}
-        if(rebuild)_rebuildUI();
+        // Ne reconstruire l'écran que si le cloud a réellement changé quelque chose
+        if(rebuild&&(!_uiOnce||_dataSig()!==_sigBefore)){_uiOnce=true;_rebuildUI();}
         setSyncSt('ok');
-      }).catch(function(){_pulling=false;});
+      }).catch(function(){_pulling=false;if(rebuild&&!_uiOnce){_uiOnce=true;_rebuildUI();}});
     }
 
     function forcePush(){_pull(false);setTimeout(function(){saveLS();},200);}
@@ -804,7 +818,7 @@
       .then(function(r){return r.ok?r.json():[];})
       .then(function(rows){
         if(!rows||!rows.length)return;
-        if(rows[0].updated_at!==_cloudTs)_pull(true);
+        if(!_tsEq(rows[0].updated_at,_cloudTs))_pull(true);
       }).catch(function(){});
     },10000);
 
@@ -828,7 +842,6 @@
       if(cloud.surfaceChapelle)S.surfaceChapelle=cloud.surfaceChapelle;
       if(cloud.nbChapellesTrait)S.nbChapellesTrait=cloud.nbChapellesTrait;
       if(cloud.historique)S.historique=cloud.historique;
-      if(cloud.tab)S.tab=cloud.tab;
       // Marqueurs de suppression (tombstones) : union, pour que les suppressions se propagent
       var del={};
       (cloud.deletedIds||[]).forEach(function(k){del[k]=1;});
@@ -842,10 +855,15 @@
       });
       (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!m[k])m[k]=e;});
       S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    // Vue locale (onglet actif, sous-onglets, filtres) : volontairement NON reprise du cloud —
+    // sinon l'écran saute sur l'onglet d'un autre appareil à chaque synchro (10 s).
     }
 
 // Onglet autorisé ? (FLIPO_TABS_OK est posé par la garde des droits en <head>)
-function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexOf(t)>=0;}
+function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
+  // un onglet absent du modèle de droits (ex. Historique) n'est pas « interdit »
+  var all=window.FLIPO_TABS_ALL;if(all&&all.indexOf(t)<0)return true;
+  return ok.indexOf(t)>=0;}
 
     function _rebuildUI(){
       var hdr=document.getElementById('saison-hdr');
@@ -1319,6 +1337,10 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
       const saisonParts = S.saison.split('/');
       const nextYear = parseInt(saisonParts[0]) + 1;
       S.saison = nextYear + '/' + (nextYear + 1);
+      // Marquer les saisies comme supprimées : sans ces marqueurs, saveLS() refait l'union
+      // avec le cloud et TOUTES les saisies de la saison réapparaissent aussitôt.
+      S.deletedIds = S.deletedIds || [];
+      S.entries.forEach(function(e){var k='entries:'+String(e.id||e.ts);if(S.deletedIds.indexOf(k)<0)S.deletedIds.push(k);});
       S.entries = [];
       $('saison-hdr').textContent = 'Saison ' + S.saison;
       saveLS();
