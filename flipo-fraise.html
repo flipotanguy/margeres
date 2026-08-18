@@ -931,6 +931,11 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
       return Math.round(v * 100) / 100;
     }
 
+    // ─── Tri « saisies les plus récentes en haut » ───────────
+    function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
+    function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
+    function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
+
     // Recherche de dose pré-remplie pour un produit
     function lookupDose(nom){
       if(!nom||!nom.trim())return null;
@@ -1355,7 +1360,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
     }
 
     function buildJournal() {
-      const sorted = S.entries.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+      const sorted = S.entries.slice().sort((a, b) => (new Date(b.date) - new Date(a.date)) || _cmpRec(a, b));
       let html = '';
 
       if (sorted.length === 0) {
@@ -1370,7 +1375,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;return !ok||!ok.length||ok.indexO
 
         // Afficher par date
         Object.keys(groupedByDate).sort().reverse().forEach(date => {
-          const entries = groupedByDate[date];
+          const entries = _sortRec(groupedByDate[date]);
           const totalBarq = entries.reduce((a, e) => a + (e.barquettes || 0), 0);
           const totalKg = R2(totalBarq * 0.5);
 

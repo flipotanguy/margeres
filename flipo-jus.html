@@ -538,6 +538,11 @@ var FLIPO_CAN_DELETE = false;
 function $(id){ return document.getElementById(id); }
 function es(s){ const div = document.createElement('div'); div.textContent = s; return div.innerHTML; }
 
+// ─── Tri « saisies les plus récentes en haut » ───────────
+function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
+function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
+function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
+
 // ─── Contenance d'un format, en litres (33cl → 0.33, 1L → 1, BIB 3L → 3) ───
 function formatLitres(f){
   const s = String(f || '').toLowerCase().replace(',', '.');
@@ -782,7 +787,7 @@ function buildSaisie(){
   }
 
   let journalHtml = '';
-  const sorted = [...S.entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...S.entries].sort((a, b) => (new Date(b.date) - new Date(a.date)) || _cmpRec(a, b));
   sorted.forEach(e => {
     journalHtml += '<div class="journal-entry">' +
       '<div class="journal-entry-main">' +
@@ -1018,7 +1023,7 @@ function buildStock(){
   htmlD += '<div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-add" onclick="addReappro()">➕ Ajouter</button></div>';
   htmlD += '</div>';
 
-  const sorted = [...S.reappro].sort((a,b) => new Date(b.date)-new Date(a.date));
+  const sorted = [...S.reappro].sort((a,b) => (new Date(b.date)-new Date(a.date)) || _cmpRec(a, b));
   if(sorted.length === 0){
     htmlD += '<div style="color:var(--mu);font-size:13px;padding:8px 0">Aucune arrivée enregistrée.</div>';
   } else {

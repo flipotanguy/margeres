@@ -367,6 +367,11 @@ const S = {
 // ══════════════════════════════════════════════
 function R2(v){return Math.round(v*100)/100;}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+// ─── Tri « saisies les plus récentes en haut » ───────────
+function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
+function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
+function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
 // ─── Dates : calendrier natif (valeur ISO) ↔ stockage JJ/MM ───
 function isoToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function normJM(v){v=String(v||'').trim();let m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);if(m)return m[3]+'/'+m[2];m=/^(\d{1,2})\/(\d{1,2})$/.exec(v);if(m)return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0');return '';}
@@ -874,7 +879,7 @@ function buildSaisie(){
     const byCult={};
     S.entries.forEach(e=>{if(!byCult[e.cult])byCult[e.cult]=[];byCult[e.cult].push(e);});
     h+=`<div style="max-height:450px;overflow-y:auto">`;
-    S.entries.forEach(e=>{
+    _sortRec(S.entries).forEach(e=>{
       const tsStr=e.ts?new Date(e.ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
       h+=`<div class="journal-row">
         <span class="jicon">${getCultIcon(e.cult)}</span>

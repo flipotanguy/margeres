@@ -625,6 +625,11 @@ function sm(a){return a.reduce((x,y)=>x+(parseFloat(y)||0),0);}
 function fr(n){return (parseFloat(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:2});}
 function es(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 
+// ─── Tri « saisies les plus récentes en haut » ───────────
+function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
+function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
+function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
+
 // ─── Poids des palox ──────────────────────────────────────
 // Poids par défaut si la saisie ne précise pas de kg/palox.
 var KG_DEF={pomme:360,poire:440};
@@ -1368,7 +1373,7 @@ function buildSaisie(){
     </div>
   </div>`;
   // Journal (les entrées "définition de variété" sont masquées ici)
-  const journal=S.entries.filter(e=>!e.vardef);
+  const journal=_sortRec(S.entries.filter(e=>!e.vardef));
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
     <span style="font-weight:600;font-size:13px">Journal des saisies (${journal.length})</span>
     ${journal.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
@@ -2055,7 +2060,7 @@ function buildStockCfg(){
       <th>Frigo</th>
       <th></th>
     </tr></thead><tbody>`;
-    S.achatsExt.forEach((ae,ai)=>{
+    S.achatsExt.map((ae,ai)=>({ae:ae,ai:ai})).sort((x,y)=>_cmpRec(x.ae,y.ae)).forEach(({ae,ai})=>{
       const bat=S.bats.find(b=>b.id===ae.batId);
       const fri=bat&&ae.frigoId?bat.frigos.find(f=>f.id===ae.frigoId):null;
       h+=`<tr>
