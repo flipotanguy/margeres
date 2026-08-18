@@ -429,6 +429,22 @@ function getVergerVarieties(type){
   var arr=(type==='pomme'?vd.pomR:vd.poiR)||[];
   return arr.map(function(r){return r.v||'';}).filter(Boolean).sort();
 }
+// Toutes les variétés déjà connues pour ce fruit : Verger + liste de tri + sessions + sorties + achats extérieurs
+function getAllVarieties(type){
+  var set={};
+  getVergerVarieties(type).forEach(function(v){if(v)set[v]=1;});
+  ((S.varList||{})[type]||[]).forEach(function(x){if(x&&x.v)set[x.v]=1;});
+  (S.sessions||[]).forEach(function(x){if(x.type===type&&x.variete)set[x.variete]=1;});
+  (S.sorties||[]).forEach(function(x){if(x.type===type&&x.variete)set[x.variete]=1;});
+  (S.achatsExt||[]).forEach(function(x){if(x.cult===type&&x.variete)set[x.variete]=1;});
+  return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'fr');});
+}
+// <option> d'un sélecteur de variété, avec l'entrée « Autre variété… » en fin de liste
+function varOptsHTML(type,selected){
+  var o='<option value="">— Variété —</option>';
+  getAllVarieties(type).forEach(function(v){o+='<option value="'+es(v)+'"'+(selected===v?' selected':'')+'>'+es(v)+'</option>';});
+  return o+'<option value="__new__">✏️ Autre variété...</option>';
+}
 function getVergerBats(){return getVergerData().bats||[];}
 
 // ─── Margères : bâtiment de tri, ses frigos, et le frigo "jaune" ──────────
@@ -639,7 +655,7 @@ function buildTab(type){
 // Liste permanente : toujours visible, saisie par ligne ou globale
 function buildSaisie(type){
   var list=S.varList[type];
-  var allVars=getVergerVarieties(type);
+  var allVars=getAllVarieties(type);
 
   // En-tête : période + saisie rapide hors liste
   var qVarOpts='<option value="">— Variété —</option>';
@@ -821,7 +837,7 @@ function setSortieSens(type,v){_sortieSens=v;rebuildTab(type);}
 
 function buildSorties(type){
   var list=S.varList[type];
-  var allVars=getVergerVarieties(type);
+  var allVars=getAllVarieties(type);
   var map=getStockMap();
   var sens=SENS_DEF[_sortieSens]||SENS_DEF.vente;
 
@@ -1000,8 +1016,9 @@ function buildStockAchats(){
   bats.forEach(function(b){batOpts+='<option value="'+es(b.id)+'">'+es(b.nom)+'</option>';});
 
   var h='<div class="form-hdr"><div class="form-row">';
-  h+='<div class="form-field"><label>Type</label><select id="achat-cult" onchange="achatFriOpts()"><option value="pomme">🍎 Pomme</option><option value="poire">🍐 Poire</option></select></div>';
-  h+='<div class="form-field wide"><label>Variété</label><input type="text" id="achat-var" placeholder="Variété (texte libre)"></div>';
+  h+='<div class="form-field"><label>Type</label><select id="achat-cult" onchange="achatCultChange()"><option value="pomme">🍎 Pomme</option><option value="poire">🍐 Poire</option></select></div>';
+  h+='<div class="form-field wide"><label>Variété</label><select id="achat-var" onchange="toggleAchatNewVar(this.value)">'+varOptsHTML('pomme')+'</select></div>';
+  h+='<div id="achat-newwrap" class="hidden form-field wide"><label>Nouvelle variété</label><input type="text" id="achat-newvar" placeholder="Nom de la variété..."></div>';
   h+='<div class="form-field"><label>Date</label><input type="date" id="achat-date" value="'+isoToday()+'"></div>';
   h+='<div class="form-field"><label>Palox</label><input type="number" id="achat-palox" min="1" step="1" placeholder="0" style="width:80px"></div>';
   h+='</div><div class="form-row">';
@@ -1041,6 +1058,18 @@ function buildStockAchats(){
   }
   return h;
 }
+// La liste des variétés dépend du fruit choisi
+function achatCultChange(){
+  var cult=($('achat-cult')||{}).value||'pomme';
+  var sel=$('achat-var');
+  if(sel)sel.innerHTML=varOptsHTML(cult);
+  toggleAchatNewVar('');
+  achatFriOpts();
+}
+function toggleAchatNewVar(val){
+  var w=$('achat-newwrap');if(w)w.classList.toggle('hidden',val!=='__new__');
+  if(val!=='__new__'){var i=$('achat-newvar');if(i)i.value='';}
+}
 function achatFriOpts(){
   var batSel=$('achat-bat'),friSel=$('achat-fri');
   if(!batSel||!friSel)return;
@@ -1051,11 +1080,12 @@ function achatFriOpts(){
 function saveAchat(){
   var cult=($('achat-cult')||{}).value||'pomme';
   var variete=(($('achat-var')||{}).value||'').trim();
+  if(variete==='__new__')variete=(($('achat-newvar')||{}).value||'').trim();
   var date=($('achat-date')||{}).value||isoToday();
   var palox=+(($('achat-palox')||{}).value||0);
   var batId=($('achat-bat')||{}).value||'';
   var frigoId=($('achat-fri')||{}).value||'';
-  if(!variete){alert('Veuillez saisir la variété.');return;}
+  if(!variete){alert('Veuillez choisir une variété (ou en saisir une nouvelle).');return;}
   if(!batId){alert('Veuillez choisir un bâtiment.');return;}
   if(palox<=0){alert('Saisissez un nombre de palox.');return;}
   S.achatsExt.push({id:Date.now(),cult:cult,variete:variete,date:date,palox:palox,batId:batId,frigoId:frigoId});
@@ -1437,13 +1467,9 @@ function buildStockVar(){
 // ─── Transfert ───────────────────────────────────────────
 function initTransfert(){var p=$('panel-transfert');if(p)p.innerHTML=buildXfrPanel();}
 function _xfrVarOpts(type){
-  // Collecte toutes les variétés connues pour ce type (cueillette + sessions)
-  var vset={};
-  Object.keys(getCueilletteByVar(type)).forEach(function(v){vset[v]=1;});
-  S.sessions.filter(function(s){return s.type===type;}).forEach(function(s){vset[s.variete]=1;});
-  var vars=Object.keys(vset).sort();
+  // Toutes les variétés connues pour ce fruit (cueillette + sessions + sorties + achats extérieurs)
   var o='<option value="">— Variété —</option>';
-  vars.forEach(function(v){o+='<option value="'+es(v)+'">'+es(v)+'</option>';});
+  getAllVarieties(type).forEach(function(v){o+='<option value="'+es(v)+'">'+es(v)+'</option>';});
   return o;
 }
 function xfrCult(val){

@@ -2010,14 +2010,20 @@ function buildStockCfg(){
     <div class="form-row">
       <div class="form-field">
         <label>Culture</label>
-        <select id="ae-cult" style="width:100px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+        <select id="ae-cult" onchange="aeCultChange()" style="width:100px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
           <option value="pomme">Pomme</option>
           <option value="poire">Poire</option>
         </select>
       </div>
-      <div class="form-field">
+      <div class="form-field" style="flex:2">
         <label>Variété</label>
-        <input type="text" id="ae-var" placeholder="Ex: Fuji" style="width:120px">
+        <select id="ae-var" onchange="toggleAeNewVar(this.value)" style="min-width:150px;padding:7px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)">
+          ${aeVarOpts('pomme')}
+        </select>
+      </div>
+      <div class="form-field" id="ae-newwrap" style="display:none;flex:2">
+        <label>Nouvelle variété</label>
+        <input type="text" id="ae-newvar" placeholder="Nom de la variété" style="min-width:140px">
       </div>
       <div class="form-field">
         <label>Date</label>
@@ -2100,17 +2106,40 @@ function deleteFrigo(bi,fi){
 }
 
 // ─── Achats extérieurs ──────────────────────────
+// Toutes les variétés déjà connues pour ce fruit (matrice de récolte + achats extérieurs déjà saisis)
+function aeVarList(cult){
+  const set={};
+  ((cult==='pomme'?S.pomR:S.poiR)||[]).forEach(r=>{if(r&&r.v)set[r.v]=1;});
+  (S.achatsExt||[]).forEach(a=>{if(a.cult===cult&&a.variete)set[a.variete]=1;});
+  return Object.keys(set).sort((a,b)=>a.localeCompare(b,'fr'));
+}
+function aeVarOpts(cult){
+  let o='<option value="">— Variété —</option>';
+  aeVarList(cult).forEach(v=>{o+=`<option value="${es(v)}">${es(v)}</option>`;});
+  return o+'<option value="__new__">✏️ Autre variété...</option>';
+}
+function aeCultChange(){
+  const cult=$('ae-cult')?$('ae-cult').value:'pomme';
+  const sel=$('ae-var');
+  if(sel)sel.innerHTML=aeVarOpts(cult);
+  toggleAeNewVar('');
+}
+function toggleAeNewVar(val){
+  const w=$('ae-newwrap');if(w)w.style.display=val==='__new__'?'':'none';
+  if(val!=='__new__'){const i=$('ae-newvar');if(i)i.value='';}
+}
 function addAchatExt(){
   const cultEl=$('ae-cult'),varEl=$('ae-var'),dateEl=$('ae-date'),paloxEl=$('ae-palox'),batEl=$('ae-bat'),frigoEl=$('ae-frigo');
   if(!cultEl||!varEl||!dateEl||!paloxEl||!batEl)return;
   const cult=cultEl.value||'pomme';
-  const variete=(varEl.value||'').trim();
+  let variete=(varEl.value||'').trim();
+  if(variete==='__new__'){const nv=$('ae-newvar');variete=nv?(nv.value||'').trim():'';}
   const date=normJM(dateEl.value);
   const palox=parseFloat(paloxEl.value)||0;
   const batIdx=parseInt(batEl.value)||0;
   const friIdx=frigoEl.value?parseInt(frigoEl.value):null;
 
-  if(!variete||!date||palox<=0){alert('Renseignez la variété, la date et le nombre de palox (> 0).');return;}
+  if(!variete||!date||palox<=0){alert('Choisissez une variété (ou saisissez-en une nouvelle), la date et le nombre de palox (> 0).');return;}
 
   const bat=S.bats[batIdx];
   const batId=bat?bat.id:null;
@@ -2122,7 +2151,7 @@ function addAchatExt(){
   saveLS();
 
   // Reset form
-  varEl.value='';dateEl.value='';paloxEl.value='';
+  varEl.value='';toggleAeNewVar('');dateEl.value='';paloxEl.value='';
   cultEl.focus();
   const f=saveFocus();initStock();restFocus(f);
 }
