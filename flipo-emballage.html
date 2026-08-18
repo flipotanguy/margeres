@@ -902,7 +902,7 @@ function _blocSorties(type,sens){
     h+='<td>'+es(fmtD(o.dateFrom))+(o.dateTo&&o.dateTo!==o.dateFrom?' → '+es(fmtD(o.dateTo)):'')+saisiLine(o)+'</td>';
     h+='<td style="font-weight:600">'+es(o.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(o.palox||0)+'</td>';
-    h+='<td class="ctr"><button class="btn del sm" onclick="delSortie('+JSON.stringify(String(o.id))+',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
+    h+='<td class="ctr"><button class="btn del sm" onclick="delSortie(\''+es(String(o.id))+'\',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
   h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td></td></tr>';
@@ -1078,6 +1078,9 @@ function buildStockBilan(map){
   ['pomme','poire'].forEach(function(tp){
     Object.keys(getCueilletteByVar(tp)).forEach(function(v){varSet[tp+'§'+v]=1;});
     S.sessions.filter(function(s){return s.type===tp;}).forEach(function(s){varSet[tp+'§'+s.variete]=1;});
+    // une variété peut n'apparaître QUE dans une sortie ou un achat extérieur
+    (S.sorties||[]).filter(function(o){return o.type===tp;}).forEach(function(o){varSet[tp+'§'+o.variete]=1;});
+    (S.achatsExt||[]).filter(function(a){return a.cult===tp;}).forEach(function(a){varSet[tp+'§'+a.variete]=1;});
   });
   var keys=Object.keys(varSet).sort();
   if(!keys.length)return '<div class="info-box">Aucune donnée de cueillette dans Verger. Saisissez d\'abord les palox dans Verger → Cueillette.</div>';
@@ -1096,9 +1099,10 @@ function buildStockBilan(map){
   h+='<div class="stat-card" style="margin-bottom:6px">';
   h+='<div class="tw"><table><thead><tr>';
   h+='<th style="width:44px">Type</th><th>Variété</th>';
-  h+='<th class="r" style="white-space:nowrap" title="Palox cueillis saisis dans Verger">🌳 Cueillis</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Palox cueillis saisis dans Verger (+ achats extérieurs)">🌳 Cueillis</th>';
   h+='<th class="r" style="white-space:nowrap" title="Palox triés enregistrés dans les sessions">✂️ Triés</th>';
-  h+='<th class="r" style="white-space:nowrap" title="Cueillis − Triés : stock en attente de tri">📦 Restant</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Palox sortis sans passer par le tri : vente extérieure + jus">🚚 Sortis</th>';
+  h+='<th class="r" style="white-space:nowrap" title="Cueillis + achats − triés − sorties : stock encore présent">📦 Restant</th>';
   h+='</tr></thead><tbody>';
 
   var hasRows=false;
@@ -1107,30 +1111,38 @@ function buildStockBilan(map){
     if(varFlt)tvars=tvars.filter(function(v){return v===varFlt;});
     if(!tvars.length)return;
     hasRows=true;
-    var totCueil=0,totTrie=0;
+    var totCueil=0,totAch=0,totTrie=0,totVe=0,totJu=0;
+    var cueilMap=getCueilletteByVar(type);
     tvars.forEach(function(v){
-      var cueil=(getCueilletteByVar(type)[v])||0;
+      var cueil=(cueilMap[v])||0;
+      var ach=(S.achatsExt||[]).filter(function(a){return a.cult===type&&a.variete===v;}).reduce(function(a2,a){return a2+(+(a.palox||0));},0);
       var trie=S.sessions.filter(function(s){return s.type===type&&s.variete===v;}).reduce(function(a,s){return a+(+(s.palox||0));},0);
-      var restant=cueil-trie;
-      totCueil+=cueil;totTrie+=trie;
+      var ve=totSorties(type,'vente',v),ju=totSorties(type,'jus',v);
+      var sortis=ve+ju;
+      var restant=cueil+ach-trie-sortis;
+      totCueil+=cueil;totAch+=ach;totTrie+=trie;totVe+=ve;totJu+=ju;
       var restNeg=restant<0;
+      var pal=' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span>';
       h+='<tr>';
       h+='<td style="vertical-align:middle"><span class="badge '+(type==='pomme'?'pom':'poi')+'">'+(type==='pomme'?'🍎':'🍐')+'</span></td>';
       h+='<td style="font-weight:700;vertical-align:middle">'+es(v)+'</td>';
-      h+='<td class="r" style="vertical-align:middle;white-space:nowrap">'+numFr(cueil)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
-      h+='<td class="r" style="color:var(--gd);font-weight:600;vertical-align:middle;white-space:nowrap">'+numFr(trie)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
-      h+='<td class="r" style="font-weight:700;vertical-align:middle;white-space:nowrap'+(restNeg?';color:#d9534f':restant===0?';color:#bbb':';color:var(--acc)')+'">'+numFr(restant)+' <span style="font-weight:400;font-size:11px;color:var(--mu)">palox</span></td>';
+      h+='<td class="r" style="vertical-align:middle;white-space:nowrap">'+numFr(cueil)+pal+(ach?'<div style="font-size:11px;color:var(--mu)">+ '+numFr(ach)+' achetés</div>':'')+'</td>';
+      h+='<td class="r" style="color:var(--gd);font-weight:600;vertical-align:middle;white-space:nowrap">'+numFr(trie)+pal+'</td>';
+      h+='<td class="r" style="font-weight:600;vertical-align:middle;white-space:nowrap">'+(sortis?numFr(sortis)+pal+'<div style="font-size:11px;color:var(--mu)">'+(ve?'🏷️ '+numFr(ve):'')+(ve&&ju?' · ':'')+(ju?'🧃 '+numFr(ju):'')+'</div>':'<span style="color:#bbb">—</span>')+'</td>';
+      h+='<td class="r" style="font-weight:700;vertical-align:middle;white-space:nowrap'+(restNeg?';color:#d9534f':restant===0?';color:#bbb':';color:var(--acc)')+'">'+numFr(restant)+pal+'</td>';
       h+='</tr>';
     });
     if(!varFlt){
-      var totRestant=totCueil-totTrie;
+      var totSortis=totVe+totJu;
+      var totRestant=totCueil+totAch-totTrie-totSortis;
       h+='<tr class="tr-tot"><td colspan="2">'+(type==='pomme'?'🍎 Total pomme':'🍐 Total poire')+'</td>';
-      h+='<td class="r" style="white-space:nowrap">'+numFr(totCueil)+'</td>';
+      h+='<td class="r" style="white-space:nowrap">'+numFr(totCueil)+(totAch?'<div style="font-size:11px;font-weight:400;color:var(--mu)">+ '+numFr(totAch)+' achetés</div>':'')+'</td>';
       h+='<td class="r" style="white-space:nowrap">'+numFr(totTrie)+'</td>';
+      h+='<td class="r" style="white-space:nowrap">'+numFr(totSortis)+'</td>';
       h+='<td class="r" style="white-space:nowrap'+(totRestant<0?';color:#d9534f':'')+'">'+numFr(totRestant)+'</td></tr>';
     }
   });
-  if(!hasRows)h+='<tr><td colspan="5" style="padding:10px;text-align:center;color:var(--mu)">Aucune donnée pour cette variété.</td></tr>';
+  if(!hasRows)h+='<tr><td colspan="6" style="padding:10px;text-align:center;color:var(--mu)">Aucune donnée pour cette variété.</td></tr>';
   h+='</tbody></table></div></div>';
   return h;
 }
