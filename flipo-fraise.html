@@ -750,6 +750,8 @@
       (cloud.entries||[]).forEach(function(e){m[String(e.id||e.ts)]=e;});
       (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!m[k])m[k]=e;});
       S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];});
+      if(cloud.saisonFix1)S.saisonFix1=true;
+      _fixSaisonDecalage(); // idem avant le POST de saveLS
     }
 
     function saveLS(){
@@ -824,7 +826,7 @@
 
     function _buildData(){
       return {
-        tab:S.tab, saison:S.saison,
+        tab:S.tab, saison:S.saison, saisonFix1:S.saisonFix1,
         chapelles:S.chapelles, drainage:S.drainage,
         entries:S.entries, deletedIds:S.deletedIds, historique:S.historique,
         rendement:S.rendement, traitements:S.traitements,
@@ -835,6 +837,7 @@
     function _applyCloud(cloud){
       if(!cloud)return;
       if(cloud.saison)S.saison=cloud.saison;
+      if(cloud.saisonFix1)S.saisonFix1=true; // drapeau collant : jamais remis à false
       if(cloud.chapelles&&cloud.chapelles.length)S.chapelles=cloud.chapelles;
       if(cloud.drainage&&cloud.drainage.length)S.drainage=cloud.drainage;
       if(cloud.rendement)S.rendement=cloud.rendement;
@@ -855,6 +858,7 @@
       });
       (S.entries||[]).forEach(function(e){var k=String(e.id||e.ts);if(!m[k])m[k]=e;});
       S.entries=Object.values(m).filter(function(e){return !del['entries:'+String(e.id||e.ts)];}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      _fixSaisonDecalage(); // rejouée après chaque fusion cloud (idempotente)
     // Vue locale (onglet actif, sous-onglets, filtres) : volontairement NON reprise du cloud —
     // sinon l'écran saute sur l'onglet d'un autre appareil à chaque synchro (10 s).
     }
@@ -919,6 +923,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
     const S = {
       tab: 'resume',
       saison: '2026/2027',
+      saisonFix1: false,
       chapelles: CHAPELLES_INIT.map(c => ({...c})),
       drainage: DRAINAGE_INIT.map(d => ({...d})),
       entries: [],
@@ -953,6 +958,22 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
     function _recKey(o){var t=o&&(o.ts||o.upd);if(t===undefined||t===null||t==='')return '';if(typeof t==='number')return new Date(t).toISOString();var s=String(t);if(/^\d{10,}$/.test(s))return new Date(+s).toISOString();return s;}
     function _cmpRec(a,b){var d=_recKey(b).localeCompare(_recKey(a));if(d)return d;var ia=Number(a&&a.id)||0,ib=Number(b&&b.id)||0;return ib-ia;}
     function _sortRec(arr){return (arr||[]).slice().sort(_cmpRec);}
+
+    // ─── Correction ponctuelle : la saison Fraise était décalée d'un an ──────
+    // La cueillette d'avril-juin 2026 (clôturée le 26/06/2026) avait été archivée
+    // sous « 2026/2027 » alors que c'est la saison 2025/2026, et la saison en cours
+    // affichait donc « 2027/2028 » au lieu de « 2026/2027 » (valeur des autres modules).
+    // Idempotente et rejouée après CHAQUE fusion cloud (cf. leçon des migrations Jus) :
+    // le drapeau S.saisonFix1 est synchronisé et « collant » (jamais remis à false),
+    // donc un appareil resté sur un vieux cache ne peut pas repousser l'ancienne année.
+    function _fixSaisonDecalage(){
+      if(S.saisonFix1)return;
+      if(S.saison==='2027/2028')S.saison='2026/2027';
+      (S.historique||[]).forEach(function(a){
+        if(a&&a.saison==='2026/2027'&&a.closedAt==='2026-06-26')a.saison='2025/2026';
+      });
+      S.saisonFix1=true;
+    }
 
     // Recherche de dose pré-remplie pour un produit
     function lookupDose(nom){
@@ -1930,6 +1951,8 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
           S.nbChapellesTrait=d.nbChapellesTrait||10;
           S.historique=d.historique||[];
           S.deletedIds=d.deletedIds||[];
+          S.saisonFix1=!!d.saisonFix1;
+          _fixSaisonDecalage(); // avant tout affichage / avant le saveLS de switchTab()
           $('saison-hdr').textContent='Saison '+S.saison;
           rebuildTraitProdList();
           switchTab(S.tab);
