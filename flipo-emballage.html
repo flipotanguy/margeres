@@ -469,6 +469,52 @@ function getMargInfo(){
   var yellow=frigos.find(function(f){return f.nom&&f.nom.toLowerCase().indexOf('jaune')>=0;});
   return {margBat:margBat,margKey:margKey,frigos:frigos,yellowId:yellow?yellow.id:null,yellowNom:yellow?yellow.nom:''};
 }
+// ─── « Depuis » : emplacement de départ d'un tri / d'une sortie ───────────
+// Vide = automatique (cascade Margères, frigo jaune en dernier) = comportement historique.
+// Renseigné = la déduction COMMENCE par cet emplacement, puis continue dans l'ordre habituel.
+// Un emplacement hors Margères est déduit seul (il peut passer en négatif).
+function srcOptsHTML(sel){
+  var o='<option value="">⚙️ Automatique (Margères)</option>';
+  getVergerBats().forEach(function(b){
+    (b.frigos||[]).forEach(function(f){
+      var val=b.id+'|'+f.id;
+      o+='<option value="'+es(val)+'"'+(sel===val?' selected':'')+'>'+es(b.nom)+' / '+es(f.nom)+'</option>';
+    });
+    o+='<option value="'+es(b.id)+'"'+(sel===b.id?' selected':'')+'>'+es(b.nom)+' — sans frigo attitré</option>';
+  });
+  return o;
+}
+// "batId|friId" → {fromBat,fromFri,fromBatNom,fromFriNom} (ignore un id qui n'existe plus)
+function _srcParse(val){
+  var p=String(val||'').split('|'),bat=p[0]||'',fri=p[1]||'';
+  var b=getVergerBats().find(function(x){return x.id===bat;});
+  var f=(b&&fri)?(b.frigos||[]).find(function(x){return x.id===fri;}):null;
+  if(!b)return {fromBat:'',fromFri:'',fromBatNom:'',fromFriNom:''};
+  return {fromBat:bat,fromFri:f?fri:'',fromBatNom:b.nom,fromFriNom:f?f.nom:''};
+}
+// Clé de map d'un mouvement (vide si automatique)
+function srcKey(o){return (o&&o.fromBat)?(o.fromFri?o.fromBat+'|'+o.fromFri:o.fromBat):'';}
+// Stock disponible pour une variété, à l'endroit exact où la déduction va puiser
+function dispoAt(type,v,srcVal){
+  if(!v)return 0;
+  var map=getStockMap(),t=0;
+  _triLocOrder(type,v,srcVal||'').forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
+  return Math.round(t);
+}
+// Met à jour l'indicateur « Stock dispo » de la barre de saisie hors liste
+function _updQDispo(kind,type){
+  var el=$((kind==='so'?'so-qdispo-':'sai-qdispo-')+type);
+  if(!el)return;
+  var sel=$((kind==='so'?'so-qvar-':'sai-qvar-')+type);
+  var v=sel?sel.value:'';
+  if(!v||v==='__new__'){el.innerHTML='';return;}
+  var d=dispoAt(type,v,_curSrc(kind,type));
+  el.innerHTML='Stock dispo : '+(d<0?'<span class="neg">'+numFr(d)+'</span>':'<b>'+numFr(d)+'</b>')+' palox';
+}
+function srcLabel(o){
+  if(!o||!o.fromBat)return '';
+  return (o.fromBatNom||o.fromBat)+(o.fromFriNom?' / '+o.fromFriNom:'');
+}
 function _prioKey(type,v){return type+'|'+v;}
 // Ordre des frigos NON jaunes pour une variété : config utilisateur puis frigos restants (ordre de la liste)
 function _prioList(type,v){
@@ -481,7 +527,12 @@ function _prioList(type,v){
   return ordered; // [friId, ...]
 }
 // Clés d'emplacement (map) dans l'ordre de déduction : frigos ordonnés, puis "sans frigo", puis le jaune EN DERNIER
-function _triLocOrder(type,v){
+// `from` (facultatif) = emplacement DÉSIGNÉ par l'opérateur : la déduction se fait STRICTEMENT là,
+// sans cascade ni débordement sur un autre frigo. S'il n'y a pas assez de stock, l'emplacement passe
+// en négatif (affiché en rouge) — c'est le signal qu'il faut scinder le mouvement en deux lignes.
+// Sans `from`, on garde la cascade historique (jaune en dernier) pour tout ce qui est déjà enregistré.
+function _triLocOrder(type,v,from){
+  if(from)return [from];
   var info=getMargInfo();
   var keys=_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;});
   keys.push(info.margKey); // bucket "sans frigo attitré" de Margères
@@ -581,7 +632,7 @@ function getStockMap(){
   //    on vide les frigos dans l'ordre défini par variété, le frigo JAUNE en dernier (qui peut passer en négatif).
   S.sessions.forEach(function(s){
     var pal=+(s.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
-    var keys=_triLocOrder(s.type,s.variete);
+    var keys=_triLocOrder(s.type,s.variete,srcKey(s));
     var remaining=pal;
     for(var i=0;i<keys.length;i++){
       var k=keys[i];
@@ -604,7 +655,7 @@ function getStockMap(){
   //    on vide les frigos de Margères dans l'ordre configuré, le frigo JAUNE en dernier.
   (S.sorties||[]).forEach(function(o){
     var pal=+(o.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
-    var keys=_triLocOrder(o.type,o.variete);
+    var keys=_triLocOrder(o.type,o.variete,srcKey(o));
     var remaining=pal;
     for(var i=0;i<keys.length;i++){
       var k=keys[i];
@@ -676,21 +727,34 @@ function buildSaisie(type){
   allVars.forEach(function(v){qVarOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
   qVarOpts+='<option value="__new__">✏️ Autre...</option>';
 
+  var srcVal=_curSrc('sai',type);
+  var map=getStockMap();
+  // Stock réellement disponible là où la déduction va puiser (voir buildSorties)
+  function dispo(v){
+    var t=0;
+    _triLocOrder(type,v,srcVal).forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
+    return Math.round(t);
+  }
+
   var h='<div class="form-hdr">';
   h+='<div class="form-row">';
   h+='<div class="form-field"><label>Du</label><input type="date" id="sai-from-'+type+'" value="'+isoMonday()+'"></div>';
   h+='<div class="form-field"><label>Au</label><input type="date" id="sai-to-'+type+'" value="'+isoToday()+'"></div>';
+  h+='<div class="form-field wide"><label>Depuis quel frigo ?</label><select id="sai-src-'+type+'" onchange="onSrcChange(\'sai\',\''+type+'\')">'+srcOptsHTML(srcVal)+'</select></div>';
   h+='<div style="width:1px;background:rgba(0,0,0,.1);align-self:stretch;margin:0 4px"></div>';
   h+='<div class="form-field wide"><label>Saisie hors liste — Variété</label><select id="sai-qvar-'+type+'" onchange="toggleQNew(\''+type+'\',this.value)">'+qVarOpts+'</select></div>';
   h+='<div id="sai-qnewwrap-'+type+'" class="hidden form-field wide"><input type="text" id="sai-qnew-'+type+'" placeholder="Nom variété..."></div>';
   h+='<div class="form-field"><label>Palox</label><input class="pal-input" type="number" id="sai-qpal-'+type+'" min="1" step="1" placeholder="0" style="width:80px"></div>';
   h+='<div class="form-field"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="saveSessQuick(\''+type+'\')">✅</button></div>';
-  h+='</div></div>';
+  h+='</div>';
+  h+='<div id="sai-qdispo-'+type+'" style="font-size:12px;color:var(--mu);margin-top:4px"></div>';
+  h+='</div>';
 
   // Tableau de la liste permanente
   h+='<div class="tw"><table>';
   h+='<thead><tr>';
-  h+='<th style="width:50%">Variété</th>';
+  h+='<th style="width:42%">Variété</th>';
+  h+='<th class="r">Stock dispo</th>';
   h+='<th class="r">Palox triés</th>';
   h+='<th class="ctr" style="width:80px">Enreg.</th>';
   h+='<th class="ctr" style="width:44px">Liste</th>';
@@ -698,11 +762,13 @@ function buildSaisie(type){
   h+='<tbody>';
 
   if(list.length===0){
-    h+='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:22px;font-style:italic">Liste vide — ajoutez des variétés ci-dessous</td></tr>';
+    h+='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:22px;font-style:italic">Liste vide — ajoutez des variétés ci-dessous</td></tr>';
   } else {
     list.forEach(function(item,i){
+      var d=dispo(item.v);
       h+='<tr>';
       h+='<td style="font-weight:700;font-size:14px">'+es(item.v)+'</td>';
+      h+='<td class="r" style="color:var(--mu)">'+(d<0?'<span class="neg">'+numFr(d)+'</span>':numFr(d))+'</td>';
       h+='<td class="r"><input class="pal-input" type="number" id="sai-pal-'+type+'-'+i+'" min="0" step="1" placeholder="—"></td>';
       h+='<td class="ctr"><button class="btn ok sm" onclick="saveSessRow(\''+type+'\','+i+')">✅</button></td>';
       h+='<td class="ctr"><button class="btn del sm" title="Retirer de la liste" onclick="rmVar(\''+type+'\','+i+')">✕</button></td>';
@@ -717,7 +783,7 @@ function buildSaisie(type){
   allVars.forEach(function(v){if(!usedSet[v])varOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
   varOpts+='<option value="__new__">✏️ Autre variété...</option>';
 
-  h+='<tfoot><tr><td colspan="4">';
+  h+='<tfoot><tr><td colspan="5">';
   h+='<div class="add-var-row">';
   h+='<select id="sai-addvar-'+type+'" style="flex:1;padding:6px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px;background:var(--wh)" onchange="toggleNewVar(\''+type+'\',this.value)">'+varOpts+'</select>';
   h+='<input type="text" id="sai-newvar-'+type+'" class="hidden" placeholder="Nom de la variété..." style="flex:1;padding:6px 10px;border:1px solid var(--brd);border-radius:7px;font-size:13px">';
@@ -751,10 +817,29 @@ function _getSaiHeader(type){
   var fromEl=$('sai-from-'+type),toEl=$('sai-to-'+type);
   var from=fromEl?fromEl.value:'';
   if(!from){alert('Veuillez saisir la date de début.');return null;}
-  return{from:from,to:(toEl?toEl.value:'')||from,toBat:'',toBatNom:'',toFri:'',toFriNom:''};
+  var src=_srcParse(_curSrc('sai',type));
+  return{from:from,to:(toEl?toEl.value:'')||from,toBat:'',toBatNom:'',toFri:'',toFriNom:'',src:src};
+}
+function _snapSaiHeader(type){
+  var f=$('sai-from-'+type),t=$('sai-to-'+type);
+  if(!f||!f.value)return null;
+  return{from:f.value,to:(t&&t.value)||f.value,srcVal:_curSrc('sai',type)};
+}
+function _restoreSaiHeader(type,hd){
+  if(!hd)return;
+  var f=$('sai-from-'+type),t=$('sai-to-'+type),s=$('sai-src-'+type);
+  if(f)f.value=hd.from;
+  if(t)t.value=hd.to;
+  if(s&&hd.srcVal!==undefined)s.value=hd.srcVal;
+}
+// Champs « depuis » d'une session de tri, à partir de l'en-tête
+function _sessSrc(h){
+  var s=h&&h.src?h.src:{};
+  return {fromBat:s.fromBat||'',fromFri:s.fromFri||'',fromBatNom:s.fromBatNom||'',fromFriNom:s.fromFriNom||''};
 }
 function toggleQNew(type,val){
   var w=$('sai-qnewwrap-'+type);if(w)w.classList.toggle('hidden',val!=='__new__');
+  _updQDispo('sai',type);
 }
 // Enregistre la saisie rapide hors liste (barre orange)
 function saveSessQuick(type){
@@ -766,8 +851,11 @@ function saveSessQuick(type){
   var pal=palEl?+(palEl.value||0):0;
   if(!variete){alert('Veuillez choisir ou saisir une variété.');return;}
   if(pal<=0){alert('Saisissez un nombre de palox.');return;}
+  var sq=_sessSrc(h);
   S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:variete,palox:pal,
-    toBat:'',toBatNom:'',toFri:'',toFriNom:'',ts:new Date().toISOString(),u:FLIPO_AUTHOR});
+    toBat:'',toBatNom:'',toFri:'',toFriNom:'',
+    fromBat:sq.fromBat,fromFri:sq.fromFri,fromBatNom:sq.fromBatNom,fromFriNom:sq.fromFriNom,
+    ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
   if(palEl)palEl.value='';
   if(sel)sel.value='';
@@ -782,8 +870,11 @@ function saveSessRow(type,i){
   if(pal<=0){alert('Saisissez un nombre de palox pour cette ligne.');return;}
   var item=S.varList[type][i];
   if(!item)return;
+  var sr=_sessSrc(h);
   S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
-    toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,ts:new Date().toISOString(),u:FLIPO_AUTHOR});
+    toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,
+    fromBat:sr.fromBat,fromFri:sr.fromFri,fromBatNom:sr.fromBatNom,fromFriNom:sr.fromFriNom,
+    ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
   // Vider juste ce champ sans rebuild complet
   if(palEl)palEl.value='';
@@ -794,19 +885,21 @@ function saveSessAll(type){
   var h=_getSaiHeader(type);if(!h)return;
   _normVarList();
   var list=S.varList[type];
-  var saved=0,now=Date.now();
+  var saved=0,now=Date.now(),sa=_sessSrc(h);
   list.forEach(function(item,i){
     var palEl=$('sai-pal-'+type+'-'+i);
     var pal=palEl?+(palEl.value||0):0;
     if(pal<=0)return;
     S.sessions.push({id:now+saved,type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
-      toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,ts:new Date().toISOString(),u:FLIPO_AUTHOR});
+      toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,
+      fromBat:sa.fromBat,fromFri:sa.fromFri,fromBatNom:sa.fromBatNom,fromFriNom:sa.fromFriNom,
+      ts:new Date().toISOString(),u:FLIPO_AUTHOR});
     saved++;
   });
   if(!saved){alert('Aucun palox saisi. Remplissez au moins une ligne.');return;}
   saveLS();
   showBanner(saved+(saved>1?' sessions enregistrées':' session enregistrée'));
-  rebuildTab(type);
+  var hs=_snapSaiHeader(type);rebuildTab(type);_restoreSaiHeader(type,hs);
 }
 
 // ─── Historique ──────────────────────────────────────────
@@ -814,7 +907,7 @@ function buildHistorique(type){
   var list=S.sessions.filter(function(s){return s.type===type;}).sort(function(a,b){return b.id-a.id;});
   if(!list.length)return '<div class="empty">Aucune session de tri enregistrée.</div>';
   var h='<div class="tw"><table><thead><tr>';
-  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Destination</th><th style="width:36px"></th>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Depuis</th><th>Destination</th><th style="width:36px"></th>';
   h+='</tr></thead><tbody>';
   var tot=0;
   list.forEach(function(s){
@@ -824,11 +917,12 @@ function buildHistorique(type){
     h+='<td>'+es(fmtD(s.dateFrom))+(s.dateTo&&s.dateTo!==s.dateFrom?' → '+es(fmtD(s.dateTo)):'')+saisiLine(s)+'</td>';
     h+='<td style="font-weight:600">'+es(s.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(pal)+'</td>';
+    h+='<td style="color:var(--mu);font-size:12px">'+es(srcLabel(s)||'⚙️ auto')+'</td>';
     h+='<td style="color:var(--mu);font-size:12px">'+es(dest||'—')+'</td>';
     h+='<td class="ctr"><button class="btn del sm" onclick="delSess('+s.id+',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
-  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="3"></td></tr>';
   h+='</tbody></table></div>';
   return h;
 }
@@ -847,10 +941,28 @@ function delSess(id,type){
 // Même principe que le tri : les palox sont déduits du stock,
 // mais ils ne comptent PAS comme des palox triés.
 // ═════════════════════════════════════════════════════════
+// Emplacement de départ choisi dans l'écran Saisie ('sai') et l'écran Sortie ('so').
+// Choix du moment, par type de fruit — volontairement NON synchronisé (règle 1 : la vue ne se synchronise pas).
+var _srcSel={so:{},sai:{}};
+function _srcId(kind,type){return (kind==='so'?'so-src-':'sai-src-')+type;}
+function _curSrc(kind,type){
+  var v=_srcSel[kind]&&_srcSel[kind][type];
+  if(v!==undefined&&v!==null)return v;
+  var el=$(_srcId(kind,type));
+  return el?(el.value||''):'';
+}
+function onSrcChange(kind,type){
+  var el=$(_srcId(kind,type));
+  _srcSel[kind][type]=el?(el.value||''):'';
+  // Rebuild pour recalculer « Stock dispo », en conservant ce que l'opérateur a déjà tapé
+  if(kind==='so'){var hd=_snapSoHeader(type);rebuildTab(type);_restoreSoHeader(type,hd);}
+  else{var hs=_snapSaiHeader(type);rebuildTab(type);_restoreSaiHeader(type,hs);}
+  _updQDispo(kind,type);
+}
+
 var _sortieSens='vente'; // 'vente' | 'jus' — non synchronisé (choix du moment)
 function setSortieSens(type,v){
-  var f=$('so-from-'+type),t=$('so-to-'+type);
-  var hd=(f&&f.value)?{from:f.value,to:(t&&t.value)||f.value}:null;
+  var hd=_snapSoHeader(type);
   _sortieSens=v;rebuildTab(type);_restoreSoHeader(type,hd);
 }
 
@@ -861,11 +973,14 @@ function buildSorties(type){
   var map=getStockMap();
   var sens=SENS_DEF[_sortieSens]||SENS_DEF.vente;
 
-  // Stock total disponible pour une variété (tous emplacements confondus)
+  var srcVal=_curSrc('so',type);
+
+  // Stock réellement disponible LÀ OÙ la déduction va puiser (et nulle part ailleurs) :
+  // l'emplacement choisi, ou la cascade de Margères quand on est en automatique.
   function dispo(v){
     var t=0;
-    Object.keys(map).forEach(function(k){
-      var n=(map[k]&&map[k][type]&&map[k][type][v])||0;t+=n;
+    _triLocOrder(type,v,srcVal).forEach(function(k){
+      t+=(map[k]&&map[k][type]&&map[k][type][v])||0;
     });
     return Math.round(t);
   }
@@ -881,6 +996,7 @@ function buildSorties(type){
   h+='</div></div>';
   h+='<div class="form-field"><label>Du</label><input type="date" id="so-from-'+type+'" value="'+isoMonday()+'"></div>';
   h+='<div class="form-field"><label>Au</label><input type="date" id="so-to-'+type+'" value="'+isoToday()+'"></div>';
+  h+='<div class="form-field wide"><label>Depuis quel frigo ?</label><select id="so-src-'+type+'" onchange="onSrcChange(\'so\',\''+type+'\')">'+srcOptsHTML(srcVal)+'</select></div>';
   h+='</div>';
 
   var qVarOpts='<option value="">— Variété —</option>';
@@ -891,7 +1007,9 @@ function buildSorties(type){
   h+='<div id="so-qnewwrap-'+type+'" class="hidden form-field wide"><input type="text" id="so-qnew-'+type+'" placeholder="Nom variété..."></div>';
   h+='<div class="form-field"><label>Palox</label><input class="pal-input" type="number" id="so-qpal-'+type+'" min="1" step="1" placeholder="0" style="width:80px"></div>';
   h+='<div class="form-field" style="min-width:auto;flex:0 0 auto"><label style="visibility:hidden">ok</label><button class="btn ok" onclick="saveSortieQuick(\''+type+'\')">✅</button></div>';
-  h+='</div></div>';
+  h+='</div>';
+  h+='<div id="so-qdispo-'+type+'" style="font-size:12px;color:var(--mu);margin-top:4px"></div>';
+  h+='</div>';
 
   // Tableau de la liste permanente (même liste que la Saisie du tri)
   h+='<div class="tw"><table><thead><tr>';
@@ -915,7 +1033,7 @@ function buildSorties(type){
   }
   h+='</tbody>';
   h+='<tfoot><tr><td colspan="4"><div class="add-var-row">';
-  h+='<span style="font-size:12px;color:var(--mu)">Enregistrement en <b>'+sens.icon+' '+es(sens.l)+'</b> — la liste de variétés est celle de l\'onglet 📝 Saisie.</span>';
+  h+='<span style="font-size:12px;color:var(--mu)">Enregistrement en <b>'+sens.icon+' '+es(sens.l)+'</b> depuis <b>'+es(srcVal?srcLabel(_srcParse(srcVal)):'⚙️ Automatique (Margères)')+'</b> — '+(srcVal?'les palox sont retirés de ce seul frigo.':'cascade automatique de Margères, frigo jaune en dernier.')+' La colonne « Stock dispo » correspond à cet emplacement.</span>';
   if(list.length>0)h+='<button class="btn ok" style="margin-left:auto" onclick="saveSortieAll(\''+type+'\')">✅ Tout enregistrer</button>';
   h+='</div></td></tr></tfoot></table></div>';
 
@@ -931,41 +1049,53 @@ function _blocSorties(type,sens){
   var h='<div class="blk-title"><span>'+def.icon+' '+def.pl+'</span><span class="tot">'+numFr(tot)+' palox</span></div>';
   if(!list.length)return h+'<div class="empty">Aucune sortie enregistrée.</div>';
   h+='<div class="tw"><table><thead><tr>';
-  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th style="width:36px"></th>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Depuis</th><th style="width:36px"></th>';
   h+='</tr></thead><tbody>';
   list.forEach(function(o){
     h+='<tr>';
     h+='<td>'+es(fmtD(o.dateFrom))+(o.dateTo&&o.dateTo!==o.dateFrom?' → '+es(fmtD(o.dateTo)):'')+saisiLine(o)+'</td>';
     h+='<td style="font-weight:600">'+es(o.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(o.palox||0)+'</td>';
+    h+='<td style="color:var(--mu);font-size:12px">'+es(srcLabel(o)||'⚙️ auto')+'</td>';
     h+='<td class="ctr"><button class="btn del sm" onclick="delSortie(\''+es(String(o.id))+'\',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
-  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td></td></tr>';
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
   h+='</tbody></table></div>';
   return h;
 }
 
 function toggleSoQNew(type,val){
   var w=$('so-qnewwrap-'+type);if(w)w.classList.toggle('hidden',val!=='__new__');
+  _updQDispo('so',type);
 }
 function _getSoHeader(type){
   var fromEl=$('so-from-'+type),toEl=$('so-to-'+type);
   var from=fromEl?fromEl.value:'';
   if(!from){alert('Veuillez saisir la date de début.');return null;}
-  return{from:from,to:(toEl?toEl.value:'')||from};
+  var src=_srcParse(_curSrc('so',type));
+  return{from:from,to:(toEl?toEl.value:'')||from,src:src};
+}
+// Photo de l'en-tête avant un rebuild (n'alerte pas si la date est vide)
+function _snapSoHeader(type){
+  var f=$('so-from-'+type),t=$('so-to-'+type);
+  if(!f||!f.value)return null;
+  return{from:f.value,to:(t&&t.value)||f.value,srcVal:_curSrc('so',type)};
 }
 // Après un rebuild, on remet la période que l'opérateur avait saisie (sinon elle
 // repasse à « lundi → aujourd'hui » et la ligne suivante part avec de mauvaises dates).
 function _restoreSoHeader(type,hd){
   if(!hd)return;
-  var f=$('so-from-'+type),t=$('so-to-'+type);
+  var f=$('so-from-'+type),t=$('so-to-'+type),s=$('so-src-'+type);
   if(f)f.value=hd.from;
   if(t)t.value=hd.to;
+  if(s&&hd.srcVal!==undefined)s.value=hd.srcVal;
 }
 function _pushSortie(type,variete,pal,hd,n){
+  var src=hd.src||{fromBat:'',fromFri:'',fromBatNom:'',fromFriNom:''};
   S.sorties.push({id:'so'+Date.now()+'-'+(n||0)+'-'+Math.random().toString(36).slice(2,6),
     type:type,sens:_sortieSens,variete:variete,palox:pal,
+    fromBat:src.fromBat,fromFri:src.fromFri,fromBatNom:src.fromBatNom,fromFriNom:src.fromFriNom,
     dateFrom:hd.from,dateTo:hd.to,ts:new Date().toISOString(),u:FLIPO_AUTHOR});
 }
 function saveSortieQuick(type){
