@@ -205,6 +205,7 @@ var S={
   tab:'pomme',
   pommeSub:'saisie',poireSub:'saisie',
   stockSub:'bilan',stockFilter:'',
+  yellowFirst:true, // frigo jaune vidé en premier (réglable dans Stock → ❄️ Ordre de tri)
   batCulture:'',batVar:'',
   bilanVar:'',
   sessions:[],transfers:[],achatsExt:[],sorties:[],deletedIds:[],
@@ -250,7 +251,7 @@ function _buildData(){
     achatsExt:S.achatsExt,sorties:S.sorties,varList:S.varList,deletedIds:S.deletedIds,
     frigoPrio:S.frigoPrio,
     tab:S.tab,pommeSub:S.pommeSub,poireSub:S.poireSub,
-    stockSub:S.stockSub,stockFilter:S.stockFilter,
+    stockSub:S.stockSub,stockFilter:S.stockFilter,yellowFirst:S.yellowFirst,
     batCulture:S.batCulture,batVar:S.batVar,bilanVar:S.bilanVar
   };
 }
@@ -292,6 +293,7 @@ function _applyCloud(cloud){
   if(cloud.varList)S.varList=cloud.varList;
   _normVarList();
   if(cloud.frigoPrio)S.frigoPrio=cloud.frigoPrio;
+  if(cloud.yellowFirst!==undefined)S.yellowFirst=!!cloud.yellowFirst;
 // Vue locale (onglet actif, sous-onglets, filtres) : volontairement NON reprise du cloud —
 // sinon l'écran saute sur l'onglet d'un autre appareil à chaque synchro (10 s).
 }
@@ -534,9 +536,15 @@ function _prioList(type,v){
 function _triLocOrder(type,v,from){
   if(from)return [from];
   var info=getMargInfo();
-  var keys=_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;});
+  var yk=info.yellowId?info.margKey+'|'+info.yellowId:null;
+  var keys=[];
+  // S.yellowFirst : le frigo jaune est le TAMPON DE RÉCEPTION, on le vide en premier, ce qui
+  // laisse les palox rangés dans un frigo attitré à leur place (et rend les transferts efficaces).
+  // Décoché, on retrouve exactement l'ordre historique (frigos attitrés d'abord, jaune en dernier).
+  if(yk&&S.yellowFirst)keys.push(yk);
+  keys=keys.concat(_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;}));
   keys.push(info.margKey); // bucket "sans frigo attitré" de Margères
-  if(info.yellowId)keys.push(info.margKey+'|'+info.yellowId); // frigo jaune toujours en dernier
+  if(yk)keys.push(yk); // le jaune absorbe toujours le reliquat en dernier (peut passer en négatif)
   return keys;
 }
 
@@ -1489,9 +1497,15 @@ function buildStockPrio(){
   var map=getStockMap();
   function locStock(key,type,v){return (map[key]&&map[key][type]&&map[key][type][v])||0;}
 
-  var h='<div class="info-box">À chaque saisie de tri, les palox sont déduits de la <strong>même variété</strong> dans les frigos de Margères, dans l\'ordre ci-dessous (de gauche à droite). '
-    +(info.yellowId?('<strong>'+es(yellowNom)+'</strong> est toujours servi en dernier et peut passer en négatif si tout le reste est épuisé.'):'Aucun frigo dont le nom contient « jaune » n\'a été détecté — le dernier emplacement absorbe le reste.')
-    +' Réglez l\'ordre, variété par variété, avec les flèches ◀ ▶.</div>';
+  var h='<div class="info-box">À chaque saisie de tri ou de sortie <strong>laissée en « ⚙️ Automatique »</strong>, les palox sont déduits de la <strong>même variété</strong> dans les frigos de Margères, dans l\'ordre ci-dessous. Réglez l\'ordre, variété par variété, avec les flèches ◀ ▶. (Un mouvement pour lequel vous avez désigné un frigo ne suit pas cet ordre : il est retiré de ce seul frigo.)</div>';
+  if(info.yellowId){
+    h+='<div class="form-hdr" style="margin-bottom:12px"><label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;line-height:1.45">'
+      +'<input type="checkbox" style="margin-top:2px;flex:0 0 auto" '+(S.yellowFirst?'checked ':'')+'onchange="setYellowFirst(this.checked)">'
+      +'<span>Vider le <strong>'+es(yellowNom)+'</strong> <strong>en premier</strong> (c\'est le frigo tampon : on y pose les palox à la réception et on y puise avant les frigos attitrés).'
+      +'<br><span style="color:var(--mu)">Décoché, on revient à l\'ordre historique : les frigos attitrés sont vidés d\'abord et le '+es(yellowNom)+' ramasse ce qui reste — ce qui a pour effet de faire « migrer » les palox vers le jaune et d\'annuler les transferts.</span></span></label></div>';
+  } else {
+    h+='<div class="info-box">Aucun frigo dont le nom contient « jaune » n\'a été détecté — le dernier emplacement absorbe le reste.</div>';
+  }
 
   if(nonYellow.length===0){
     return h+'<div class="info-box">Margères n\'a aucun frigo (hors jaune). Ajoutez des frigos dans Verger → Bâtiments.</div>';
@@ -1530,7 +1544,7 @@ function buildStockPrio(){
       if(stB!==0)h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#f3f3f0;font-size:12px;color:var(--mu)">📦 Sans frigo ('+numFr(stB)+')</div>';
       if(info.yellowId){
         var stY=Math.round(locStock(margKey+'|'+info.yellowId,type,v));
-        h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — en dernier ('+numFr(stY)+')</div>';
+        h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — '+(S.yellowFirst?'servi en premier':'en dernier')+' ('+numFr(stY)+')</div>';
       }
       if(S.frigoPrio&&S.frigoPrio[_prioKey(type,v)]){
         h+='<button class="btn sm" style="align-self:center" onclick="resetPrio(\''+type+'\','+vIdx+')" title="Revenir à l\'ordre par défaut">↺</button>';
@@ -1553,6 +1567,11 @@ function movePrio(type,vIdx,fIdx,dir){
   var t=list[fIdx];list[fIdx]=list[j];list[j]=t;
   S.frigoPrio=S.frigoPrio||{};
   S.frigoPrio[_prioKey(type,v)]=list;
+  saveLS();
+  var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
+}
+function setYellowFirst(v){
+  S.yellowFirst=!!v;
   saveLS();
   var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
 }
@@ -2006,6 +2025,7 @@ function _doInit(){
       if(d.varList)S.varList=d.varList;
       _normVarList();
       if(d.frigoPrio)S.frigoPrio=d.frigoPrio;
+      if(d.yellowFirst!==undefined)S.yellowFirst=!!d.yellowFirst;
       if(d.tab)S.tab=d.tab;
       _initUI();
     }catch(e){}
