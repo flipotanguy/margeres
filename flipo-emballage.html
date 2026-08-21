@@ -205,7 +205,6 @@ var S={
   tab:'pomme',
   pommeSub:'saisie',poireSub:'saisie',
   stockSub:'bilan',stockFilter:'',
-  yellowFirst:true, // frigo jaune vidé en premier (réglable dans Stock → ❄️ Ordre de tri)
   batCulture:'',batVar:'',
   bilanVar:'',
   sessions:[],transfers:[],achatsExt:[],sorties:[],deletedIds:[],
@@ -251,7 +250,7 @@ function _buildData(){
     achatsExt:S.achatsExt,sorties:S.sorties,varList:S.varList,deletedIds:S.deletedIds,
     frigoPrio:S.frigoPrio,
     tab:S.tab,pommeSub:S.pommeSub,poireSub:S.poireSub,
-    stockSub:S.stockSub,stockFilter:S.stockFilter,yellowFirst:S.yellowFirst,
+    stockSub:S.stockSub,stockFilter:S.stockFilter,
     batCulture:S.batCulture,batVar:S.batVar,bilanVar:S.bilanVar
   };
 }
@@ -293,7 +292,6 @@ function _applyCloud(cloud){
   if(cloud.varList)S.varList=cloud.varList;
   _normVarList();
   if(cloud.frigoPrio)S.frigoPrio=cloud.frigoPrio;
-  if(cloud.yellowFirst!==undefined)S.yellowFirst=!!cloud.yellowFirst;
 // Vue locale (onglet actif, sous-onglets, filtres) : volontairement NON reprise du cloud —
 // sinon l'écran saute sur l'onglet d'un autre appareil à chaque synchro (10 s).
 }
@@ -471,36 +469,12 @@ function getMargInfo(){
   var yellow=frigos.find(function(f){return f.nom&&f.nom.toLowerCase().indexOf('jaune')>=0;});
   return {margBat:margBat,margKey:margKey,frigos:frigos,yellowId:yellow?yellow.id:null,yellowNom:yellow?yellow.nom:''};
 }
-// ─── « Depuis » : emplacement de départ d'un tri / d'une sortie ───────────
-// Vide = automatique (cascade Margères, frigo jaune en dernier) = comportement historique.
-// Renseigné = la déduction COMMENCE par cet emplacement, puis continue dans l'ordre habituel.
-// Un emplacement hors Margères est déduit seul (il peut passer en négatif).
-function srcOptsHTML(sel){
-  var o='<option value="">⚙️ Automatique (Margères)</option>';
-  getVergerBats().forEach(function(b){
-    (b.frigos||[]).forEach(function(f){
-      var val=b.id+'|'+f.id;
-      o+='<option value="'+es(val)+'"'+(sel===val?' selected':'')+'>'+es(b.nom)+' / '+es(f.nom)+'</option>';
-    });
-    o+='<option value="'+es(b.id)+'"'+(sel===b.id?' selected':'')+'>'+es(b.nom)+' — sans frigo attitré</option>';
-  });
-  return o;
-}
-// "batId|friId" → {fromBat,fromFri,fromBatNom,fromFriNom} (ignore un id qui n'existe plus)
-function _srcParse(val){
-  var p=String(val||'').split('|'),bat=p[0]||'',fri=p[1]||'';
-  var b=getVergerBats().find(function(x){return x.id===bat;});
-  var f=(b&&fri)?(b.frigos||[]).find(function(x){return x.id===fri;}):null;
-  if(!b)return {fromBat:'',fromFri:'',fromBatNom:'',fromFriNom:''};
-  return {fromBat:bat,fromFri:f?fri:'',fromBatNom:b.nom,fromFriNom:f?f.nom:''};
-}
-// Clé de map d'un mouvement (vide si automatique)
-function srcKey(o){return (o&&o.fromBat)?(o.fromFri?o.fromBat+'|'+o.fromFri:o.fromBat):'';}
 // Stock disponible pour une variété, à l'endroit exact où la déduction va puiser
-function dispoAt(type,v,srcVal){
+// (la cascade de Margères) — surtout PAS la somme de tous les bâtiments.
+function dispoAt(type,v){
   if(!v)return 0;
   var map=getStockMap(),t=0;
-  _triLocOrder(type,v,srcVal||'').forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
+  _triLocOrder(type,v).forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
   return Math.round(t);
 }
 // Met à jour l'indicateur « Stock dispo » de la barre de saisie hors liste
@@ -510,12 +484,8 @@ function _updQDispo(kind,type){
   var sel=$((kind==='so'?'so-qvar-':'sai-qvar-')+type);
   var v=sel?sel.value:'';
   if(!v||v==='__new__'){el.innerHTML='';return;}
-  var d=dispoAt(type,v,_curSrc(kind,type));
+  var d=dispoAt(type,v);
   el.innerHTML='Stock dispo : '+(d<0?'<span class="neg">'+numFr(d)+'</span>':'<b>'+numFr(d)+'</b>')+' palox';
-}
-function srcLabel(o){
-  if(!o||!o.fromBat)return '';
-  return (o.fromBatNom||o.fromBat)+(o.fromFriNom?' / '+o.fromFriNom:'');
 }
 function _prioKey(type,v){return type+'|'+v;}
 // Ordre des frigos NON jaunes pour une variété : config utilisateur puis frigos restants (ordre de la liste)
@@ -529,22 +499,11 @@ function _prioList(type,v){
   return ordered; // [friId, ...]
 }
 // Clés d'emplacement (map) dans l'ordre de déduction : frigos ordonnés, puis "sans frigo", puis le jaune EN DERNIER
-// `from` (facultatif) = emplacement DÉSIGNÉ par l'opérateur : la déduction se fait STRICTEMENT là,
-// sans cascade ni débordement sur un autre frigo. S'il n'y a pas assez de stock, l'emplacement passe
-// en négatif (affiché en rouge) — c'est le signal qu'il faut scinder le mouvement en deux lignes.
-// Sans `from`, on garde la cascade historique (jaune en dernier) pour tout ce qui est déjà enregistré.
-function _triLocOrder(type,v,from){
-  if(from)return [from];
+function _triLocOrder(type,v){
   var info=getMargInfo();
-  var yk=info.yellowId?info.margKey+'|'+info.yellowId:null;
-  var keys=[];
-  // S.yellowFirst : le frigo jaune est le TAMPON DE RÉCEPTION, on le vide en premier, ce qui
-  // laisse les palox rangés dans un frigo attitré à leur place (et rend les transferts efficaces).
-  // Décoché, on retrouve exactement l'ordre historique (frigos attitrés d'abord, jaune en dernier).
-  if(yk&&S.yellowFirst)keys.push(yk);
-  keys=keys.concat(_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;}));
+  var keys=_prioList(type,v).map(function(fid){return info.margKey+'|'+fid;});
   keys.push(info.margKey); // bucket "sans frigo attitré" de Margères
-  if(yk)keys.push(yk); // le jaune absorbe toujours le reliquat en dernier (peut passer en négatif)
+  if(info.yellowId)keys.push(info.margKey+'|'+info.yellowId); // frigo jaune toujours en dernier
   return keys;
 }
 
@@ -562,7 +521,49 @@ function getCueilletteByVar(type){
 }
 
 // ─── Calcul du stock ─────────────────────────────────────
-// Clés : MARG_ID | batId | batId+'|'+friId
+// Clés : batId | batId+'|'+friId  (MARG_ID virtuel est ramené sur le vrai bâtiment Margères)
+//
+// LE STOCK EST REJOUÉ DANS L'ORDRE CHRONOLOGIQUE. C'est essentiel : si on vide un frigo
+// puis qu'on en remplit un autre plus tard, le mouvement d'avant ne doit pas « revenir en
+// arrière » reprendre les palox rangés depuis. C'est ce qui rend les transferts efficaces :
+// un transfert n'est plus défait par un tri ou une vente qui lui est ANTÉRIEUR.
+// Tri de la file : date effective du mouvement, puis horodatage de saisie en cas d'égalité.
+// Date effective = la PLUS TARDIVE entre la date métier (date de cueillette, de transfert, ou
+// fin de période pour un tri / une sortie) et la date de saisie. Autrement dit : un mouvement
+// prend effet à sa date, mais jamais AVANT d'avoir été enregistré — sinon un tri saisi le 11/08
+// mais daté du 04/08 viendrait ponctionner un stock qui n'existait pas encore, et créerait un
+// négatif fantôme.
+
+// "21/08" (+ ts) → "2026-08-21" ; repli sur la date du ts si le format est inattendu
+function _entDate(e){
+  var ts=String(e&&e.ts||'');
+  var m=/^(\d{1,2})\/(\d{1,2})$/.exec(String(e&&e.date||''));
+  if(m&&ts.length>=10){
+    var y=+ts.slice(0,4);
+    var d=y+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+    // saisie en janvier d'une cueillette de fin décembre → l'année civile précédente
+    if(d>ts.slice(0,10)&&(Date.parse(d)-Date.parse(ts.slice(0,10)))>60*864e5)d=(y-1)+d.slice(4);
+    return d;
+  }
+  if(ts.length>=10)return ts.slice(0,10);
+  return '';
+}
+// Date effective : jamais antérieure à la saisie
+function _mvDate(businessDate,ts){
+  var t=String(ts||'').slice(0,10);
+  var d=String(businessDate||'');
+  if(!d)return t;
+  if(!t)return d;
+  return d>t?d:t;
+}
+function _mvSort(a,b){
+  var d=String(a.d||'').localeCompare(String(b.d||''));
+  if(d)return d;
+  var t=String(a.ts||'').localeCompare(String(b.ts||''));
+  if(t)return t;
+  return String(a.id||'').localeCompare(String(b.id||''));
+}
+
 function getStockMap(){
   var map={};
   function add(key,type,v,n){
@@ -574,11 +575,19 @@ function getStockMap(){
   // Bâtiment Margères défini en premier — clé unique pour tout ce qui concerne Margères
   var margBat=getVergerBats().find(function(b){return b.nom&&b.nom.toLowerCase().indexOf('marg')>=0;});
   var margKey=margBat?margBat.id:MARG_ID;
+  var knownBatIds=getVergerBats().map(function(b){return b.id;});
+  // Normalise un couple (bâtiment, frigo) en clé de map, en ramenant le Margères virtuel
+  function nk(bat,fri){
+    var b=(!bat||bat===MARG_ID)?margKey:bat;
+    return fri?b+'|'+fri:b;
+  }
 
-  // 1. Cueillette
+  // ── Construction de la file chronologique de TOUS les mouvements
+  var mv=[];
+
+  // Cueillette (Verger)
   var vd=getVergerData();
   var entries=vd.entries||[];
-  var knownBatIds=getVergerBats().map(function(b){return b.id;});
   if(entries.length){
     entries.forEach(function(e){
       var type=e.cult,v=e.variete,pal=+(e.palox||0);
@@ -586,97 +595,71 @@ function getStockMap(){
       var key;
       if(!e.bat||e.bat===MARG_ID||e.bat===margKey||knownBatIds.indexOf(e.bat)<0){
         // Margères, virtuel, ou ancien bâtiment supprimé → margKey
-        // …mais si la saisie a un frigo qui existe bien à Margères, on conserve le détail par frigo
+        // …mais si la saisie a un frigo qui existe bien à Margères, on garde le détail par frigo
         var margFri=(margBat&&margBat.frigos)?margBat.frigos:[];
         var friOK=e.fri&&margFri.some(function(f){return f.id===e.fri;});
         key=friOK?margKey+'|'+e.fri:margKey;
       } else {
-        key=e.fri?e.bat+'|'+e.fri:e.bat;
+        key=nk(e.bat,e.fri);
       }
-      add(key,type,v,pal);
+      mv.push({d:_mvDate(_entDate(e),e.ts),ts:e.ts||'',id:String(e.id||''),run:function(){add(key,type,v,pal);}});
     });
   } else {
+    // Repli sur la matrice agrégée du Verger (pas de saisies détaillées) — hors chronologie
     ['pomme','poire'].forEach(function(type){
       var cueil=getCueilletteByVar(type);
       Object.keys(cueil).forEach(function(v){add(margKey,type,v,cueil[v]);});
     });
   }
 
-  // 2. Transferts — AVANT la fusion Margères pour que tout soit visible
-  S.transfers.forEach(function(t){
+  // Transferts
+  (S.transfers||[]).forEach(function(t){
     var pal=+(t.palox||0);if(!(pal>0))return;
-    var fBat=t.fromBat===MARG_ID?margKey:t.fromBat;
-    var tBat=t.toBat===MARG_ID?margKey:t.toBat;
-    add(t.fromFri?fBat+'|'+t.fromFri:fBat,t.type,t.variete,-pal);
-    add(t.toFri?tBat+'|'+t.toFri:tBat,t.type,t.variete,+pal);
+    mv.push({d:_mvDate(t.date,t.ts),ts:t.ts||'',id:String(t.id||''),run:function(){
+      add(nk(t.fromBat,t.fromFri),t.type,t.variete,-pal);
+      add(nk(t.toBat,t.toFri),t.type,t.variete,+pal);
+    }});
   });
 
-  // 2b. Achats extérieurs — ajoutés directement au bâtiment de destination
+  // Achats extérieurs — ajoutés au bâtiment de destination
   (S.achatsExt||[]).forEach(function(a){
     var pal=+(a.palox||0);if(!(pal>0))return;
-    var key=a.frigoId?a.batId+'|'+a.frigoId:a.batId;
-    add(key,a.cult,a.variete,pal);
+    mv.push({d:_mvDate(a.date,a.ts),ts:a.ts||'',id:String(a.id||''),run:function(){
+      add(nk(a.batId,a.frigoId),a.cult,a.variete,pal);
+    }});
   });
 
-  // 3. Fusion Margères : MARG_ID → margKey (garder le détail par frigo)
-  if(map[MARG_ID]){
-    Object.keys(map[MARG_ID]).forEach(function(tp){
-      Object.keys(map[MARG_ID][tp]).forEach(function(v){add(margKey,tp,v,map[MARG_ID][tp][v]);});
-    });
-    delete map[MARG_ID];
-  }
-  // Reconvertir MARG_ID|friId → margKey|friId sans merger dans margKey
-  Object.keys(map).filter(function(k){return k.split('|')[0]===MARG_ID;}).forEach(function(fk){
-    var friId=fk.split('|').slice(1).join('|');
-    var newKey=margKey+'|'+friId;
-    Object.keys(map[fk]).forEach(function(tp){
-      Object.keys(map[fk][tp]).forEach(function(v){add(newKey,tp,v,map[fk][tp][v]);});
-    });
-    delete map[fk];
-  });
-  // NE PAS fusionner margKey|friId dans margKey — conserver le détail par frigo
-
-  // 4. Tri → déduit de la même variété dans les frigos de Margères :
-  //    on vide les frigos dans l'ordre défini par variété, le frigo JAUNE en dernier (qui peut passer en négatif).
-  S.sessions.forEach(function(s){
-    var pal=+(s.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
-    var keys=_triLocOrder(s.type,s.variete,srcKey(s));
+  // Déduction en cascade, commune au tri et aux sorties hors tri :
+  // on vide les frigos de Margères dans l'ordre défini par variété, le frigo JAUNE en dernier
+  // (il absorbe le reliquat et peut passer en négatif). Si un frigo a été DÉSIGNÉ à la saisie,
+  // la déduction se fait strictement là.
+  function deduire(o){
+    var pal=+(o.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
+    var keys=_triLocOrder(o.type,o.variete);
     var remaining=pal;
     for(var i=0;i<keys.length;i++){
       var k=keys[i];
-      var isLast=(i===keys.length-1);
-      if(isLast){ // dernier emplacement (jaune si présent) : absorbe tout le reste, même en négatif
-        add(k,s.type,s.variete,-remaining);
+      if(i===keys.length-1){ // dernier emplacement : absorbe tout le reste, même en négatif
+        add(k,o.type,o.variete,-remaining);
         remaining=0;
         break;
       }
-      var avail=(map[k]&&map[k][s.type]&&map[k][s.type][s.variete])||0;
-      if(avail<=0)continue; // rien à prendre ici, on passe au frigo suivant
-      var take=Math.min(avail,remaining);
-      add(k,s.type,s.variete,-take);
-      remaining-=take;
-      if(remaining<=0)break;
-    }
-  });
-
-  // 5. Sorties hors tri (vente extérieure / jus) — même cascade que le tri :
-  //    on vide les frigos de Margères dans l'ordre configuré, le frigo JAUNE en dernier.
-  (S.sorties||[]).forEach(function(o){
-    var pal=+(o.palox||0);if(!(pal>0))return; // !(x>0) filtre aussi NaN
-    var keys=_triLocOrder(o.type,o.variete,srcKey(o));
-    var remaining=pal;
-    for(var i=0;i<keys.length;i++){
-      var k=keys[i];
-      var isLast=(i===keys.length-1);
-      if(isLast){add(k,o.type,o.variete,-remaining);remaining=0;break;}
       var avail=(map[k]&&map[k][o.type]&&map[k][o.type][o.variete])||0;
-      if(avail<=0)continue;
+      if(avail<=0)continue; // rien à prendre ici, on passe au frigo suivant
       var take=Math.min(avail,remaining);
       add(k,o.type,o.variete,-take);
       remaining-=take;
       if(remaining<=0)break;
     }
+  }
+  // Tri, puis sorties hors tri (vente extérieure / jus) : la date qui compte est la FIN de période
+  (S.sessions||[]).concat(S.sorties||[]).forEach(function(o){
+    mv.push({d:_mvDate(o.dateTo||o.dateFrom,o.ts),ts:o.ts||'',id:String(o.id||''),
+             run:function(){deduire(o);}});
   });
+
+  // ── Rejeu dans l'ordre
+  mv.sort(_mvSort).forEach(function(x){x.run();});
   return map;
 }
 
@@ -735,12 +718,11 @@ function buildSaisie(type){
   allVars.forEach(function(v){qVarOpts+='<option value="'+es(v)+'">'+es(v)+'</option>';});
   qVarOpts+='<option value="__new__">✏️ Autre...</option>';
 
-  var srcVal=_curSrc('sai',type);
   var map=getStockMap();
   // Stock réellement disponible là où la déduction va puiser (voir buildSorties)
   function dispo(v){
     var t=0;
-    _triLocOrder(type,v,srcVal).forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
+    _triLocOrder(type,v).forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
     return Math.round(t);
   }
 
@@ -748,7 +730,6 @@ function buildSaisie(type){
   h+='<div class="form-row">';
   h+='<div class="form-field"><label>Du</label><input type="date" id="sai-from-'+type+'" value="'+isoMonday()+'"></div>';
   h+='<div class="form-field"><label>Au</label><input type="date" id="sai-to-'+type+'" value="'+isoToday()+'"></div>';
-  h+='<div class="form-field wide"><label>Depuis quel frigo ?</label><select id="sai-src-'+type+'" onchange="onSrcChange(\'sai\',\''+type+'\')">'+srcOptsHTML(srcVal)+'</select></div>';
   h+='<div style="width:1px;background:rgba(0,0,0,.1);align-self:stretch;margin:0 4px"></div>';
   h+='<div class="form-field wide"><label>Saisie hors liste — Variété</label><select id="sai-qvar-'+type+'" onchange="toggleQNew(\''+type+'\',this.value)">'+qVarOpts+'</select></div>';
   h+='<div id="sai-qnewwrap-'+type+'" class="hidden form-field wide"><input type="text" id="sai-qnew-'+type+'" placeholder="Nom variété..."></div>';
@@ -825,25 +806,18 @@ function _getSaiHeader(type){
   var fromEl=$('sai-from-'+type),toEl=$('sai-to-'+type);
   var from=fromEl?fromEl.value:'';
   if(!from){alert('Veuillez saisir la date de début.');return null;}
-  var src=_srcParse(_curSrc('sai',type));
-  return{from:from,to:(toEl?toEl.value:'')||from,toBat:'',toBatNom:'',toFri:'',toFriNom:'',src:src};
+  return{from:from,to:(toEl?toEl.value:'')||from,toBat:'',toBatNom:'',toFri:'',toFriNom:''};
 }
 function _snapSaiHeader(type){
   var f=$('sai-from-'+type),t=$('sai-to-'+type);
   if(!f||!f.value)return null;
-  return{from:f.value,to:(t&&t.value)||f.value,srcVal:_curSrc('sai',type)};
+  return{from:f.value,to:(t&&t.value)||f.value};
 }
 function _restoreSaiHeader(type,hd){
   if(!hd)return;
-  var f=$('sai-from-'+type),t=$('sai-to-'+type),s=$('sai-src-'+type);
+  var f=$('sai-from-'+type),t=$('sai-to-'+type);
   if(f)f.value=hd.from;
   if(t)t.value=hd.to;
-  if(s&&hd.srcVal!==undefined)s.value=hd.srcVal;
-}
-// Champs « depuis » d'une session de tri, à partir de l'en-tête
-function _sessSrc(h){
-  var s=h&&h.src?h.src:{};
-  return {fromBat:s.fromBat||'',fromFri:s.fromFri||'',fromBatNom:s.fromBatNom||'',fromFriNom:s.fromFriNom||''};
 }
 function toggleQNew(type,val){
   var w=$('sai-qnewwrap-'+type);if(w)w.classList.toggle('hidden',val!=='__new__');
@@ -859,10 +833,8 @@ function saveSessQuick(type){
   var pal=palEl?+(palEl.value||0):0;
   if(!variete){alert('Veuillez choisir ou saisir une variété.');return;}
   if(pal<=0){alert('Saisissez un nombre de palox.');return;}
-  var sq=_sessSrc(h);
   S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:variete,palox:pal,
     toBat:'',toBatNom:'',toFri:'',toFriNom:'',
-    fromBat:sq.fromBat,fromFri:sq.fromFri,fromBatNom:sq.fromBatNom,fromFriNom:sq.fromFriNom,
     ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
   if(palEl)palEl.value='';
@@ -878,10 +850,8 @@ function saveSessRow(type,i){
   if(pal<=0){alert('Saisissez un nombre de palox pour cette ligne.');return;}
   var item=S.varList[type][i];
   if(!item)return;
-  var sr=_sessSrc(h);
   S.sessions.push({id:Date.now(),type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
     toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,
-    fromBat:sr.fromBat,fromFri:sr.fromFri,fromBatNom:sr.fromBatNom,fromFriNom:sr.fromFriNom,
     ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
   // Vider juste ce champ sans rebuild complet
@@ -893,14 +863,13 @@ function saveSessAll(type){
   var h=_getSaiHeader(type);if(!h)return;
   _normVarList();
   var list=S.varList[type];
-  var saved=0,now=Date.now(),sa=_sessSrc(h);
+  var saved=0,now=Date.now();
   list.forEach(function(item,i){
     var palEl=$('sai-pal-'+type+'-'+i);
     var pal=palEl?+(palEl.value||0):0;
     if(pal<=0)return;
     S.sessions.push({id:now+saved,type:type,dateFrom:h.from,dateTo:h.to,variete:item.v,palox:pal,
       toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,
-      fromBat:sa.fromBat,fromFri:sa.fromFri,fromBatNom:sa.fromBatNom,fromFriNom:sa.fromFriNom,
       ts:new Date().toISOString(),u:FLIPO_AUTHOR});
     saved++;
   });
@@ -915,7 +884,7 @@ function buildHistorique(type){
   var list=S.sessions.filter(function(s){return s.type===type;}).sort(function(a,b){return b.id-a.id;});
   if(!list.length)return '<div class="empty">Aucune session de tri enregistrée.</div>';
   var h='<div class="tw"><table><thead><tr>';
-  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Depuis</th><th>Destination</th><th style="width:36px"></th>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Destination</th><th style="width:36px"></th>';
   h+='</tr></thead><tbody>';
   var tot=0;
   list.forEach(function(s){
@@ -925,12 +894,11 @@ function buildHistorique(type){
     h+='<td>'+es(fmtD(s.dateFrom))+(s.dateTo&&s.dateTo!==s.dateFrom?' → '+es(fmtD(s.dateTo)):'')+saisiLine(s)+'</td>';
     h+='<td style="font-weight:600">'+es(s.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(pal)+'</td>';
-    h+='<td style="color:var(--mu);font-size:12px">'+es(srcLabel(s)||'⚙️ auto')+'</td>';
     h+='<td style="color:var(--mu);font-size:12px">'+es(dest||'—')+'</td>';
     h+='<td class="ctr"><button class="btn del sm" onclick="delSess('+s.id+',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
-  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="3"></td></tr>';
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
   h+='</tbody></table></div>';
   return h;
 }
@@ -949,25 +917,6 @@ function delSess(id,type){
 // Même principe que le tri : les palox sont déduits du stock,
 // mais ils ne comptent PAS comme des palox triés.
 // ═════════════════════════════════════════════════════════
-// Emplacement de départ choisi dans l'écran Saisie ('sai') et l'écran Sortie ('so').
-// Choix du moment, par type de fruit — volontairement NON synchronisé (règle 1 : la vue ne se synchronise pas).
-var _srcSel={so:{},sai:{}};
-function _srcId(kind,type){return (kind==='so'?'so-src-':'sai-src-')+type;}
-function _curSrc(kind,type){
-  var v=_srcSel[kind]&&_srcSel[kind][type];
-  if(v!==undefined&&v!==null)return v;
-  var el=$(_srcId(kind,type));
-  return el?(el.value||''):'';
-}
-function onSrcChange(kind,type){
-  var el=$(_srcId(kind,type));
-  _srcSel[kind][type]=el?(el.value||''):'';
-  // Rebuild pour recalculer « Stock dispo », en conservant ce que l'opérateur a déjà tapé
-  if(kind==='so'){var hd=_snapSoHeader(type);rebuildTab(type);_restoreSoHeader(type,hd);}
-  else{var hs=_snapSaiHeader(type);rebuildTab(type);_restoreSaiHeader(type,hs);}
-  _updQDispo(kind,type);
-}
-
 var _sortieSens='vente'; // 'vente' | 'jus' — non synchronisé (choix du moment)
 function setSortieSens(type,v){
   var hd=_snapSoHeader(type);
@@ -981,15 +930,11 @@ function buildSorties(type){
   var map=getStockMap();
   var sens=SENS_DEF[_sortieSens]||SENS_DEF.vente;
 
-  var srcVal=_curSrc('so',type);
-
-  // Stock réellement disponible LÀ OÙ la déduction va puiser (et nulle part ailleurs) :
-  // l'emplacement choisi, ou la cascade de Margères quand on est en automatique.
+  // Stock réellement disponible LÀ OÙ la déduction va puiser (la cascade de Margères),
+  // et non la somme de tous les bâtiments.
   function dispo(v){
     var t=0;
-    _triLocOrder(type,v,srcVal).forEach(function(k){
-      t+=(map[k]&&map[k][type]&&map[k][type][v])||0;
-    });
+    _triLocOrder(type,v).forEach(function(k){t+=(map[k]&&map[k][type]&&map[k][type][v])||0;});
     return Math.round(t);
   }
 
@@ -1004,7 +949,6 @@ function buildSorties(type){
   h+='</div></div>';
   h+='<div class="form-field"><label>Du</label><input type="date" id="so-from-'+type+'" value="'+isoMonday()+'"></div>';
   h+='<div class="form-field"><label>Au</label><input type="date" id="so-to-'+type+'" value="'+isoToday()+'"></div>';
-  h+='<div class="form-field wide"><label>Depuis quel frigo ?</label><select id="so-src-'+type+'" onchange="onSrcChange(\'so\',\''+type+'\')">'+srcOptsHTML(srcVal)+'</select></div>';
   h+='</div>';
 
   var qVarOpts='<option value="">— Variété —</option>';
@@ -1041,7 +985,7 @@ function buildSorties(type){
   }
   h+='</tbody>';
   h+='<tfoot><tr><td colspan="4"><div class="add-var-row">';
-  h+='<span style="font-size:12px;color:var(--mu)">Enregistrement en <b>'+sens.icon+' '+es(sens.l)+'</b> depuis <b>'+es(srcVal?srcLabel(_srcParse(srcVal)):'⚙️ Automatique (Margères)')+'</b> — '+(srcVal?'les palox sont retirés de ce seul frigo.':'cascade automatique de Margères, frigo jaune en dernier.')+' La colonne « Stock dispo » correspond à cet emplacement.</span>';
+  h+='<span style="font-size:12px;color:var(--mu)">Enregistrement en <b>'+sens.icon+' '+es(sens.l)+'</b> — la colonne « Stock dispo » est celle des frigos de Margères, d\'où part la déduction.</span>';
   if(list.length>0)h+='<button class="btn ok" style="margin-left:auto" onclick="saveSortieAll(\''+type+'\')">✅ Tout enregistrer</button>';
   h+='</div></td></tr></tfoot></table></div>';
 
@@ -1057,18 +1001,17 @@ function _blocSorties(type,sens){
   var h='<div class="blk-title"><span>'+def.icon+' '+def.pl+'</span><span class="tot">'+numFr(tot)+' palox</span></div>';
   if(!list.length)return h+'<div class="empty">Aucune sortie enregistrée.</div>';
   h+='<div class="tw"><table><thead><tr>';
-  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th>Depuis</th><th style="width:36px"></th>';
+  h+='<th>Période</th><th>Variété</th><th class="r">Palox</th><th style="width:36px"></th>';
   h+='</tr></thead><tbody>';
   list.forEach(function(o){
     h+='<tr>';
     h+='<td>'+es(fmtD(o.dateFrom))+(o.dateTo&&o.dateTo!==o.dateFrom?' → '+es(fmtD(o.dateTo)):'')+saisiLine(o)+'</td>';
     h+='<td style="font-weight:600">'+es(o.variete)+'</td>';
     h+='<td class="r" style="font-weight:700">'+numFr(o.palox||0)+'</td>';
-    h+='<td style="color:var(--mu);font-size:12px">'+es(srcLabel(o)||'⚙️ auto')+'</td>';
     h+='<td class="ctr"><button class="btn del sm" onclick="delSortie(\''+es(String(o.id))+'\',\''+type+'\')" '+(FLIPO_CAN_DELETE?'':'disabled')+' title="'+(FLIPO_CAN_DELETE?'Supprimer':'Suppression réservée aux administrateurs')+'">✕</button></td>';
     h+='</tr>';
   });
-  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td colspan="2"></td></tr>';
+  h+='<tr class="tr-tot"><td colspan="2">Total</td><td class="r">'+numFr(tot)+'</td><td></td></tr>';
   h+='</tbody></table></div>';
   return h;
 }
@@ -1081,29 +1024,25 @@ function _getSoHeader(type){
   var fromEl=$('so-from-'+type),toEl=$('so-to-'+type);
   var from=fromEl?fromEl.value:'';
   if(!from){alert('Veuillez saisir la date de début.');return null;}
-  var src=_srcParse(_curSrc('so',type));
-  return{from:from,to:(toEl?toEl.value:'')||from,src:src};
+  return{from:from,to:(toEl?toEl.value:'')||from};
 }
 // Photo de l'en-tête avant un rebuild (n'alerte pas si la date est vide)
 function _snapSoHeader(type){
   var f=$('so-from-'+type),t=$('so-to-'+type);
   if(!f||!f.value)return null;
-  return{from:f.value,to:(t&&t.value)||f.value,srcVal:_curSrc('so',type)};
+  return{from:f.value,to:(t&&t.value)||f.value};
 }
 // Après un rebuild, on remet la période que l'opérateur avait saisie (sinon elle
 // repasse à « lundi → aujourd'hui » et la ligne suivante part avec de mauvaises dates).
 function _restoreSoHeader(type,hd){
   if(!hd)return;
-  var f=$('so-from-'+type),t=$('so-to-'+type),s=$('so-src-'+type);
+  var f=$('so-from-'+type),t=$('so-to-'+type);
   if(f)f.value=hd.from;
   if(t)t.value=hd.to;
-  if(s&&hd.srcVal!==undefined)s.value=hd.srcVal;
 }
 function _pushSortie(type,variete,pal,hd,n){
-  var src=hd.src||{fromBat:'',fromFri:'',fromBatNom:'',fromFriNom:''};
   S.sorties.push({id:'so'+Date.now()+'-'+(n||0)+'-'+Math.random().toString(36).slice(2,6),
     type:type,sens:_sortieSens,variete:variete,palox:pal,
-    fromBat:src.fromBat,fromFri:src.fromFri,fromBatNom:src.fromBatNom,fromFriNom:src.fromFriNom,
     dateFrom:hd.from,dateTo:hd.to,ts:new Date().toISOString(),u:FLIPO_AUTHOR});
 }
 function saveSortieQuick(type){
@@ -1497,15 +1436,9 @@ function buildStockPrio(){
   var map=getStockMap();
   function locStock(key,type,v){return (map[key]&&map[key][type]&&map[key][type][v])||0;}
 
-  var h='<div class="info-box">À chaque saisie de tri ou de sortie <strong>laissée en « ⚙️ Automatique »</strong>, les palox sont déduits de la <strong>même variété</strong> dans les frigos de Margères, dans l\'ordre ci-dessous. Réglez l\'ordre, variété par variété, avec les flèches ◀ ▶. (Un mouvement pour lequel vous avez désigné un frigo ne suit pas cet ordre : il est retiré de ce seul frigo.)</div>';
-  if(info.yellowId){
-    h+='<div class="form-hdr" style="margin-bottom:12px"><label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;line-height:1.45">'
-      +'<input type="checkbox" style="margin-top:2px;flex:0 0 auto" '+(S.yellowFirst?'checked ':'')+'onchange="setYellowFirst(this.checked)">'
-      +'<span>Vider le <strong>'+es(yellowNom)+'</strong> <strong>en premier</strong> (c\'est le frigo tampon : on y pose les palox à la réception et on y puise avant les frigos attitrés).'
-      +'<br><span style="color:var(--mu)">Décoché, on revient à l\'ordre historique : les frigos attitrés sont vidés d\'abord et le '+es(yellowNom)+' ramasse ce qui reste — ce qui a pour effet de faire « migrer » les palox vers le jaune et d\'annuler les transferts.</span></span></label></div>';
-  } else {
-    h+='<div class="info-box">Aucun frigo dont le nom contient « jaune » n\'a été détecté — le dernier emplacement absorbe le reste.</div>';
-  }
+  var h='<div class="info-box">À chaque saisie de tri ou de sortie, les palox sont déduits de la <strong>même variété</strong> dans les frigos de Margères, dans l\'ordre ci-dessous (de gauche à droite). '
+    +(info.yellowId?('<strong>'+es(yellowNom)+'</strong> est toujours servi en dernier et peut passer en négatif si tout le reste est épuisé.'):'Aucun frigo dont le nom contient « jaune » n\'a été détecté — le dernier emplacement absorbe le reste.')
+    +' Réglez l\'ordre, variété par variété, avec les flèches ◀ ▶.<br><span style="color:var(--mu)">Les mouvements sont rejoués dans l\'ordre chronologique : un tri ou une vente ne peut pas reprendre des palox rangés <em>après</em> lui. Pour corriger un emplacement, utilisez un <strong>transfert</strong> — il tient.</span></div>';
 
   if(nonYellow.length===0){
     return h+'<div class="info-box">Margères n\'a aucun frigo (hors jaune). Ajoutez des frigos dans Verger → Bâtiments.</div>';
@@ -1544,7 +1477,7 @@ function buildStockPrio(){
       if(stB!==0)h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#f3f3f0;font-size:12px;color:var(--mu)">📦 Sans frigo ('+numFr(stB)+')</div>';
       if(info.yellowId){
         var stY=Math.round(locStock(margKey+'|'+info.yellowId,type,v));
-        h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — '+(S.yellowFirst?'servi en premier':'en dernier')+' ('+numFr(stY)+')</div>';
+        h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — en dernier ('+numFr(stY)+')</div>';
       }
       if(S.frigoPrio&&S.frigoPrio[_prioKey(type,v)]){
         h+='<button class="btn sm" style="align-self:center" onclick="resetPrio(\''+type+'\','+vIdx+')" title="Revenir à l\'ordre par défaut">↺</button>';
@@ -1567,11 +1500,6 @@ function movePrio(type,vIdx,fIdx,dir){
   var t=list[fIdx];list[fIdx]=list[j];list[j]=t;
   S.frigoPrio=S.frigoPrio||{};
   S.frigoPrio[_prioKey(type,v)]=list;
-  saveLS();
-  var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
-}
-function setYellowFirst(v){
-  S.yellowFirst=!!v;
   saveLS();
   var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
 }
@@ -2025,7 +1953,6 @@ function _doInit(){
       if(d.varList)S.varList=d.varList;
       _normVarList();
       if(d.frigoPrio)S.frigoPrio=d.frigoPrio;
-      if(d.yellowFirst!==undefined)S.yellowFirst=!!d.yellowFirst;
       if(d.tab)S.tab=d.tab;
       _initUI();
     }catch(e){}
