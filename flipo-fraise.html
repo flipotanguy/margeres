@@ -1086,7 +1086,7 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
       html += '<div class="total-box-item"><div class="label">Cueillettes</div><div class="value">' + nbCueillettes + '</div></div>';
       html += '<div class="total-box-item"><div class="label">Moyenne par cueillette</div><div class="value">' + kgMoy + ' kg</div></div></div>';
       html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">';
-      html += '<button class="btn" onclick="clotureModal()" style="flex:1;min-width:160px">🗓 Clôturer la saison</button>';
+      if(FLIPO_CAN_DELETE)html += '<button class="btn" onclick="clotureModal()" style="flex:1;min-width:160px">🗓 Clôturer la saison</button>';
       html += '<button class="btn secondary" onclick="backupFraise()" style="flex:1;min-width:160px" title="Télécharge toutes vos saisies en JSON + CSV">💾 Sauvegarder mes données</button>';
       html += '</div>';
       secC.innerHTML = html;
@@ -1327,14 +1327,14 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
       }, 500);
     }
 
-    function clotureModal() {
+    function clotureModal() {if(!_canDel())return;
       $('modal-title').textContent = 'Clôturer la saison';
       $('modal-text').textContent = 'Exporter et réinitialiser les cueillettes de la saison ' + S.saison + '?';
       $('modal-confirm-btn').onclick = () => clotureSaison();
       $('confirm-modal').classList.add('active');
     }
 
-    function clotureSaison() {
+    function clotureSaison() {if(!_canDel())return;
       closeModal();
       // Archiver la saison avant d'effacer
       if(S.entries.length > 0) {
@@ -1962,7 +1962,12 @@ function _tabOK(t){var ok=window.FLIPO_TABS_OK;if(!ok||!ok.length)return true;
     });
 
 // ─── Auth ────────────────────────────────────────────────
-var FLIPO_CAN_DELETE=false;
+var FLIPO_CAN_DELETE=(function(){try{var _s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');return !!(_s&&(_s.isAdmin===true||_s.canDelete===true));}catch(e){return false;}})();
+var FLIPO_DEL_MSG='Suppression reservee aux utilisateurs autorises';
+// Garde centrale : toute action destructive doit commencer par  if(!_canDel())return;
+function _canDel(){if(FLIPO_CAN_DELETE)return true;alert('\u26d4 Suppression non autoris\u00e9e\n\nVotre profil n\'a pas le droit de supprimer des donn\u00e9es.\nContactez un administrateur.');return false;}
+// Attribut a coller dans un bouton de suppression : desactive le bouton si le droit manque
+function _delAttr(){return FLIPO_CAN_DELETE?'':' disabled title="Suppression r\u00e9serv\u00e9e aux utilisateurs autoris\u00e9s"';}
 // ─── Auteur des saisies ──────────────────────────────
 // FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)
 var FLIPO_AUTHOR='';

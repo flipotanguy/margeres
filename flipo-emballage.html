@@ -760,7 +760,7 @@ function buildSaisie(type){
       h+='<td class="r" style="color:var(--mu)">'+(d<0?'<span class="neg">'+numFr(d)+'</span>':numFr(d))+'</td>';
       h+='<td class="r"><input class="pal-input" type="number" id="sai-pal-'+type+'-'+i+'" min="0" step="1" placeholder="—"></td>';
       h+='<td class="ctr"><button class="btn ok sm" onclick="saveSessRow(\''+type+'\','+i+')">✅</button></td>';
-      h+='<td class="ctr"><button class="btn del sm" title="Retirer de la liste" onclick="rmVar(\''+type+'\','+i+')">✕</button></td>';
+      h+='<td class="ctr"><button class="btn del sm" title="Retirer de la liste" onclick="rmVar(\''+type+'\','+i+')"'+_delAttr()+'>✕</button></td>';
       h+='</tr>';
     });
   }
@@ -797,7 +797,7 @@ function addVar(type){
   S.varList[type].push({v:val});
   saveLS();rebuildTab(type);
 }
-function rmVar(type,i){
+function rmVar(type,i){if(!_canDel())return;
   if(!confirm('Retirer "'+S.varList[type][i].v+'" de la liste ?'))return;
   S.varList[type].splice(i,1);
   saveLS();rebuildTab(type);
@@ -1156,7 +1156,7 @@ function buildStockAchats(){
       h+='<td class="r" style="font-weight:700">'+numFr(a.palox||0)+'</td>';
       h+='<td style="font-size:12px;color:var(--mu)">'+es(batNom)+'</td>';
       h+='<td style="font-size:12px;color:var(--mu)">'+es(friNom)+'</td>';
-      h+='<td class="ctr"><button class="btn del sm" onclick="delAchat('+a.id+')" title="Supprimer">✕</button></td>';
+      h+='<td class="ctr"><button class="btn del sm" onclick="delAchat('+a.id+')" title="Supprimer"'+_delAttr()+'>✕</button></td>';
       h+='</tr>';
     });
     h+='</tbody></table></div>';
@@ -1198,7 +1198,7 @@ function saveAchat(){
   showBanner(numFr(palox)+' palox '+es(variete)+' ajoutés au stock');
   initStock();
 }
-function delAchat(id){
+function delAchat(id){if(!_canDel())return;
   if(!confirm('Supprimer cet achat ?'))return;
   S.deletedIds=S.deletedIds||[];
   if(S.deletedIds.indexOf('achatsExt:'+String(id))<0)S.deletedIds.push('achatsExt:'+String(id));
@@ -1480,7 +1480,7 @@ function buildStockPrio(){
         h+='<div style="display:flex;align-items:center;border-radius:8px;padding:4px 8px;background:#fff7e0;border:1px dashed #e0b020;font-size:12px;color:#a07000">🟡 '+es(yellowNom)+' — en dernier ('+numFr(stY)+')</div>';
       }
       if(S.frigoPrio&&S.frigoPrio[_prioKey(type,v)]){
-        h+='<button class="btn sm" style="align-self:center" onclick="resetPrio(\''+type+'\','+vIdx+')" title="Revenir à l\'ordre par défaut">↺</button>';
+        if(FLIPO_CAN_DELETE)h+='<button class="btn sm" style="align-self:center" onclick="resetPrio(\''+type+'\','+vIdx+')" title="Revenir à l\'ordre par défaut">↺</button>';
       }
       h+='</div></td></tr>';
     });
@@ -1503,7 +1503,7 @@ function movePrio(type,vIdx,fIdx,dir){
   saveLS();
   var c=$('stock-content');if(c)c.innerHTML=buildStockPrio();
 }
-function resetPrio(type,vIdx){
+function resetPrio(type,vIdx){if(!_canDel())return;
   var v=(S._prioVars&&S._prioVars[type]&&S._prioVars[type][vIdx]);
   if(v==null)return;
   if(S.frigoPrio)delete S.frigoPrio[_prioKey(type,v)];
@@ -1881,7 +1881,12 @@ function shareNow(mode){
 
 // ─── Auth + Init ─────────────────────────────────────────
 var FLIPO_STABS={};
-var FLIPO_CAN_DELETE=false;
+var FLIPO_CAN_DELETE=(function(){try{var _s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');return !!(_s&&(_s.isAdmin===true||_s.canDelete===true));}catch(e){return false;}})();
+var FLIPO_DEL_MSG='Suppression reservee aux utilisateurs autorises';
+// Garde centrale : toute action destructive doit commencer par  if(!_canDel())return;
+function _canDel(){if(FLIPO_CAN_DELETE)return true;alert('\u26d4 Suppression non autoris\u00e9e\n\nVotre profil n\'a pas le droit de supprimer des donn\u00e9es.\nContactez un administrateur.');return false;}
+// Attribut a coller dans un bouton de suppression : desactive le bouton si le droit manque
+function _delAttr(){return FLIPO_CAN_DELETE?'':' disabled title="Suppression r\u00e9serv\u00e9e aux utilisateurs autoris\u00e9s"';}
 
 // ─── Auteur des saisies ──────────────────────────────
 // FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)

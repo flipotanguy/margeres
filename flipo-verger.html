@@ -1082,7 +1082,7 @@ function buildPC(){
       if(ci===2) h+=`<td><input class="w60" id="dp-${ri}-2" value="${row.d[2]??''}" onchange="updDose('pom',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dp-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
     });
-    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('pom',${ri})">🗑</button></td></tr>`;
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('pom',${ri})"${_delAttr()}>🗑</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
   h+=`<div class="btns"><button class="btn add" onclick="addProdPC('pom')">+ Produit pomme</button></div>`;
@@ -1095,7 +1095,7 @@ function buildPC(){
       if(ci===2) h+=`<td><input class="w60" id="dq-${ri}-2" value="${row.d[2]??''}" onchange="updDose('poi',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dq-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
     });
-    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('poi',${ri})">🗑</button></td></tr>`;
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('poi',${ri})"${_delAttr()}>🗑</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
   h+=`<div class="btns"><button class="btn add" onclick="addProdPC('poi')">+ Produit poire</button></div>`;
@@ -1108,7 +1108,7 @@ function buildPC(){
       if(ci===2) h+=`<td><input class="w60" id="dn-${ri}-2" value="${row.d[2]??''}" onchange="updDose('noy',${ri},this.value)"></td>`;
       else h+=`<td class="f"><span id="dn-${ri}-${ci}">${row.d[ci]??''}</span></td>`;
     });
-    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('noy',${ri})">🗑</button></td></tr>`;
+    h+=`<td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('noy',${ri})"${_delAttr()}>🗑</button></td></tr>`;
   });
   h+=`</tbody></table></div>`;
   h+=`<div class="btns"><button class="btn add" onclick="addProdPC('noy')">+ Produit noyaux</button></div>`;
@@ -1137,7 +1137,7 @@ function addProdPC(type){
   else S.pcNoy.push({p:'',d:[0,0,0,0,0,0,0]});
   saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
 }
-function deleteProdPC(type,ri){
+function deleteProdPC(type,ri){if(!_canDel())return;
   const norm=type==='pom'||type==='pomme'?'pomme':type==='poi'||type==='poire'?'poire':'noyaux';
   const pc=getPcArr(norm);
   const dist=getDistArr(norm);
@@ -1192,10 +1192,10 @@ function buildDist(culture){
       const isMn=dist[k]!==undefined;const val=isMn?dist[k]:auto;
       h+=`<td class="${isMn?'mn':'f'}" id="dcc-${culture}-${ri}-${bi}">`;
       h+=`<input class="w60" id="dc-${culture}-${ri}-${bi}" value="${val}" onchange="setMD('${culture}',${ri},${bi},this.value)">`;
-      if(isMn)h+=`<button class="rb" onclick="resetMD('${culture}',${ri},${bi})">↺</button>`;
+      if(isMn&&FLIPO_CAN_DELETE)h+=`<button class="rb" onclick="resetMD('${culture}',${ri},${bi})">↺</button>`;
       h+=`</td>`;
     });
-    h+=`<td class="f" id="dt-${culture}-${ri}" style="font-weight:700">${R2(totRow)}</td><td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('${culture}',${ri})">🗑</button></td></tr>`;
+    h+=`<td class="f" id="dt-${culture}-${ri}" style="font-weight:700">${R2(totRow)}</td><td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteProdPC('${culture}',${ri})"${_delAttr()}>🗑</button></td></tr>`;
   });
   if(!pc.length)h+=`<tr><td colspan="${3+blocs.length}" style="color:var(--mu);font-style:italic;text-align:center;padding:12px">Aucun produit — cliquez "+ Ajouter un produit" pour commencer</td></tr>`;
   h+=`</tbody></table></div>`;
@@ -1205,7 +1205,7 @@ function buildDist(culture){
   blocs.forEach((b,i)=>{
     const cout=coutBloc(culture,i);
     h+=`<tr>
-      <td><button class="btn del" style="padding:2px 6px;font-size:12px;min-height:28px" onclick="deleteBloc('${culture}',${i})">🗑</button></td>
+      <td><button class="btn del" style="padding:2px 6px;font-size:12px;min-height:28px" onclick="deleteBloc('${culture}',${i})"${_delAttr()}>🗑</button></td>
       <td><input class="w120" id="bn-${culture}-${i}" value="${es(b.n)}" onchange="updBN('${culture}',${i},this.value)"></td>
       <td><input class="w60" id="bs-${culture}-${i}" value="${b.s}" onchange="updBS('${culture}',${i},this.value)"></td>
       <td><input class="w120" id="bnote-${culture}-${i}" value="${es(b.note||'')}" placeholder="note..." onchange="getBlocArr('${culture}')[${i}].note=this.value;saveLS()"></td>
@@ -1255,13 +1255,13 @@ function setMD(culture,ri,bi,val){
   const v=parseFloat(val)||0;
   getDistArr(culture)[`${ri}-${bi}`]=v;
   const cell=$(`dcc-${culture}-${ri}-${bi}`);
-  if(cell&&!cell.querySelector('.rb')){
+  if(cell&&FLIPO_CAN_DELETE&&!cell.querySelector('.rb')){
     const btn=document.createElement('button');btn.className='rb';btn.textContent='↺';btn.title='Réinitialiser';
     btn.onclick=()=>resetMD(culture,ri,bi);cell.className='mn';cell.appendChild(btn);
   }
   updDistTotal(culture,ri);updBlocCouts(culture);saveLS();
 }
-function resetMD(culture,ri,bi){
+function resetMD(culture,ri,bi){if(!_canDel())return;
   const dist=getDistArr(culture);delete dist[`${ri}-${bi}`];
   const blocs=getBlocArr(culture);const pc=getPcArr(culture);
   const auto=R2(pc[ri].d[2]*blocs[bi].s);
@@ -1278,7 +1278,7 @@ function updBS(culture,i,val){
   updBlocCouts(culture);saveLS();
 }
 function addBloc(culture){getBlocArr(culture).push({n:'Nouveau bloc',s:0,note:''});saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
-function deleteBloc(culture,i){if(!confirm('Supprimer ce bloc ?'))return;getBlocArr(culture).splice(i,1);saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
+function deleteBloc(culture,i){if(!_canDel())return;if(!confirm('Supprimer ce bloc ?'))return;getBlocArr(culture).splice(i,1);saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);}
 function addProdDist(culture){
   getPcArr(culture).push({p:'',d:[0,0,0,0,0,0,0]});
   saveLS();const f=saveFocus();$('panel-trait').innerHTML=buildTrait();restFocus(f);
@@ -1332,7 +1332,7 @@ function buildCueill(){
     <div class="stabs" style="margin-bottom:0">
       ${(function(){var all=[{id:'saisie',l:'📝 Saisie'},{id:'courbe',l:'📈 Courbe'},{id:'tableau',l:'📋 Tableau'},{id:'variete',l:'🌳 Variétés'}];var ok=FLIPO_STABS['cueill'];var tabs=ok&&ok.length?all.filter(function(t){return ok.indexOf(t.id)>=0;}):all;if(!tabs.length)tabs=all;if(!tabs.find(function(t){return t.id===S.cvw;})&&tabs.length)S.cvw=tabs[0].id;return tabs.map(function(t){return '<button class="stab'+(S.cvw===t.id?' act':'')+'" onclick="setCVw(\''+t.id+'\')">'+t.l+'</button>';}).join('');})()}
     </div>
-    <button class="btn" onclick="cloturerAnnee()" style="background:#fff3f3;color:#c0392b;border-color:#f5c6c6;font-size:11px">🗓 Clôturer la saison ${S.saison||'2026/2027'}</button>
+    ${FLIPO_CAN_DELETE?`<button class="btn" onclick="cloturerAnnee()" style="background:#fff3f3;color:#c0392b;border-color:#f5c6c6;font-size:11px">🗓 Clôturer la saison ${S.saison||'2026/2027'}</button>`:''}
   </div>`;
   h+=`<div id="cvw">${buildCVw()}</div>`;
   return h;
@@ -1411,7 +1411,7 @@ function buildSaisie(){
   const journal=_sortRec(S.entries.filter(e=>!e.vardef));
   h+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
     <span style="font-weight:600;font-size:13px">Journal des saisies (${journal.length})</span>
-    ${journal.length>0?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
+    ${(journal.length>0&&FLIPO_CAN_DELETE)?`<button class="btn del" onclick="if(confirm('Supprimer toutes les saisies ?'))clearEntries()">🗑 Tout effacer</button>`:''}
   </div>`;
   if(!journal.length){
     h+=`<div class="empty-journal">Aucune saisie pour le moment.<br>Utilisez le formulaire ci-dessus pour enregistrer vos récoltes.</div>`;
@@ -1432,7 +1432,7 @@ function buildSaisie(){
           <span style="margin-left:8px;color:var(--mu);font-size:11px">${e.palox} palox · ${kgU} kg/palox${kg>0?' · '+fkg(kg)+' kg':''}${destStr}</span>
           ${saisiLine(e,'jdate')}
         </div>
-        <button class="btn del" onclick="deleteEntry(${e.id})">🗑</button>
+        <button class="btn del" onclick="deleteEntry(${e.id})"${_delAttr()}>🗑</button>
       </div>`;
     });
     h+=`</div>`;
@@ -1488,7 +1488,7 @@ function addEntry(){
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }
 
-function deleteEntry(id){
+function deleteEntry(id){if(!_canDel())return;
   const idx=S.entries.findIndex(e=>e.id===id);
   if(idx===-1)return;
   const entry=S.entries[idx];
@@ -1505,7 +1505,7 @@ function deleteEntry(id){
   updCeilStats();
   const f=saveFocus();$('cvw').innerHTML=buildSaisie();restFocus(f);
 }
-function clearEntries(){
+function clearEntries(){if(!_canDel())return;
   // Ne supprime que les saisies de récolte ; conserve les définitions de variétés (vardef)
   S.deletedIds=S.deletedIds||[];
   S.entries.forEach(function(e){
@@ -1599,7 +1599,7 @@ function buildCeilTable(type){
   rows.forEach((row,ri)=>{
     const tot=sm(row.d);
     if(Math.round(tot)===0)return; // masquer les variétés sans données
-    h+=`<tr><td><button class="btn del" style="padding:2px 5px;font-size:12px;min-height:28px" onclick="deleteVar('${type}',${ri})">🗑</button></td>`;
+    h+=`<tr><td><button class="btn del" style="padding:2px 5px;font-size:12px;min-height:28px" onclick="deleteVar('${type}',${ri})"${_delAttr()}>🗑</button></td>`;
     h+=`<td><input class="w100" id="${type}v-${ri}" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>`;
     h+=`<td class="f" id="${type}t-${ri}">${Math.round(tot)}</td>`;
     h+=`<td class="f" id="${type}k-${ri}">${fkg(totKg(type==='pom'?'pomme':'poire',row.v))}</td>`;
@@ -1610,7 +1610,7 @@ function buildCeilTable(type){
   h+=`<div class="btns"><button class="btn add" onclick="addVar('${type}')">+ Ajouter variété</button></div><br>`;
   return h;
 }
-function deleteVar(type,ri){
+function deleteVar(type,ri){if(!_canDel())return;
   if(!confirm('Supprimer cette variété ?'))return;
   const rows=type==='pom'?S.pomR:S.poiR;
   if(!rows[ri])return;
@@ -1696,7 +1696,7 @@ function buildVarietes(){
       h+=`<tr>
         <td><input class="w100" style="min-width:160px" value="${es(row.v)}" onchange="updVN('${type}',${ri},this.value)"></td>
         <td class="f">${tot}</td>
-        <td><button class="btn del" style="padding:2px 7px;font-size:13px;min-height:28px" onclick="deleteVar('${type}',${ri})">🗑</button></td>
+        <td><button class="btn del" style="padding:2px 7px;font-size:13px;min-height:28px" onclick="deleteVar('${type}',${ri})"${_delAttr()}>🗑</button></td>
       </tr>`;
     });
     h+=`</tbody></table></div>`;
@@ -1889,7 +1889,7 @@ function _buildChartVerger(pomR,poiR,dPom,dPoi){
   return s;
 }
 
-function cloturerAnnee(){
+function cloturerAnnee(){if(!_canDel())return;
   const saison=S.saison||'2026/2027';
   const tP=Math.round(sm(S.pomR.map(r=>sm(r.d))));
   const tQ=Math.round(sm(S.poiR.map(r=>sm(r.d))));
@@ -1979,7 +1979,7 @@ function buildPhyto(){
       <td><input class="w60" id="td2-${ri}" value="${row.d2}" onchange="updTP(${ri},'d2',this.value)"></td>
       <td class="f" id="tt1-${ri}">${(row.t1||0).toFixed(2)}</td>
       <td class="f" id="tt2-${ri}">${(row.t2||0).toFixed(2)}</td>
-      <td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteTarif(${ri})">🗑</button></td>
+      <td><button class="btn del" style="padding:2px 7px;font-size:13px" onclick="deleteTarif(${ri})"${_delAttr()}>🗑</button></td>
     </tr>`;
   });
   h+=`</tbody></table></div>`;
@@ -2004,7 +2004,7 @@ function addTarif(){
   saveLS();rebuildProdList();
   const f=saveFocus();initPhyto();restFocus(f);
 }
-function deleteTarif(ri){
+function deleteTarif(ri){if(!_canDel())return;
   S.tarif.splice(ri,1);
   saveLS();rebuildProdList();
   const f=saveFocus();initPhyto();restFocus(f);
@@ -2231,7 +2231,12 @@ function updateFrigoSelectInStock(){
 // INIT
 // ══════════════════════════════════════════════
 var FLIPO_STABS={};
-var FLIPO_CAN_DELETE=false;
+var FLIPO_CAN_DELETE=(function(){try{var _s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');return !!(_s&&(_s.isAdmin===true||_s.canDelete===true));}catch(e){return false;}})();
+var FLIPO_DEL_MSG='Suppression reservee aux utilisateurs autorises';
+// Garde centrale : toute action destructive doit commencer par  if(!_canDel())return;
+function _canDel(){if(FLIPO_CAN_DELETE)return true;alert('\u26d4 Suppression non autoris\u00e9e\n\nVotre profil n\'a pas le droit de supprimer des donn\u00e9es.\nContactez un administrateur.');return false;}
+// Attribut a coller dans un bouton de suppression : desactive le bouton si le droit manque
+function _delAttr(){return FLIPO_CAN_DELETE?'':' disabled title="Suppression r\u00e9serv\u00e9e aux utilisateurs autoris\u00e9s"';}
 // ─── Auth ────────────────────────────────────────────────
 // ─── Auteur des saisies ──────────────────────────────
 // FLIPO_AUTHOR = "Prénom N." de l'utilisateur connecté (vide si inconnu)

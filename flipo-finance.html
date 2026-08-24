@@ -849,7 +849,12 @@ function initApp(){
 }
 
 // ─── Auth app-level ───────────────────────────────────────
-var FLIPO_CAN_DELETE=false;
+var FLIPO_CAN_DELETE=(function(){try{var _s=JSON.parse(sessionStorage.getItem('flipo-session')||'null');return !!(_s&&(_s.isAdmin===true||_s.canDelete===true));}catch(e){return false;}})();
+var FLIPO_DEL_MSG='Suppression reservee aux utilisateurs autorises';
+// Garde centrale : toute action destructive doit commencer par  if(!_canDel())return;
+function _canDel(){if(FLIPO_CAN_DELETE)return true;alert('\u26d4 Suppression non autoris\u00e9e\n\nVotre profil n\'a pas le droit de supprimer des donn\u00e9es.\nContactez un administrateur.');return false;}
+// Attribut a coller dans un bouton de suppression : desactive le bouton si le droit manque
+function _delAttr(){return FLIPO_CAN_DELETE?'':' disabled title="Suppression r\u00e9serv\u00e9e aux utilisateurs autoris\u00e9s"';}
 (function(){
   var sess=null;
   try{sess=JSON.parse(sessionStorage.getItem('flipo-session')||'null');}catch(e){}
