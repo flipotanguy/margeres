@@ -837,10 +837,10 @@ function saveSessQuick(type){
     toBat:'',toBatNom:'',toFri:'',toFriNom:'',
     ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
-  if(palEl)palEl.value='';
-  if(sel)sel.value='';
-  var w=$('sai-qnewwrap-'+type);if(w)w.classList.add('hidden');
   showBanner(numFr(pal)+' palox '+es(variete)+' enregistrés');
+  // Reconstruire : sans ça la colonne « Stock dispo » restait sur l'ancienne valeur
+  // jusqu'à ce qu'on change de sous-onglet (même symptôme que le module Jus).
+  var hs=_snapSaiHeader(type);rebuildTab(type);_restoreSaiHeader(type,hs);
 }
 // Enregistre UNE seule ligne (la ligne i)
 function saveSessRow(type,i){
@@ -854,9 +854,10 @@ function saveSessRow(type,i){
     toBat:h.toBat,toBatNom:h.toBatNom,toFri:h.toFri,toFriNom:h.toFriNom,
     ts:new Date().toISOString(),u:FLIPO_AUTHOR});
   saveLS();
-  // Vider juste ce champ sans rebuild complet
-  if(palEl)palEl.value='';
   showBanner(numFr(pal)+' palox '+es(item.v)+' enregistrés');
+  // Reconstruire : sans ça la colonne « Stock dispo » restait sur l'ancienne valeur
+  // jusqu'à ce qu'on change de sous-onglet (même symptôme que le module Jus).
+  var hs=_snapSaiHeader(type);rebuildTab(type);_restoreSaiHeader(type,hs);
 }
 // Enregistre TOUTES les lignes avec palox > 0
 function saveSessAll(type){

@@ -618,21 +618,12 @@ function _fillSel(el, list, def){
 }
 
 // ─── Couleur du « Restant » ───────────────────────────────────────────────
-// rouge = épuisé ou négatif · orange = stock bas (20 % ou moins de ce qui est entré) · vert = OK
-var STOCK_BAS = 0.2;
-function _stockBas(entree, rest){ return rest>0 && entree>0 && (rest/entree)<=STOCK_BAS; }
+// vert = il en reste · rouge = épuisé (0) ou négatif.
+// Pas de seuil en pourcentage : « Entré » est un cumul de saison qui ne fait que
+// grandir, donc un ratio restant/entré diminue mécaniquement et ne veut rien dire.
 function _stockCls(entree, rest){
-  if(rest < 0) return 'color:var(--gr);font-weight:700';
-  if(entree === 0 && rest === 0) return 'color:var(--mu)';
-  if(rest === 0) return 'color:var(--gr);font-weight:700';
-  if(_stockBas(entree, rest)) return 'color:#e07020;font-weight:700';
-  return 'color:#27ae60;font-weight:700';
+  return rest > 0 ? 'color:#27ae60;font-weight:700' : 'color:var(--gr);font-weight:700';
 }
-function _stockWarn(entree, rest){ return _stockBas(entree, rest) ? ' \u26a0\ufe0f' : ''; }
-var STOCK_LEGENDE = '<div style="font-size:11px;color:var(--mu);margin-top:8px;line-height:1.6">Restant : '
-  + '<span style="color:#27ae60;font-weight:700">vert</span> = plus de 20 % du stock entré · '
-  + '<span style="color:#e07020;font-weight:700">orange \u26a0\ufe0f</span> = stock bas (20 % ou moins) · '
-  + '<span style="color:var(--gr);font-weight:700">rouge</span> = épuisé ou négatif</div>';
 
 function render(){
   const labelEl = $('saison-label');
@@ -984,10 +975,10 @@ function buildStock(){
     htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + item.label + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
-    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + _stockWarn(entree, rest) + '</td></tr>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
   });
 
-  htmlA += '</tbody></table>' + STOCK_LEGENDE;
+  htmlA += '</tbody></table>';
 
   // Bouchons par couleur
   htmlA += '<div style="margin-top:16px;margin-bottom:12px"><strong>Bouchons par couleur</strong></div>';
@@ -1001,7 +992,7 @@ function buildStock(){
     htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + couleur + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
-    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + _stockWarn(entree, rest) + '</td></tr>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
   });
 
   htmlA += '</tbody></table></div>';
