@@ -599,6 +599,41 @@ function restFocus(id){ if(id) setTimeout(() => $(id)?.focus(), 0); }
 
 
 
+// ─── Rendu immédiat après une action locale ───────────────────────────────
+// saveLS() part en asynchrone vers Supabase et ne redessine RIEN ; le pull qui suit
+// ne redessine pas non plus (les données n'ont pas changé, on vient de les pousser).
+// Résultat : il fallait quitter l'onglet et revenir pour voir un ajout/suppression.
+// Toute action locale doit donc passer par _saveAndRender().
+function _saveAndRender(){ saveLS(); render(); }
+
+// Repeuple un <select> SANS perdre le choix en cours : une reconstruction
+// (ajout, suppression, sync cloud) renvoyait sinon l'utilisateur sur la 1re option.
+function _fillSel(el, list, def){
+  if(!el) return;
+  var keep = el.value;
+  el.innerHTML = '';
+  (list||[]).forEach(function(v){ var o=document.createElement('option'); o.textContent=v; o.value=v; el.appendChild(o); });
+  if(keep && list.indexOf(keep)>=0) el.value = keep;
+  else if(def && list.indexOf(def)>=0) el.value = def;
+}
+
+// ─── Couleur du « Restant » ───────────────────────────────────────────────
+// rouge = épuisé ou négatif · orange = stock bas (20 % ou moins de ce qui est entré) · vert = OK
+var STOCK_BAS = 0.2;
+function _stockBas(entree, rest){ return rest>0 && entree>0 && (rest/entree)<=STOCK_BAS; }
+function _stockCls(entree, rest){
+  if(rest < 0) return 'color:var(--gr);font-weight:700';
+  if(entree === 0 && rest === 0) return 'color:var(--mu)';
+  if(rest === 0) return 'color:var(--gr);font-weight:700';
+  if(_stockBas(entree, rest)) return 'color:#e07020;font-weight:700';
+  return 'color:#27ae60;font-weight:700';
+}
+function _stockWarn(entree, rest){ return _stockBas(entree, rest) ? ' \u26a0\ufe0f' : ''; }
+var STOCK_LEGENDE = '<div style="font-size:11px;color:var(--mu);margin-top:8px;line-height:1.6">Restant : '
+  + '<span style="color:#27ae60;font-weight:700">vert</span> = plus de 20 % du stock entré · '
+  + '<span style="color:#e07020;font-weight:700">orange \u26a0\ufe0f</span> = stock bas (20 % ou moins) · '
+  + '<span style="color:var(--gr);font-weight:700">rouge</span> = épuisé ou négatif</div>';
+
 function render(){
   const labelEl = $('saison-label');
   if(labelEl) labelEl.textContent = 'Saison ' + S.saison;
@@ -764,50 +799,10 @@ function buildSaisie(){
   const dateInput = $('entry-date');
   if(dateInput && !dateInput.value) dateInput.value = today;
 
-  const formatEl = $('entry-format');
-  if(formatEl){
-    formatEl.innerHTML = '';
-    S.formats.forEach(f => {
-      const opt = document.createElement('option');
-      opt.textContent = f;
-      opt.value = f;
-      formatEl.appendChild(opt);
-    });
-  }
-
-  const saveurEl = $('entry-saveur');
-  if(saveurEl){
-    saveurEl.innerHTML = '';
-    S.saveurs.forEach(s => {
-      const opt = document.createElement('option');
-      opt.textContent = s;
-      opt.value = s;
-      saveurEl.appendChild(opt);
-    });
-  }
-
-  const clientEl = $('entry-client');
-  if(clientEl){
-    clientEl.innerHTML = '';
-    S.clients.forEach(c => {
-      const opt = document.createElement('option');
-      opt.textContent = c;
-      opt.value = c;
-      clientEl.appendChild(opt);
-    });
-    clientEl.value = 'VDP';
-  }
-
-  const couleurEl = $('entry-couleur');
-  if(couleurEl){
-    couleurEl.innerHTML = '';
-    S.couleursBouchon.forEach(c => {
-      const opt = document.createElement('option');
-      opt.textContent = c;
-      opt.value = c;
-      couleurEl.appendChild(opt);
-    });
-  }
+  _fillSel($('entry-format'), S.formats);
+  _fillSel($('entry-saveur'), S.saveurs);
+  _fillSel($('entry-client'), S.clients, 'VDP');
+  _fillSel($('entry-couleur'), S.couleursBouchon);
 
   let journalHtml = '';
   const sorted = [...S.entries].sort((a, b) => (new Date(b.date) - new Date(a.date)) || _cmpRec(a, b));
@@ -855,7 +850,7 @@ function addEntry(){
   if(qteResetEl) qteResetEl.value = '1';
   const dateResetEl = $('entry-date');
   if(dateResetEl) dateResetEl.value = new Date().toISOString().split('T')[0];
-  saveLS();
+  _saveAndRender();
 }
 
 function deleteEntry(id){
@@ -863,7 +858,7 @@ function deleteEntry(id){
   S.deletedIds = S.deletedIds || [];
   if(S.deletedIds.indexOf('entries:'+String(id))<0) S.deletedIds.push('entries:'+String(id));
   S.entries = S.entries.filter(e => e.id !== id);
-  saveLS();
+  _saveAndRender();
 }
 
 function buildParams(){
@@ -921,7 +916,7 @@ function addParam(type){
 
   if(!S[key].includes(val)) {
     S[key].push(val);
-    saveLS();
+    _saveAndRender();
   }
   inputEl.value = '';
 }
@@ -937,10 +932,17 @@ function delParam(key, val){
   else return;
 
   S[k] = S[k].filter(x => x !== val);
-  saveLS();
+  _saveAndRender();
 }
 
 function buildStock(){
+  // Mémoriser le formulaire « Arrivées » en cours de saisie : le panneau entier est
+  // reconstruit, sans ça l'article/la couleur/la date choisis repartaient à zéro.
+  const _keep = {
+    type: $('reappro-type') ? $('reappro-type').value : '',
+    couleur: $('reappro-couleur') ? $('reappro-couleur').value : '',
+    date: $('reappro-date') ? $('reappro-date').value : ''
+  };
   // Calcul des arrivées par type (et couleur pour bouchons)
   function totalEntree(type, couleur){
     if(couleur) {
@@ -978,14 +980,14 @@ function buildStock(){
     const entree = totalEntree(item.type);
     const conso = calcConsomme(item.type);
     const rest = entree - conso;
-    const cls = rest < 0 ? 'color:var(--gr);font-weight:700' : (entree > 0 && rest / entree > 0.2 ? 'color:#27ae60;font-weight:700' : '');
+    const cls = _stockCls(entree, rest);
     htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + item.label + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
-    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + _stockWarn(entree, rest) + '</td></tr>';
   });
 
-  htmlA += '</tbody></table>';
+  htmlA += '</tbody></table>' + STOCK_LEGENDE;
 
   // Bouchons par couleur
   htmlA += '<div style="margin-top:16px;margin-bottom:12px"><strong>Bouchons par couleur</strong></div>';
@@ -995,11 +997,11 @@ function buildStock(){
     const entree = totalEntree('bouchon', couleur);
     const conso = calcConsomme('bouchon', couleur);
     const rest = entree - conso;
-    const cls = rest < 0 ? 'color:var(--gr);font-weight:700' : (entree > 0 && rest / entree > 0.2 ? 'color:#27ae60;font-weight:700' : '');
+    const cls = _stockCls(entree, rest);
     htmlA += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0ee">' + couleur + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + entree + '</td>';
     htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee">' + conso + '</td>';
-    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + '</td></tr>';
+    htmlA += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f0f0ee;' + cls + '">' + rest + _stockWarn(entree, rest) + '</td></tr>';
   });
 
   htmlA += '</tbody></table></div>';
@@ -1073,6 +1075,14 @@ function buildStock(){
 
   const stockEl = $('stock');
   if(stockEl) stockEl.innerHTML = htmlA + htmlB + htmlC + htmlD;
+
+  // Restaurer le formulaire « Arrivées » tel que l'utilisateur l'avait laissé
+  const _tEl = $('reappro-type');
+  if(_tEl && _keep.type && [..._tEl.options].some(o => o.value === _keep.type)) _tEl.value = _keep.type;
+  const _cEl = $('reappro-couleur');
+  if(_cEl && _keep.couleur && [..._cEl.options].some(o => o.value === _keep.couleur)) _cEl.value = _keep.couleur;
+  const _dEl = $('reappro-date');
+  if(_dEl && _keep.date) _dEl.value = _keep.date;
 
   // Appeler updateReaproFormVisibility pour afficher/masquer le groupe couleur
   updateReaproFormVisibility();
@@ -1304,7 +1314,7 @@ function addReappro(){
   const reappro = {id, type, date, qte, ts: Date.now(), u: FLIPO_AUTHOR};
   if(couleur) reappro.couleur = couleur;
   S.reappro.push(reappro);
-  saveLS();
+  _saveAndRender();
 }
 
 function deleteReappro(id){
@@ -1312,7 +1322,7 @@ function deleteReappro(id){
   S.deletedIds = S.deletedIds || [];
   if(S.deletedIds.indexOf('reappro:'+String(id))<0) S.deletedIds.push('reappro:'+String(id));
   S.reappro = S.reappro.filter(r => r.id !== id);
-  saveLS();
+  _saveAndRender();
 }
 
 function updCarton(key, val){
