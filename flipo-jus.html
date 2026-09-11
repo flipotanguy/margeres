@@ -234,7 +234,7 @@ th,td{padding:8px 6px}
       </div>
       <div class="form-group">
         <label>Format</label>
-        <select id="entry-format"></select>
+        <select id="entry-format" onchange="_updCouleurVisibility()"></select>
       </div>
       <div class="form-group">
         <label>Saveur</label>
@@ -244,7 +244,7 @@ th,td{padding:8px 6px}
         <label>Client</label>
         <select id="entry-client"></select>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="entry-couleur-group">
         <label>Couleur bouchon</label>
         <select id="entry-couleur"></select>
       </div>
@@ -405,6 +405,12 @@ function _applyMigrations(){
   (S.reappro||[]).forEach(function(r){
     var n=_fixCouleurSoft(r.couleur);
     if(n!==r.couleur){r.couleur=n;changed=true;}
+  });
+  // 1 bis) Un BIB n'a pas de bouchon : effacer la couleur des saisies BIB.
+  // Idempotente et rejouée après chaque fusion cloud (les saisies d'un autre
+  // appareil peuvent arriver non migrées) — voir la règle des migrations Jus.
+  (S.entries||[]).forEach(function(e){
+    if(_estBIB(e.format)&&e.couleur){e.couleur='';changed=true;}
   });
   // 2) Retirer le format "1L" (garde "1L Rhum" et "1L Soft")
   var nf=(S.formats||[]).filter(function(f){return f!=='1L';});
@@ -617,6 +623,21 @@ function _fillSel(el, list, def){
   else if(def && list.indexOf(def)>=0) el.value = def;
 }
 
+// ─── Formats sans bouchon ────────────────────────────────────────────────
+// Un BIB a un robinet, pas de bouchon : le champ « Couleur bouchon » n'a aucun sens
+// et ne doit ni être demandé à la saisie, ni consommer du stock de bouchons.
+// Test insensible à la casse et aux accents, pour couvrir tout futur « Bib 5L ».
+function _estBIB(format){
+  return String(format||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').indexOf('bib')===0;
+}
+// Affiche ou masque le champ « Couleur bouchon » selon le format choisi
+function _updCouleurVisibility(){
+  var fmtEl=$('entry-format'), grp=$('entry-couleur-group');
+  if(!fmtEl||!grp)return;
+  grp.style.display=_estBIB(fmtEl.value)?'none':'';
+}
+
 // ─── Couleur du « Restant » ───────────────────────────────────────────────
 // vert = il en reste · rouge = épuisé (0) ou négatif.
 // Pas de seuil en pourcentage : « Entré » est un cumul de saison qui ne fait que
@@ -794,6 +815,7 @@ function buildSaisie(){
   _fillSel($('entry-saveur'), S.saveurs);
   _fillSel($('entry-client'), S.clients, 'VDP');
   _fillSel($('entry-couleur'), S.couleursBouchon);
+  _updCouleurVisibility();
 
   let journalHtml = '';
   const sorted = [...S.entries].sort((a, b) => (new Date(b.date) - new Date(a.date)) || _cmpRec(a, b));
@@ -803,7 +825,7 @@ function buildSaisie(){
       '<span style="font-size:18px">🧃</span>' +
       '<div class="journal-entry-txt">' +
       '<strong>' + es(e.saveur) + ' • ' + es(e.format) + ' × ' + e.qte + '</strong>' +
-      '<span style="color:var(--mu);font-size:12px">' + es(e.client) + ' • bouchon ' + es(e.couleur) + ' • ' + e.date + '</span>' +
+      '<span style="color:var(--mu);font-size:12px">' + es(e.client) + (e.couleur ? ' • bouchon ' + es(e.couleur) : '') + ' • ' + e.date + '</span>' +
       saisiLine(e) +
       '</div>' +
       '</div>' +
@@ -825,10 +847,11 @@ function addEntry(){
   const format = formatEl.value;
   const saveur = saveurEl.value;
   const client = clientEl.value;
-  const couleur = couleurEl.value;
+  const estBib = _estBIB(format);
+  const couleur = estBib ? '' : couleurEl.value;   // un BIB n'a pas de bouchon
   const qte = parseInt(qteEl.value) || 1;
 
-  if(!date || !format || !saveur || !client || !couleur) {
+  if(!date || !format || !saveur || !client || (!estBib && !couleur)) {
     alert('Veuillez remplir tous les champs');
     return;
   }
@@ -949,8 +972,8 @@ function buildStock(){
     if(type === 'b1Lsoft') return S.entries.filter(e => e.format === '1L Soft').reduce((a, e) => a + e.qte, 0);
     if(type === 'bib') return S.entries.filter(e => e.format === 'BIB 3L').reduce((a, e) => a + e.qte, 0);
     if(type === 'bibGen') return S.entries.filter(e => e.format === 'BIB générique 3L').reduce((a, e) => a + e.qte, 0);
-    if(type === 'bouchon' && format) return S.entries.filter(e => e.couleur === format && !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
-    if(type === 'bouchon') return S.entries.filter(e => !e.format.startsWith('BIB')).reduce((a, e) => a + e.qte, 0);
+    if(type === 'bouchon' && format) return S.entries.filter(e => e.couleur === format && !_estBIB(e.format)).reduce((a, e) => a + e.qte, 0);
+    if(type === 'bouchon') return S.entries.filter(e => !_estBIB(e.format)).reduce((a, e) => a + e.qte, 0);
     return 0;
   }
 
