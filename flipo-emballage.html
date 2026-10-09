@@ -256,10 +256,48 @@ function _buildData(){
 }
 
 // Garantit que S.varList a bien ses deux clés (une varList héritée du cloud peut en manquer une)
+// ─── Fusion de variétés ───────────────────────────────────────────────────
+// Jonagold et Jonagored étaient confondues par tout le monde ; il n'y a que de la
+// Jonagored sur l'exploitation. Toute saisie « Jonagold » est donc ramenée sur
+// « Jonagored ». Correction IDEMPOTENTE, rejouée à chaque fusion cloud et à chaque
+// chargement : une saisie venue d'un appareil en retard peut arriver non migrée.
+// Pour fusionner deux autres variétés un jour : ajouter une ligne ici (clé en
+// minuscules sans accent), rien d'autre à toucher.
+var VAR_FUSION={'jonagold':'Jonagored'};
+function _fusionVar(nom){
+  var k=String(nom==null?'':nom).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return VAR_FUSION[k]||nom;
+}
+// Applique la fusion à TOUT ce que l'Emballage stocke lui-même.
+function _applyFusionVarietes(){
+  ['sessions','sorties','achatsExt'].forEach(function(k){
+    (S[k]||[]).forEach(function(x){if(x&&x.variete)x.variete=_fusionVar(x.variete);});
+  });
+  ['pomme','poire'].forEach(function(t){
+    var seen={},out=[];
+    (((S.varList||{})[t])||[]).forEach(function(x){
+      if(!x||!x.v)return;
+      x.v=_fusionVar(x.v);
+      if(seen[x.v.toLowerCase()])return; // doublon créé par la fusion
+      seen[x.v.toLowerCase()]=1;out.push(x);
+    });
+    if(S.varList&&S.varList[t])S.varList[t]=out;
+  });
+  if(S.frigoPrio){ // clés « type|variété »
+    var np={};
+    Object.keys(S.frigoPrio).forEach(function(k){
+      var p=k.split('|');
+      np[p.length>1?(p[0]+'|'+_fusionVar(p.slice(1).join('|'))):k]=S.frigoPrio[k];
+    });
+    S.frigoPrio=np;
+  }
+}
+
 function _normVarList(){
   if(!S.varList||typeof S.varList!=='object')S.varList={};
   if(!Array.isArray(S.varList.pomme))S.varList.pomme=[];
   if(!Array.isArray(S.varList.poire))S.varList.poire=[];
+  _applyFusionVarietes();
 }
 function _applyCloud(cloud){
   if(!cloud)return;
@@ -346,6 +384,7 @@ function _mergeColsFromCloud(cloud){
   (cloud.sorties||[]).forEach(function(o){mo[String(o.id)]=o;});
   (S.sorties||[]).forEach(function(o){if(!mo[String(o.id)])mo[String(o.id)]=o;});
   S.sorties=Object.values(mo).filter(function(o){return !del['sorties:'+String(o.id)];});
+  _normVarList(); // rejoue la fusion de variétés sur ce qui vient d'arriver du cloud
 }
 function saveLS(){
   var ts = new Date().toISOString();
@@ -419,7 +458,15 @@ setInterval(function(){
 },10000);
 
 // ─── Données Verger ───────────────────────────────────────
-function getVergerData(){try{return JSON.parse(localStorage.getItem(VERGER_KEY)||'{}');}catch(e){return {};}}
+function getVergerData(){
+  var d;
+  try{d=JSON.parse(localStorage.getItem(VERGER_KEY)||'{}');}catch(e){return {};}
+  // Le cache Verger peut dater d'avant la fusion de variétés : on normalise à la lecture,
+  // sinon l'ancien nom réapparaîtrait en stock comme une variété distincte.
+  (d.entries||[]).forEach(function(e){if(e&&e.variete)e.variete=_fusionVar(e.variete);});
+  ['pomR','poiR'].forEach(function(k){(d[k]||[]).forEach(function(r){if(r&&r.v)r.v=_fusionVar(r.v);});});
+  return d;
+}
 // Les données Verger (récoltes, bâtiments, frigos) n'étaient mises en cache que par le module
 // Verger lui-même : sur un appareil/navigateur où on ouvrait l'Emballage sans passer par le
 // Verger, le stock s'affichait vide ou périmé. On les récupère donc aussi ici (lecture seule).

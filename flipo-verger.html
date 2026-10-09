@@ -244,7 +244,6 @@ const POM_INIT = [
   {v:"Gravenstein",d:new Array(44).fill(0)},
   {v:"Idared",d:new Array(44).fill(0)},
   {v:"Initiale",d:new Array(44).fill(0)},
-  {v:"Jonagold",d:new Array(44).fill(0)},
   {v:"Jus",d:new Array(44).fill(0)},
   {v:"Lafayette",d:new Array(44).fill(0)},
   {v:"Melrose",d:new Array(44).fill(0)},
@@ -524,7 +523,43 @@ function _migrateMatrix(pomR,poiR,datesPom,datesPoi){
 }
 
 // Recalcule pomR/poiR (et donc les totaux) à partir des saisies fusionnées — garantit des chiffres identiques sur tous les appareils
+// ─── Fusion de variétés ───────────────────────────────────────────────────
+// Jonagold et Jonagored étaient confondues par tout le monde ; il n'y a que de la
+// Jonagored sur l'exploitation. Toute saisie « Jonagold » est donc ramenée sur
+// « Jonagored ». Correction IDEMPOTENTE, rejouée à chaque fusion cloud et à chaque
+// chargement : une saisie venue d'un appareil en retard peut arriver non migrée.
+// Pour fusionner deux autres variétés un jour : ajouter une ligne ici (clé en
+// minuscules sans accent), rien d'autre à toucher.
+var VAR_FUSION={'jonagold':'Jonagored'};
+function _fusionVar(nom){
+  var k=String(nom==null?'':nom).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return VAR_FUSION[k]||nom;
+}
+// Renomme les saisies concernées et supprime le doublon de « définition de variété »
+// qui ferait réapparaître l'ancien nom dans la liste. Renvoie true si quelque chose a changé.
+function _applyFusionVarietes(){
+  var changed=false;
+  (S.entries||[]).forEach(function(e){
+    var n=_fusionVar(e.variete);
+    if(n!==e.variete){e.variete=n;changed=true;}
+  });
+  var vu={};
+  S.entries=(S.entries||[]).filter(function(e){
+    if(!e.vardef)return true;
+    var k=(e.cult||'')+'|'+String(e.variete||'').toLowerCase();
+    if(vu[k]){ // définition en double après fusion → tombstone pour qu'elle ne revienne pas
+      S.deletedIds=S.deletedIds||[];
+      var t='entries:'+String(e.id||e.ts);
+      if(S.deletedIds.indexOf(t)<0)S.deletedIds.push(t);
+      changed=true;return false;
+    }
+    vu[k]=1;return true;
+  });
+  return changed;
+}
+
 function _rebuildMatrix(){
+  _applyFusionVarietes();
   [['pomme','pomR',DATES_POM],['poire','poiR',DATES_POI]].forEach(function(t){
     var cult=t[0],key=t[1],dates=t[2];
     (S.entries||[]).forEach(function(e){if(e.cult===cult&&e.date&&dates.indexOf(e.date)===-1)dates.push(e.date);});
